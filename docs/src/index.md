@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = ROSEBase
+CurrentModule = ComradeBase
 ```
 
-# ROSEBase
+# ComradeBase
 
-Documentation for [ROSEBase](https://github.com/ptiede/ROSEBase.jl).
+Documentation for [ComradeBase](https://github.com/ptiede/ComradeBase.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [ROSEBase]
+Modules = [ComradeBase]
 ```

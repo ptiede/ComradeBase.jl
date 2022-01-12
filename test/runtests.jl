@@ -1,6 +1,6 @@
-using ROSEBase
+using ComradeBase
 using Test
 
-@testset "ROSEBase.jl" begin
+@testset "ComradeBase.jl" begin
     # Write your tests here.
 end

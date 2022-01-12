@@ -71,7 +71,7 @@ uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 deps = ["InteractiveUtils", "Markdown", "Sockets", "Unicode"]
 uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 
-[[ROSEBase]]
+[[ComradeBase]]
 path = ".."
 uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 version = "0.1.0"
