@@ -1,4 +1,4 @@
-export IntensityMap, fov, imagepixels, pixelsizes
+export IntensityMap, fov, imagepixels, pixelsizes, stokes
 
 
 struct IntensityMap{T,S<:AbstractMatrix, F, K<:Pulse} <: AbstractIntensityMap{T,S}
@@ -21,6 +21,20 @@ function IntensityMap(im, fovx, fovy, pulse=DeltaPulse())
                        psizex,
                        psizey,
                        pulse)
+end
+
+
+function IntensityMap(im::Matrix{<:StokesVector}, fovx, fovy, pulse)
+    return IntensityMap(StructArray(im), fovx, fovy, pulse)
+end
+
+function IntensityMap(im::IntensityMap{<:StokesVector}, fovx, fovy, pulse)
+    return IntensityMap(im.im, fovx, fovy, pulse)
+end
+
+function stokes(im::IntensityMap{<:StokesVector}, p::Symbol)
+    @assert p ∈ propertynames(im.im) "$p is not a valid stokes parameter"
+    return getproperty(im.im, p)
 end
 
 
@@ -56,9 +70,9 @@ end
 # Define the array interface
 Base.IndexStyle(::Type{<: IntensityMap{T,S,K}}) where {T,S,K} = Base.IndexStyle(S)
 Base.size(im::AbstractIntensityMap) = size(im.im)
-Base.getindex(im::AbstractIntensityMap, i::Int) = getindex(im.im, i)
-Base.getindex(im::AbstractIntensityMap, I...) = getindex(im.im, I...)
-Base.setindex!(im::AbstractIntensityMap, x, i::Int) = setindex!(im.im, x, i)
+Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, i::Int) = getindex(im.im, i)
+Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, I...) = getindex(im.im, I...)
+Base.@propagate_inbounds Base.setindex!(im::AbstractIntensityMap, x, i::Int) = setindex!(im.im, x, i)
 
 function Base.similar(im::IntensityMap, ::Type{T}) where{T}
     sim = similar(im.im, T)
@@ -102,7 +116,6 @@ function Base.:+(x::AbstractIntensityMap, y::AbstractIntensityMap)
     @assert fov(x) == fov(y) "IntensityMaps must share same field of view"
     return x .+ y
 end
-
 
 
 @inline function pixelsizes(im::AbstractIntensityMap)
