@@ -34,7 +34,7 @@ end
 
 function stokes(im::IntensityMap{<:StokesVector}, p::Symbol)
     @assert p ∈ propertynames(im.im) "$p is not a valid stokes parameter"
-    return getproperty(im.im, p)
+    return IntensityMap(getproperty(im.im, p), im.fovx, im.fovy, im.pulse)
 end
 
 
