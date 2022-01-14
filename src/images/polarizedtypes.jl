@@ -32,7 +32,7 @@ end
 end
 
 
-m̆(m::StokesVector) = (m.Q + 1im*m.U)/m.I
+m̆(m::StokesVector) = (m.Q + 1im*m.U)/(m.I + eps())
 m̆(m::CoherencyMatrix) = 2*m.rl/(m.rr+m.ll)
 
 
