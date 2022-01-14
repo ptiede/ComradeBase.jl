@@ -3,7 +3,15 @@ uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
+DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
+
 [compat]
+DocStringExtensions = "0.8"
+StaticArrays = "1"
 julia = "1.6"
 
 [extras]

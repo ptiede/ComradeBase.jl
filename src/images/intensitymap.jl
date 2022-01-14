@@ -1,29 +1,39 @@
 export IntensityMap, fov, imagepixels, pixelsizes
 
 
-mutable struct IntensityMap{T,S<:AbstractMatrix, K<:Pulse} <: AbstractIntensityMap{T,S}
+struct IntensityMap{T,S<:AbstractMatrix, F, K<:Pulse} <: AbstractIntensityMap{T,S}
     im::S
-    fovx::T
-    fovy::T
-    psizex::T
-    psizey::T
+    fovx::F
+    fovy::F
+    psizex::F
+    psizey::F
     pulse::K
 end
-
-fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
-
 
 function IntensityMap(im, fovx, fovy, pulse=DeltaPulse())
     ny,nx = size(im)
     psizex=fovx/(nx-1)
     psizey=fovy/(ny-1)
-    return IntensityMap(im,
+    F = promote_type(typeof(fovx), typeof(fovy))
+    return IntensityMap{eltype(im), typeof(im), F, typeof(pulse)}(im,
                        convert(typeof(psizex),fovx),
                        convert(typeof(psizey),fovy),
                        psizex,
                        psizey,
                        pulse)
 end
+
+
+
+function ChainRulesCore.rrule(::Type{<:IntensityMap}, im, fovx, fovy, pulse)
+    y = IntensityMap(im, fovx, fovy, pulse)
+    intensity_pullback(Δy) = (NoTangent(), Δy, fovx, fovy, pulse)
+    return y, intensity_pullback
+end
+
+fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
+
+
 
 
 """
@@ -36,7 +46,7 @@ function flux(im::AbstractIntensityMap{T,S}) where {T,S}
     @inbounds for i in axes(im,1), j in axes(im, 2)
         xx = x[i]
         yy = y[j]
-        sum += im[j,i]*intensity_point(im.pulse, xx, yy)
+        sum += im[j,i]*ComradeBase.intensity_point(im.pulse, xx, yy)
     end
     return sum*prod(pixelsizes(im))
 end
@@ -52,7 +62,7 @@ Base.setindex!(im::AbstractIntensityMap, x, i::Int) = setindex!(im.im, x, i)
 
 function Base.similar(im::IntensityMap, ::Type{T}) where{T}
     sim = similar(im.im, T)
-    return IntensityMap(sim, im.fovx, im.fovy, im.psizex, im.psizey, im.pulse)
+    return IntensityMap(sim, im.fovx, im.fovy, im.pulse)
 end
 
 #function Base.similar(im::AbstractIntensityMap, ::Type{T}, dims::Dims) where {T}
@@ -75,7 +85,7 @@ function Base.similar(bc::Broadcast.Broadcasted{IntensityMapStyle}, ::Type{ElTyp
     #fovys = getproperty.(Im, Ref(:fovy))
     #@assert all(i->i==first(fovxs), fovxs) "IntensityMap fov must be equal to add"
     #@assert all(i->i==first(fovys), fovys) "IntensityMap fov must be equal to add"
-    return IntensityMap(similar(Array{ElType}, axes(bc)), Im.fovx, Im.fovy, Im.psizex, Im.psizey, Im.pulse)
+    return IntensityMap(similar(Array{ElType}, axes(bc)), Im.fovx, Im.fovy, Im.pulse)
 end
 
 #Finds the first IntensityMap and uses that as the base

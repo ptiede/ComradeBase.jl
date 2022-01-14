@@ -1,5 +1,3 @@
-export visibility
-
 abstract type AbstractModel end
 abstract type AbstractPolarizedModel <: AbstractModel end
 
@@ -92,17 +90,6 @@ If `IsAnalytic()` then it will try to call `intensity_point` to calculate the in
 @inline Base.:*(::IsAnalytic, ::NotAnalytic) = NotAnalytic()
 @inline Base.:*(::NotAnalytic, ::IsAnalytic) = NotAnalytic()
 @inline Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
-
-
-"""
-    $(SIGNATURES)
-Computes the complex visibility of model `m` at u,v positions `u,v`
-
-If you want to compute the visibilities at a large number of positions
-consider using the `visibilities` function which uses MappedArrays to
-compute a lazy, no allocation vector.
-"""
-function visibility end
 
 
 """
