@@ -37,6 +37,17 @@ function stokes(im::IntensityMap{<:StokesVector}, p::Symbol)
     return IntensityMap(getproperty(im.im, p), im.fovx, im.fovy, im.pulse)
 end
 
+function IntensityMap(I::AbstractIntensityMap,
+                      Q::AbstractIntensityMap,
+                      U::AbstractIntensityMap,
+                      V::AbstractIntensityMap
+                      )
+    @assert I.fovx == Q.fovx == U.fovx == V.fovx "Must have matching fov in RA"
+    @assert I.fovy == Q.fovy == U.fovy == V.fovy "Must have matching fov in DEC"
+    simg = StructArray{StokesVector{eltype(I)}}((I,Q,U,V))
+    return IntensityMap(simg, I.fovx, I.fovy, I.pulse)
+end
+
 
 
 function ChainRulesCore.rrule(::Type{<:IntensityMap}, im, fovx, fovy, pulse)
