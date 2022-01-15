@@ -10,7 +10,7 @@ DeltaPulse() = DeltaPulse{Float64}()
 # This should really be a delta function but whatever
 @inline κ(::DeltaPulse{T}, x) where {T} = one(T)
 @inline ω(::DeltaPulse{T}, u) where {T} = one(T)
-
+@inline radialextent(::Pulse) = 1.0
 
 """
     $(TYPEDEF)
@@ -24,7 +24,7 @@ end
 @inline @fastmath κ(b::SqExpPulse, x) = exp(-0.5*b.ϵ^2*x^2)/sqrt(2*π/b.ϵ^2)
 @inline κflux(::SqExpPulse{T}) where {T} = one(T)
 @inline @fastmath ω(b::SqExpPulse, u) = exp(-2*(π*u/b.ϵ)^2)
-
+@inline radialextent(p::SqExpPulse) = 5/p.ϵ
 
 @doc raw"""
     $(TYPEDEF)
