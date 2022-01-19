@@ -131,11 +131,16 @@ end
 
 @inline function pixelsizes(im::AbstractIntensityMap)
     ny,nx = size(im)
-    return im.fovx/max(nx-1,1), im.fovy/max(ny-1,1)
+    return im.fovx/nx, im.fovy/ny
+end
+
+@inline function imagepixels(fovx, fovy, nx::Int, ny::Int)
+    px = fovx/nx; py = fovy/ny
+    return range(-fovx/2+px/2, step=px, length=nx),
+           range(-fovy/2+py/2, step=py, length=ny)
 end
 
 @inline function imagepixels(im::AbstractIntensityMap)
-    px,py = pixelsizes(im)
-    return range(-im.fovx/2, im.fovx/2, step=px),
-           range(-im.fovy/2, im.fovy/2, step=py)
+    ny,nx = size(im)
+    return imagepixels(im.fovx, im.fovy, nx, ny)
 end

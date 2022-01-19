@@ -10,13 +10,10 @@ abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
 end
 
 function intensitymap(::IsAnalytic, s, fovx::Number, fovy::Number, nx::Int, ny::Int; pulse=ComradeBase.DeltaPulse())
-    px = fovx/max(nx-1,1)
-    py = fovy/max(ny-1,1)
+    x,y = imagepixels(fovx, fovy, nx, ny)
     pimg = map(CartesianIndices((1:nx,1:nx))) do I
         iy,ix = Tuple(I)
-        x = -fovx/2 + (ix-1)*px
-        y = -fovy/2 + (iy-1)*py
-        f = intensity_point(s, x, y)
+        f = intensity_point(s, x[ix], y[iy])
         return f
     end
     return IntensityMap(pimg, fovx, fovy, pulse)
