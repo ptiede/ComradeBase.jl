@@ -11,6 +11,8 @@ export  visibility, intensitymap, intensitymap!,
 
 include("interface.jl")
 include("images/images.jl")
+include("threaded.jl")
+
 #include("polarized.jl")
 
 

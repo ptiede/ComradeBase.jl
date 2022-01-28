@@ -1,5 +1,6 @@
 abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
 
+
 #abstract type AbstractPolarizedMap{I,Q,U,V} end
 
 @inline function intensitymap(s::M,
@@ -7,6 +8,10 @@ abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
                               nx::Int, ny::Int;
                               pulse=ComradeBase.DeltaPulse()) where {M}
     return intensitymap(imanalytic(M), s, fovx, fovy, nx, ny; pulse)
+end
+
+@inline function intensitymap!(img::AbstractIntensityMap, s::M) where {M}
+    return intensitymap!(imanalytic(M), img, s)
 end
 
 function intensitymap(::IsAnalytic, s, fovx::Number, fovy::Number, nx::Int, ny::Int; pulse=ComradeBase.DeltaPulse())
@@ -18,6 +23,8 @@ function intensitymap(::IsAnalytic, s, fovx::Number, fovy::Number, nx::Int, ny::
     end
     return IntensityMap(pimg, fovx, fovy, pulse)
 end
+
+
 
 function intensitymap!(::IsAnalytic, im::AbstractIntensityMap, m)
     xitr, yitr = imagepixels(im)

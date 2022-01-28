@@ -71,7 +71,23 @@ function flux(im::AbstractIntensityMap{T,S}) where {T,S}
     @inbounds for i in axes(im,1), j in axes(im, 2)
         xx = x[i]
         yy = y[j]
-        sum += im[j,i]*ComradeBase.intensity_point(im.pulse, xx, yy)
+        sum += im[j,i]#*ComradeBase.intensity_point(im.pulse, xx, yy)
+    end
+    return sum*prod(pixelsizes(im))
+end
+
+"""
+    $(SIGNATURES)
+Computes the flux of a intensity map
+"""
+function flux(im::AbstractIntensityMap{T,S}) where {F,T<:StokesVector{F},S}
+    sum = zero(F)
+    x,y = imagepixels(im)
+    I = stokes(im, :I)
+    @inbounds for i in axes(im,1), j in axes(im, 2)
+        xx = x[i]
+        yy = y[j]
+        sum += I[j,i]*ComradeBase.intensity_point(im.pulse, xx, yy)
     end
     return sum*prod(pixelsizes(im))
 end

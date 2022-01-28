@@ -2,6 +2,8 @@ abstract type AbstractModel end
 abstract type AbstractPolarizedModel <: AbstractModel end
 
 
+
+
 """
     $(TYPEDEF)
 This trait specifies whether the model is a *primitive*
@@ -134,3 +136,24 @@ img = intensitymap(m, fovx, fovy, nx, ny; pulse=DeltaPulse())
 ```
 """
 function intensitymap end
+
+
+# """
+#     ($SIGNATURES)
+# A threaded version of the intensitymap function.
+
+# # Notes
+# If using autodiff this won't play well with zygote given the mutation. This will be fixed in
+# future versions.
+# """
+# function tintensitymap end
+
+# """
+#     ($SIGNATURES)
+# A threaded version of the intensitymap! function.
+
+# # Notes
+# If using autodiff this won't play well with zygote given the mutation. This will be fixed in
+# future versions.
+# """
+# function tintensitymap! end
