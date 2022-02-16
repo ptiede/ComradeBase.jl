@@ -16,9 +16,9 @@ end
 
 function intensitymap(::IsAnalytic, s, fovx::Number, fovy::Number, nx::Int, ny::Int; pulse=ComradeBase.DeltaPulse())
     x,y = imagepixels(fovx, fovy, nx, ny)
-    pimg = map(CartesianIndices((1:nx,1:nx))) do I
+    pimg = map(CartesianIndices((1:ny,1:nx))) do I
         iy,ix = Tuple(I)
-        f = intensity_point(s, x[ix], y[iy])
+        @inbounds f = intensity_point(s, x[ix], y[iy])
         return f
     end
     return IntensityMap(pimg, fovx, fovy, pulse)

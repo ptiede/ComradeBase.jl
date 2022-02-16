@@ -71,7 +71,7 @@ function flux(im::AbstractIntensityMap{T,S}) where {T,S}
     @inbounds for i in axes(im,1), j in axes(im, 2)
         xx = x[i]
         yy = y[j]
-        sum += im[j,i]#*ComradeBase.intensity_point(im.pulse, xx, yy)
+        sum += im[j,i]*ComradeBase.intensity_point(im.pulse, xx, yy)
     end
     return sum*prod(pixelsizes(im))
 end
