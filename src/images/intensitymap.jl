@@ -1,6 +1,16 @@
 export IntensityMap, fov, imagepixels, pixelsizes, stokes
 
+"""
+    $(TYPEDEF)
+Image array type. This is an Matrix with a number of internal fields
+to describe the field of view, pixel size, and the `pulse` function that
+makes the image a continuous quantity.
 
+To use it you just specify the array and the field of view/pulse
+``julia
+img = IntensityMap(zeros(512,512), 100.0, 100.0)
+```
+"""
 struct IntensityMap{T,S<:AbstractMatrix, F, K<:Pulse} <: AbstractIntensityMap{T,S}
     im::S
     fovx::F

@@ -1,5 +1,17 @@
 export StokesVector, CoherencyMatrix, evpa, m̆, SingleStokes
 
+"""
+    $(TYPEDEF)
+Static vector that holds the stokes parameters of a polarized
+complex visibility
+
+To convert between a `StokesVector` and `CoherencyMatrix` use the `convert`
+function
+
+```julia
+convert(::CoherencyMatrix, StokesVector(1.0, 0.1, 0.1, 0.4))
+```
+"""
 struct StokesVector{T} <: FieldVector{4,T}
     I::T
     Q::T
@@ -7,6 +19,18 @@ struct StokesVector{T} <: FieldVector{4,T}
     V::T
 end
 
+"""
+    $(TYPEDEF)
+Static matrix that holds construct the coherency matrix of a polarized
+complex visibility
+
+To convert between a `StokesVector` and `CoherencyMatrix` use the `convert`
+function
+
+```julia
+convert(::StokesVector, CoherencyMatrix(1.0, 0.1, 0.1, 0.4))
+```
+"""
 struct CoherencyMatrix{T} <: FieldMatrix{2,2,T}
     rr::T
     lr::T
@@ -31,11 +55,18 @@ end
     return StokesVector(i, q, u, v)
 end
 
-
+"""
+    $(SIGNATURES)
+Compute the fractional linear polarization of a stokes vector
+or coherency matrix
+"""
 m̆(m::StokesVector) = (m.Q + 1im*m.U)/(m.I + eps())
 m̆(m::CoherencyMatrix) = 2*m.rl/(m.rr+m.ll)
 
-
+"""
+    $(SIGNATURES)
+Compute the evpa of a stokes vector or cohereny matrix.
+"""
 evpa(m::StokesVector) = 1/2*atan(m.U,m.Q)
 evpa(m::StokesVector{<:Complex}) = 1/2*angle(m.U/m.Q)
 evpa(m::CoherencyMatrix) = evpa(convert(StokesVector, m))

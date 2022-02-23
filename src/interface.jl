@@ -13,7 +13,16 @@ This will likely turn into a trait in the future so people
 can inject their models into Comrade more easily.
 """
 abstract type PrimitiveTrait end
+
+"""
+    $(TYPEDEF)
+Trait for primitive model
+"""
 struct IsPrimitive end
+"""
+    $(TYPEDEF)
+Trait for not-primitive model
+"""
 struct NotPrimitive end
 
 """
@@ -27,7 +36,7 @@ to specify if it is primitive
 
 ```julia
 struct MyPrimitiveModel end
-Comrade.isprimitive(::Type{MyModel}) = Comrade.IsPrimitive()
+ComradeBase.isprimitive(::Type{MyModel}) = ComradeBase.IsPrimitive()
 ```
 
 """

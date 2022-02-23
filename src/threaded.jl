@@ -1,5 +1,10 @@
 export ThreadedModel
 
+"""
+    ThreadedModel
+Experimental model wrapper than enables multi-threading. This will likely
+be depreciated in the future for moving threading to executors similar to FLoops.jl
+"""
 struct ThreadedModel{M} <: AbstractModel
     model::M
 end
