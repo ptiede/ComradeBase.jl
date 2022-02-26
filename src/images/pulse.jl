@@ -1,5 +1,8 @@
 export DeltaPulse, SqExpPulse, BSplinePulse
 
+
+flux(p::Pulse) = κflux(p)^2
+
 """
     $(TYPEDEF)
 A dirac comb pulse function. This means the image is just the
@@ -8,6 +11,7 @@ dicrete Fourier transform
 struct DeltaPulse{T} <: Pulse end
 DeltaPulse() = DeltaPulse{Float64}()
 # This should really be a delta function but whatever
+κflux(::DeltaPulse{T}) where {T} = one(T)
 @inline κ(::DeltaPulse{T}, x) where {T} = one(T)
 @inline ω(::DeltaPulse{T}, u) where {T} = one(T)
 @inline radialextent(::Pulse) = 1.0
@@ -50,14 +54,14 @@ struct BSplinePulse{N} <: Pulse end
 @inline ω(::BSplinePulse{N}, u) where {N} = sinc(u)^(N+1)
 @inline κflux(::BSplinePulse) = 1.0
 
-@inline κ(b::BSplinePulse{0}, x::T) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
+@inline κ(::BSplinePulse{0}, x::T) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
 
-@inline function κ(b::BSplinePulse{1}, x::T) where {T}
+@inline function κ(::BSplinePulse{1}, x::T) where {T}
     mag = abs(x)
     return mag < 1 ? 1-mag : zero(T)
 end
 
-@inline function κ(b::BSplinePulse{3}, x::T) where {T}
+@inline function κ(::BSplinePulse{3}, x::T) where {T}
     mag = abs(x)
     if mag < 1
         return evalpoly(mag, (4, 0, -6, 3))/6
