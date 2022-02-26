@@ -52,7 +52,7 @@ imanalytic(::Type{<:Pulse}) = IsAnalytic()
 isprimitive(::Type{<:Pulse}) = IsPrimitive()
 
 @inline intensity_point(p::Pulse, x,y) = κ(p::Pulse, x)*κ(p::Pulse, y)
-@inline visibility_point(p::Pulse, u,v) = ω(p::Pulse, u)*ω(p::Pulse, u)
+@inline visibility_point(p::Pulse, u,v) = ω(p::Pulse, u)*ω(p::Pulse, v)
 
 include("pulse.jl")
 include("polarizedtypes.jl")
