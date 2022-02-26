@@ -22,8 +22,8 @@ end
 
 function IntensityMap(im, fovx, fovy, pulse=DeltaPulse())
     ny,nx = size(im)
-    psizex=fovx/(nx-1)
-    psizey=fovy/(ny-1)
+    psizex=fovx/max(nx-1,1)
+    psizey=fovy/max(ny-1,1)
     F = promote_type(typeof(fovx), typeof(fovy))
     return IntensityMap{eltype(im), typeof(im), F, typeof(pulse)}(im,
                        convert(typeof(psizex),fovx),
@@ -31,6 +31,26 @@ function IntensityMap(im, fovx, fovy, pulse=DeltaPulse())
                        psizex,
                        psizey,
                        pulse)
+end
+
+# IntensityMap will obey the Comrade interface. This is so I can make easy models
+visanalytic(::Type{<:IntensityMap}) = NotAnalytic()
+imanalytic(::Type{<:IntensityMap}) = IsAnalytic()
+isprimitive(::Type{<:IntensityMap}) = IsPrimitive()
+
+function intensity_point(m::IntensityMap, x, y)
+    dx, dy = pixelsizes(m)
+    xitr,yitr = imagepixels(m)
+    sum = zero(eltype(m))
+    #The kernel is written in terms of pixel number so we convert x to it
+    @inbounds for (i,xx) in pairs(xitr), (j,yy) in pairs(yitr)
+        Δx = (x-xx)/dx
+        Δy = (y-yy)/dy
+        k = intensity_point(m.pulse, Δx, Δy)
+        #println(Δx," ", Δy, " ",   k)
+        sum += m[j, i]*k
+    end
+    return sum
 end
 
 
@@ -76,14 +96,8 @@ fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
 Computes the flux of a intensity map
 """
 function flux(im::AbstractIntensityMap{T,S}) where {T,S}
-    sum = zero(T)
-    x,y = imagepixels(im)
-    @inbounds for i in axes(im,1), j in axes(im, 2)
-        xx = x[i]
-        yy = y[j]
-        sum += im[j,i]*ComradeBase.intensity_point(im.pulse, xx, yy)
-    end
-    return sum*prod(pixelsizes(im))
+    f = sum(im.im)*(flux(im.pulse))^2
+    return f*prod(pixelsizes(im))
 end
 
 """
@@ -91,16 +105,10 @@ end
 Computes the flux of a intensity map
 """
 function flux(im::AbstractIntensityMap{T,S}) where {F,T<:StokesVector{F},S}
-    sum = zero(F)
-    x,y = imagepixels(im)
     I = stokes(im, :I)
-    @inbounds for i in axes(im,1), j in axes(im, 2)
-        xx = x[i]
-        yy = y[j]
-        sum += I[j,i]*ComradeBase.intensity_point(im.pulse, xx, yy)
-    end
-    return sum*prod(pixelsizes(im))
+    flux(I)
 end
+
 
 
 
