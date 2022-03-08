@@ -118,6 +118,7 @@ Base.size(im::AbstractIntensityMap) = size(im.im)
 Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, i::Int) = getindex(im.im, i)
 Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, I...) = getindex(im.im, I...)
 Base.@propagate_inbounds Base.setindex!(im::AbstractIntensityMap, x, i::Int) = setindex!(im.im, x, i)
+Base.@propagate_inbounds Base.setindex!(im::IntensityMap, x, i::Int) = setindex!(im.im, x, i)
 
 function Base.similar(im::IntensityMap, ::Type{T}) where{T}
     sim = similar(im.im, T)

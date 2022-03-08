@@ -17,7 +17,7 @@ end
 @inline intensity_point(m::ThreadedModel, x, y) = intensity_point(m.model, x, y)
 
 
-function intensitymap(::IsAnalytic, s::ThreadedModel, fovx::Number, fovy::Number, nx::Int, ny::Int; pulse=ComradeBase.DeltaPulse())
+function intensitymap(::IsAnalytic, s::ThreadedModel, fovx::Number, fovy::Number, nx::Int, ny::Int; executor= pulse=ComradeBase.DeltaPulse())
     T = typeof(intensity_point(s, 0.0, 0.0))
     img = IntensityMap(zeros(T, ny, nx), fovx, fovy, pulse)
     intensitymap!(IsAnalytic(), img, s)
