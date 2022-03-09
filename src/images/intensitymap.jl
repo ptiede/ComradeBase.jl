@@ -80,11 +80,11 @@ end
 
 
 
-function ChainRulesCore.rrule(::Type{<:IntensityMap}, im, fovx, fovy, pulse)
-    y = IntensityMap(im, fovx, fovy, pulse)
-    intensity_pullback(Δy) = (NoTangent(), Δy, fovx, fovy, pulse)
-    return y, intensity_pullback
-end
+# function ChainRulesCore.rrule(::Type{<:IntensityMap}, im, fovx, fovy, pulse)
+#     y = IntensityMap(im, fovx, fovy, pulse)
+#     intensity_pullback(Δy) = (NoTangent(), IntensityMap(Δy.im, fovx, fovy, pulse), Δy.fovx, Δy.fovy, Δy.pulse)
+#     return y, intensity_pullback
+# end
 
 fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
 
