@@ -48,7 +48,7 @@ function intensity_point(m::IntensityMap, x, y)
         Δy = (y-yy)/dy
         k = intensity_point(m.pulse, Δx, Δy)
         #println(Δx," ", Δy, " ",   k)
-        sum += m[j, i]*k
+        sum += m[j, i]*k/(dx*dy)
     end
     return sum
 end
