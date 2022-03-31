@@ -42,7 +42,7 @@ ComradeBase.isprimitive(::Type{MyModel}) = ComradeBase.IsPrimitive()
 """
 function isprimitive end
 
-isprimitive(::Type{<:AbstractModel}) = NotPrimitive()
+@inline isprimitive(::Type{<:AbstractModel}) = NotPrimitive()
 
 """
     DensityAnalytic

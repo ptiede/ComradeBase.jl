@@ -28,9 +28,10 @@ end
 
 function intensitymap!(::IsAnalytic, img::AbstractIntensityMap, s, executor=SequentialEx())
     x,y = imagepixels(img)
+    dx, dy = pixelsizes(img)
     @floop executor for I in CartesianIndices(img)
         iy,ix = Tuple(I)
-        img[I] = intensity_point(s, x[ix], y[iy])
+        img[I] = intensity_point(s, x[ix], y[iy])*dx*dy
     end
     return img
 end

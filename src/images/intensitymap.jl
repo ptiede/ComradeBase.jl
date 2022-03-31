@@ -96,8 +96,8 @@ fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
 Computes the flux of a intensity map
 """
 function flux(im::AbstractIntensityMap{T,S}) where {T,S}
-    f = sum(im.im)*(flux(im.pulse))^2
-    return f*prod(pixelsizes(im))
+    f = sum(im.im)#*(flux(im.pulse))^2
+    return f#*prod(pixelsizes(im))
 end
 
 """
