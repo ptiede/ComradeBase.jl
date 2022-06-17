@@ -7,7 +7,7 @@ abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
                               fovx::Number, fovy::Number,
                               nx::Int, ny::Int;
                               pulse=ComradeBase.DeltaPulse(),
-                              executor=SequentialEx()) where {M}
+                              executor=SequentialEx()) where {M<:AbstractModel}
     return intensitymap(imanalytic(M), s, fovx, fovy, nx, ny; pulse, executor)
 end
 
