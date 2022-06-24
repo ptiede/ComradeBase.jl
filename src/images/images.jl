@@ -2,7 +2,17 @@ abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
 
 
 #abstract type AbstractPolarizedMap{I,Q,U,V} end
+"""
+    intensitymap(model::AbstractModel, fovx, fovy, nx, ny; executor=SequentialEx(), pulse=DeltaPulse())
 
+Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap`
+object that have a field of view of `fovx, fovy` in the x and y direction  respectively
+with `nx` pixels in the x-direction and `ny` pixels in the y-direction.
+
+Optionally the user can specify the `pulse` function that converts the image from a discrete
+to continuous quantity, and the `executor` that uses `FLoops.jl` to specify how the loop is
+done. By default we use the `SequentialEx` which uses a single-core to construct the image.
+"""
 @inline function intensitymap(s::M,
                               fovx::Number, fovy::Number,
                               nx::Int, ny::Int;
@@ -11,6 +21,15 @@ abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
     return intensitymap(imanalytic(M), s, fovx, fovy, nx, ny; pulse, executor)
 end
 
+"""
+    intensitymap!(img::AbstractIntensityMap, model, fovx, fovy, nx, ny; executor, pulse)
+
+Computes the intensity map or _image_ of the `model`. This updates the `IntensityMap`
+object `img`.
+
+Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
+done. By default we use the `SequentialEx` which uses a single-core to construct the image.
+"""
 @inline function intensitymap!(img::AbstractIntensityMap, s::M, executor=SequentialEx()) where {M}
     return intensitymap!(imanalytic(M), img, s, executor)
 end
