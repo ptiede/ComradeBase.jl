@@ -1,3 +1,38 @@
+
+"""
+    AbstractModel
+
+The Comrade abstract model type. To instantiate your own model type you should
+subtybe from this model. Additionally you need to implement the following
+methods to satify the interface:
+
+**Mandatory Methods**
+- [`isprimitive`](@ref): defines whether a model is standalone or is defined in terms of other models.
+   is the model is primitive then this should return `IsPrimitive()` otherwise it returns
+   `NotPrimitive()`
+- [`visanalytic`](@ref): defines whether the model visibilities can be computed analytically. If yes
+   then this should return `IsAnalytic()` and the user *must* to define `visibility_point`.
+   If not analytic then `visanalytic` should return `NotAnalytic()`.
+- [`imanalytic`](@ref): defines whether the model intensities can be computed pointwise. If yes
+then this should return `IsAnalytic()` and the user *must* to define `intensity_point`.
+If not analytic then `imanalytic` should return `NotAnalytic()`.
+- [`radialextent`](@ref): Provides a estimate of the radial extent of the model in the image domain.
+   This is used for estimating the size of the image, and for plotting.
+- [`flux`](@ref): Returns the total flux of the model.
+
+**Optional Methods:**
+
+- [`intensity_point`](@ref): Defines how to compute model intensities pointwise. Note this is
+  must be defined if `imanalytic(::Type{YourModel})==IsAnalytic()`.
+- [`visibility_point`](@ref): Defines how to compute model visibilties pointwise. Note this is
+    must be defined if `visanalytic(::Type{YourModel})==IsAnalytic()`.
+- [`_visibilities`](@ref): Vectorized version of `visibility_point` if you can gain additional
+  speed
+- [`intensitymap`](@ref): Computes the whole image of the model
+- [`intensitymap!`](@ref): Inplace version of `intensitymap`
+
+
+"""
 abstract type AbstractModel end
 abstract type AbstractPolarizedModel <: AbstractModel end
 
@@ -6,6 +41,7 @@ abstract type AbstractPolarizedModel <: AbstractModel end
 
 """
     $(TYPEDEF)
+
 This trait specifies whether the model is a *primitive*
 
 # Notes
@@ -27,6 +63,7 @@ struct NotPrimitive end
 
 """
     isprimitive(::Type)
+
 Dispatch function that specifies whether a type is a primitive Comrade model.
 This function is used for dispatch purposes when composing models.
 
@@ -46,6 +83,7 @@ function isprimitive end
 
 """
     DensityAnalytic
+
 Internal type for specifying the nature of the model functions.
 Whether they can be easily evaluated pointwise analytic. This
 is an internal type that may change.
@@ -54,6 +92,7 @@ abstract type DensityAnalytic end
 
 """
     $(TYPEDEF)
+
 Defines a trait that a states that a model is analytic.
 This is usually used with an abstract model where we use
 it to specify whether a model has a analytic fourier transform
@@ -63,6 +102,7 @@ struct IsAnalytic <: DensityAnalytic end
 
 """
     $(TYPEDEF)
+
 Defines a trait that a states that a model is analytic.
 This is usually used with an abstract model where we use
 it to specify whether a model has does not have a easy analytic
@@ -72,6 +112,7 @@ struct NotAnalytic <: DensityAnalytic end
 
 """
     visanalytic(::Type{<:AbstractModel})
+
 Determines whether the model is pointwise analytic in Fourier domain, i.e. we can evaluate
 its fourier transform at an arbritrary point.
 
@@ -83,6 +124,7 @@ Otherwise it fallback to using the FFT that works for all models that can comput
 
 """
     imanalytic(::Type{<:AbstractModel})
+
 Determines whether the model is pointwise analytic in the image domain, i.e. we can evaluate
 its intensity at an arbritrary point.
 
@@ -97,21 +139,23 @@ If `IsAnalytic()` then it will try to call `intensity_point` to calculate the in
     compose whether a model is analytic. We need this
     for composite models.
 =#
-Base.@aggressive_constprop twoanalytic(::IsAnalytic, ::IsAnalytic) = IsAnalytic()
-Base.@aggressive_constprop twoanalytic(::IsAnalytic, ::NotAnalytic) = NotAnalytic()
-Base.@aggressive_constprop twoanalytic(::NotAnalytic, ::IsAnalytic) = NotAnalytic()
-Base.@aggressive_constprop twoanalytic(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
+Base.@aggressive_constprop Base.:*(::IsAnalytic, ::IsAnalytic) = IsAnalytic()
+Base.@aggressive_constprop Base.:*(::IsAnalytic, ::NotAnalytic) = NotAnalytic()
+Base.@aggressive_constprop Base.:*(::NotAnalytic, ::IsAnalytic) = NotAnalytic()
+Base.@aggressive_constprop Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
 
 
 """
-    $(SIGNATURES)
-Function that computes the pointwise visibility if the model has the trait
-in the fourier domain `IsAnalytic()`. Otherwise it will use the FFTW fallback.
+    visibility_point(model::AbstractModel, u, v, args...)
+
+Function that computes the pointwise visibility. This must be implemented
+in the model interface if `visanalytic(::Type{MyModel}) == IsAnalytic()`
 """
 function visibility_point end
 
 """
-    $(SIGNATURES)
+    intensity_point(model::AbstractModel, x, y, args...)
+
 Function that computes the pointwise intensity if the model has the trait
 in the image domain `IsAnalytic()`. Otherwise it will use construct the image in visibility
 space and invert it.
@@ -120,29 +164,17 @@ function intensity_point end
 
 
 """
-    $(SIGNATURES)
-Computes the intensity map of model by modifying the input IntensityMap object
+    intensitymap!(buffer::AbstractMatrix, model::AbstractModel, args...)
+
+Computes the intensity map of `model` by modifying the `buffer`
 """
 function intensitymap! end
 
 
 """
-    $(SIGNATURES)
-Computes the intensity map of model. This version requires additional information to
-construct the grid.
+    intensitymap(model::AbstractModel, args...)
 
-# Example
-
-```julia
-m = Gaussian()
-# field of view
-fovx, fovy = 5.0
-fovy = 5.0
-# number of pixels
-nx, ny = 128
-
-img = intensitymap(m, fovx, fovy, nx, ny; pulse=DeltaPulse())
-```
+Computes the intensity map of model. For the inplace version see [`intensitymap!`](@ref)
 """
 function intensitymap end
 

@@ -8,15 +8,37 @@ makes the image a continuous quantity.
 
 To use it you just specify the array and the field of view/pulse
 ``julia
-img = IntensityMap(zeros(512,512), 100.0, 100.0)
+img = IntensityMap(zeros(512,512), 100.0, 100.0, DeltaPulse)
 ```
+
+# Fields
+$(FIELDS)
+
 """
 struct IntensityMap{T,S<:AbstractMatrix, F, K<:Pulse} <: AbstractIntensityMap{T,S}
+    """
+    Image matrix
+    """
     im::S
+    """
+    field of view in x direction
+    """
     fovx::F
+    """
+    field of view in y direction
+    """
     fovy::F
+    """
+    pixel size in the x direction
+    """
     psizex::F
+    """
+    pixel size in the y direction
+    """
     psizey::F
+    """
+    pulse function that turns the image grid into a continuous object
+    """
     pulse::K
 end
 
@@ -92,7 +114,8 @@ fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
 
 
 """
-    $(SIGNATURES)
+    flux(im::AbstractIntensityMap)
+
 Computes the flux of a intensity map
 """
 function flux(im::AbstractIntensityMap{T,S}) where {T,S}
@@ -102,7 +125,6 @@ end
 
 """
     $(SIGNATURES)
-Computes the flux of a intensity map
 """
 function flux(im::AbstractIntensityMap{T,S}) where {F,T<:StokesVector{F},S}
     I = stokes(im, :I)
