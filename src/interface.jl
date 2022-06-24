@@ -139,10 +139,10 @@ If `IsAnalytic()` then it will try to call `intensity_point` to calculate the in
     compose whether a model is analytic. We need this
     for composite models.
 =#
-Base.@constpop :aggressive Base.:*(::IsAnalytic, ::IsAnalytic) = IsAnalytic()
-Base.@constpop :aggressive Base.:*(::IsAnalytic, ::NotAnalytic) = NotAnalytic()
-Base.@constpop :aggressive Base.:*(::NotAnalytic, ::IsAnalytic) = NotAnalytic()
-Base.@constpop :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
+Base.@constprop  :aggressive Base.:*(::IsAnalytic, ::IsAnalytic) = IsAnalytic()
+Base.@constprop  :aggressive Base.:*(::IsAnalytic, ::NotAnalytic) = NotAnalytic()
+Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::IsAnalytic) = NotAnalytic()
+Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
 
 
 """
