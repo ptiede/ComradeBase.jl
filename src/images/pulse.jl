@@ -31,7 +31,7 @@ struct DeltaPulse{T} <: Pulse end
 DeltaPulse() = DeltaPulse{Float64}()
 # This should really be a delta function but whatever
 κflux(::DeltaPulse{T}) where {T} = one(T)
-@inline κ(::DeltaPulse{T}, x) where {T} = one(T)
+@inline κ(::DeltaPulse{T}, x) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
 @inline ω(::DeltaPulse{T}, u) where {T} = one(T)
 @inline radialextent(::Pulse) = 1.0
 
