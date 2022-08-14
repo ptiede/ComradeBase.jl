@@ -1,4 +1,4 @@
-export IntensityMap, fov, imagepixels, pixelsizes, stokes
+export IntensityMap, fov, imagepixels, pixelsizes, stokes, centroid, inertia
 
 """
     $(TYPEDEF)
@@ -129,6 +129,56 @@ end
 function flux(im::AbstractIntensityMap{T,S}) where {F,T<:StokesVector{F},S}
     I = stokes(im, :I)
     flux(I)
+end
+
+
+
+"""
+    centroid(im::AbstractIntensityMap)
+
+Computes the image centroid aka the center of light of the image.
+"""
+function centroid(im::AbstractIntensityMap)
+    xitr, yitr = imagepixels(im)
+    x0 = zero(eltype(im))
+    y0 = zero(eltype(im))
+    f = flux(im)
+    for i in axes(im,2), j in axes(im,1)
+        x0 += xitr[i]*im[j,i]
+        y0 += yitr[j]*im[j,i]
+    end
+    return x0/f, y0/f
+end
+
+"""
+    inertia(im::AbstractIntensityMap; center=true)
+
+Computes the image inertia aka **second moment** of the image.
+By default we really return the second **cumulant** or second centered
+second moment, which is specified by the `center` argument.
+"""
+function inertia(im::AbstractIntensityMap; center=true)
+    xx = zero(eltype(im))
+    xy = zero(eltype(im))
+    yy = zero(eltype(im))
+    f = flux(im)
+    xitr, yitr = imagepixels(im)
+    for i in axes(im, 2), j in axes(im, 1)
+        x = xitr[i]
+        y = yitr[j]
+        xx += x^2*im[j,i]
+        yy += y^2*im[j,i]
+        xy += x*y*im[j,i]
+    end
+
+    if center
+        x0, y0 = centroid(im)
+        xx -= x0^2
+        yy -= y0^2
+        xy -= x0*y0
+    end
+
+    return @SMatrix [xx/f xy/f; xy/f yy/f]
 end
 
 
