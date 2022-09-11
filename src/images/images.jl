@@ -188,57 +188,37 @@ dims = (X=range(-10.0, 10.0, length=100), Y = range(-10.0, 10.0, length=100),
 imgk = IntensityMap(rand(100,100,5,1), dims)
 ```
 """
-function IntensityMap(data::AbstractArray{T,N}, dims::NamedTuple{Na,<:NTuple{N,Any}}, header=nothing) where {T,N,Na}
-    deht = ImageDimensions(dims, header)
-    return KeyedArray(data, deht)
-end
+    intensitymap(model::AbstractModel, fov, dims; phasecenter = (0.0,0.0), executor=SequentialEx(), pulse=DeltaPulse())
 
+Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap`
+object that have a field of view of `fov` where the first element is in the x direction
+and the second in the y. The image viewed as a matrix will have dimension `dims` where
+the first element is the number of rows or _pixels in the y direction_ and the second
+is the number of columns for _pixels in the x direction_.
 
+# Warning
+Note that the order of fov and dims are switched.
 
-"""
-    intensitymap(model::AbstractModel, dims, header=nothing)
-
-Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap` which
-is a `KeyedArray` with [`ImageDimensions`](@ref) as keys. The dimensions are a `NamedTuple`
-and must have one of the following names:
-    - (:X, :Y, :T, :F)
-    - (:X, :Y, :F, :T)
-    - (:X, :Y) # spatial only
-where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
-the time direction and `:F` is the frequency direction.
+# Keywords
+Optionally the user can specify the:
+    - `phasecenter` the offset from the center of the image that we define as the origin
+    - `pulse` function that converts the image from a discrete
+to continuous quantity
+    - `executor` that uses `FLoops.jl` to specify how the loop is
+done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
 @inline function intensitymap(s::M,
-                              dims::DataNames, header=nothing
-                              ) where {M<:AbstractModel}
-    return intensitymap(imanalytic(M), s, dims, header)
+                              fov::NTuple{2},
+                              dims::Dims{2};
+                              phasecenter = (0.0, 0.0),
+                              pulse=ComradeBase.DeltaPulse(),
+                              executor=SequentialEx()) where {M<:AbstractModel}
+    return intensitymap(imanalytic(M), s, fov, dims; phasecenter, pulse, executor)
 end
 
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real, y0::Real)
-    @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
-    psizex=fovx/nx
-    psizey=fovy/ny
-
-    xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2, nx)
-    yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2, ny)
-
-    return (X=xitr, Y=yitr)
+function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, args...; kwargs...)
+    return intensitymap(s, (fovx, fovy), (ny, nx), args...; kwargs...)
 end
-
-function pixelsizes(img::IntensityMap)
-    keys = named_axiskeys(img)
-    x = keys.X
-    y = keys.Y
-    return (X=step(x), Y=step(y))
-end
-
-"""
-    intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0; frequency=230:230, time=0.0:0.0)
-"""
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; frequency=0.0:0.0, time=0.0:0.0, header=nothing)
-    (;X, Y) = imagepixels(fovx, fovy, nx, ny, x0, y0)
-    return intensitymap(s, (X=X, Y=Y, T=time, F=frequency), header)
-end
-
 
 """
     intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())
@@ -254,11 +234,16 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
 end
 
 function intensitymap(::IsAnalytic, s,
-                      dims::NamedTuple{N}, header=nothing) where {N}
-    dx = step(dims.X)
-    dy = step(dims.Y)
-    img = intensity_point.(Ref(s), grid(dims)).*dx.*dy
-    return KeyedArray(img, ImageDimensions(dims, header))
+                      fov::NTuple{2},
+                      dims::Dims{2};
+                      phasecenter = (0.0, 0.0),
+                      pulse=ComradeBase.DeltaPulse(),
+                      executor=SequentialEx())
+    T = typeof(intensity_point(s, 0.0, 0.0))
+    ny, nx = dims
+    img = IntensityMap(zeros(T, ny, nx), fov, convert.(Ref(T), phasecenter), pulse)
+    intensitymap!(IsAnalytic(), img, s, executor)
+    return img
 end
 
 
