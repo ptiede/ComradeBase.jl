@@ -3,26 +3,40 @@ abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
 
 #abstract type AbstractPolarizedMap{I,Q,U,V} end
 """
-    intensitymap(model::AbstractModel, fovx, fovy, nx, ny; executor=SequentialEx(), pulse=DeltaPulse())
+    intensitymap(model::AbstractModel, fov, dims; phasecenter = (0.0,0.0), executor=SequentialEx(), pulse=DeltaPulse())
 
 Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap`
-object that have a field of view of `fovx, fovy` in the x and y direction  respectively
-with `nx` pixels in the x-direction and `ny` pixels in the y-direction.
+object that have a field of view of `fov` where the first element is in the x direction
+and the second in the y. The image viewed as a matrix will have dimension `dims` where
+the first element is the number of rows or _pixels in the y direction_ and the second
+is the number of columns for _pixels in the x direction_.
 
-Optionally the user can specify the `pulse` function that converts the image from a discrete
-to continuous quantity, and the `executor` that uses `FLoops.jl` to specify how the loop is
+# Warning
+Note that the order of fov and dims are switched.
+
+# Keywords
+Optionally the user can specify the:
+    - `phasecenter` the offset from the center of the image that we define as the origin
+    - `pulse` function that converts the image from a discrete
+to continuous quantity
+    - `executor` that uses `FLoops.jl` to specify how the loop is
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
 @inline function intensitymap(s::M,
-                              fovx::Number, fovy::Number,
-                              nx::Int, ny::Int;
+                              fov::NTuple{2},
+                              dims::Dims{2};
+                              phasecenter = (0.0, 0.0),
                               pulse=ComradeBase.DeltaPulse(),
                               executor=SequentialEx()) where {M<:AbstractModel}
-    return intensitymap(imanalytic(M), s, fovx, fovy, nx, ny; pulse, executor)
+    return intensitymap(imanalytic(M), s, fov, dims; phasecenter, pulse, executor)
+end
+
+function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, args...; kwargs...)
+    return intensitymap(s, (fovx, fovy), (ny, nx), args...; kwargs...)
 end
 
 """
-    intensitymap!(img::AbstractIntensityMap, model, fovx, fovy, nx, ny; executor, pulse)
+    intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())
 
 Computes the intensity map or _image_ of the `model`. This updates the `IntensityMap`
 object `img`.
@@ -35,12 +49,14 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
 end
 
 function intensitymap(::IsAnalytic, s,
-                      fovx::Number, fovy::Number,
-                      nx::Int, ny::Int;
+                      fov::NTuple{2},
+                      dims::Dims{2};
+                      phasecenter = (0.0, 0.0),
                       pulse=ComradeBase.DeltaPulse(),
                       executor=SequentialEx())
     T = typeof(intensity_point(s, 0.0, 0.0))
-    img = IntensityMap(zeros(T, ny, nx), fovx, fovy, pulse)
+    ny, nx = dims
+    img = IntensityMap(zeros(T, ny, nx), fov, convert.(Ref(T), phasecenter), pulse)
     intensitymap!(IsAnalytic(), img, s, executor)
     return img
 end
