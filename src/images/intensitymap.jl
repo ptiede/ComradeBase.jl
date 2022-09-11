@@ -1,4 +1,5 @@
 export IntensityMap, fov, imagepixels, pixelsizes, stokes, centroid, inertia, phasecenter
+export IntensityMap, fov, imagepixels, pixelsizes, stokes, centroid, inertia, phasecenter
 
 """
     ContinuousImage{A<:AbstractDimArray, P}

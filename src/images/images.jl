@@ -189,6 +189,7 @@ imgk = IntensityMap(rand(100,100,5,1), dims)
 ```
 """
     intensitymap(model::AbstractModel, fov, dims; phasecenter = (0.0,0.0), executor=SequentialEx(), pulse=DeltaPulse())
+    intensitymap(model::AbstractModel, fov, dims; phasecenter = (0.0,0.0), executor=SequentialEx(), pulse=DeltaPulse())
 
 Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap`
 object that have a field of view of `fov` where the first element is in the x direction
