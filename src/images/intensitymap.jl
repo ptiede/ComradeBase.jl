@@ -1,4 +1,4 @@
-export IntensityMap, fov, imagepixels, pixelsizes, stokes, centroid, inertia
+export IntensityMap, fov, imagepixels, pixelsizes, stokes, centroid, inertia, phasecenter
 
 """
     $(TYPEDEF)
@@ -19,40 +19,47 @@ struct IntensityMap{T,S<:AbstractMatrix, F, K<:Pulse} <: AbstractIntensityMap{T,
     """
     Image matrix
     """
-    im::S
+    img::S
     """
-    field of view in x direction
+    field of view first is in x direction second in y
     """
-    fovx::F
+    fov::F
     """
-    field of view in y direction
+    pixel sizes in the x, y direction
     """
-    fovy::F
+    psize::F
     """
-    pixel size in the x direction
+    phase center offset of the image
     """
-    psizex::F
-    """
-    pixel size in the y direction
-    """
-    psizey::F
+    phasecenter::F
     """
     pulse function that turns the image grid into a continuous object
     """
     pulse::K
 end
 
-function IntensityMap(im, fovx, fovy, pulse=DeltaPulse())
+function IntensityMap(im::AbstractMatrix, fov::NTuple{2}, phasecenter=(0.0, 0.0), pulse=DeltaPulse())
     ny,nx = size(im)
+    fovx, fovy = fov
     psizex=fovx/max(nx-1,1)
     psizey=fovy/max(ny-1,1)
-    F = promote_type(typeof(fovx), typeof(fovy))
-    return IntensityMap{eltype(im), typeof(im), F, typeof(pulse)}(im,
-                       convert(typeof(psizex),fovx),
-                       convert(typeof(psizey),fovy),
-                       psizex,
-                       psizey,
-                       pulse)
+    psize = (psizex, psizey)
+    F = promote_type(eltype(fov), eltype(phasecenter))
+    TF = Tuple{F,F}
+    return IntensityMap{eltype(im), typeof(im), TF, typeof(pulse)}(im,
+                       convert.(F, fov),
+                       psize,
+                       convert.(F,phasecenter),
+                       pulse
+                       )
+end
+
+function IntensityMap(im::AbstractMatrix, fovx::Real, fovy::Real, phasecenter=(0.0, 0.0), pulse=DeltaPulse())
+    return IntensityMap(im, (fovx, fovy), phasecenter, pulse)
+end
+
+function IntensityMap(im::AbstractMatrix, fovx::Real, phasecenter=(0.0, 0.0), pulse=DeltaPulse())
+    return IntensityMap(im, (fovx, fovx), phaecenter, pulse)
 end
 
 # IntensityMap will obey the Comrade interface. This is so I can make easy models
@@ -76,17 +83,17 @@ function intensity_point(m::IntensityMap, x, y)
 end
 
 
-function IntensityMap(im::Matrix{<:StokesVector}, fovx, fovy, pulse)
-    return IntensityMap(StructArray(im), fovx, fovy, pulse)
+function IntensityMap(img::Matrix{<:StokesVector}, fov, phasecenter, pulse)
+    return IntensityMap(StructArray(img), fov, phasecenter, pulse)
 end
 
-function IntensityMap(im::IntensityMap{<:StokesVector}, fovx, fovy, pulse)
-    return IntensityMap(im.im, fovx, fovy, pulse)
+function IntensityMap(img::IntensityMap{<:StokesVector}, fov, phasecenter, pulse)
+    return IntensityMap(img, fov, phasecenter, pulse)
 end
 
-function stokes(im::IntensityMap{<:StokesVector}, p::Symbol)
-    @assert p ∈ propertynames(im.im) "$p is not a valid stokes parameter"
-    return IntensityMap(getproperty(im.im, p), im.fovx, im.fovy, im.pulse)
+function stokes(img::IntensityMap{<:StokesVector}, p::Symbol)
+    @assert p ∈ propertynames(img.img) "$p is not a valid stokes parameter"
+    return IntensityMap(getproperty(img.img, p), fov(img), img.phasecenter, img.pulse)
 end
 
 function IntensityMap(I::AbstractIntensityMap,
@@ -94,10 +101,11 @@ function IntensityMap(I::AbstractIntensityMap,
                       U::AbstractIntensityMap,
                       V::AbstractIntensityMap
                       )
-    @assert I.fovx == Q.fovx == U.fovx == V.fovx "Must have matching fov in RA"
-    @assert I.fovy == Q.fovy == U.fovy == V.fovy "Must have matching fov in DEC"
+    @assert I.fov == Q.fov == U.fov == V.fov "Must have matching field of view"
+    @assert I.pulse == Q.pulse == U.pulse == V.pulse "Must have matching pulses"
+    @assert I.phasecenter == Q.phasecenter == U.phasecenter == V.phasecenter "Must have matching phasecenter"
     simg = StructArray{StokesVector{eltype(I)}}((I,Q,U,V))
-    return IntensityMap(simg, I.fovx, I.fovy, I.pulse)
+    return IntensityMap(simg, fov(I), I.phasecenter, I.pulse)
 end
 
 
@@ -108,10 +116,29 @@ end
 #     return y, intensity_pullback
 # end
 
-fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
+"""
+    fov(img::AbstractIntensityMap)
 
+Returns the field of view (fov) of the image `img` as a Tuple
+where the first element is in the RA direction and the second the DEC.
+"""
+fov(m::AbstractIntensityMap) = m.fov
 
+"""
+    psizes(img::AbstractIntensityMap)
 
+Returns the pixel sizes of the image `img` as a Tuple
+where the first element is in the RA direction and the second the DEC.
+"""
+psizes(img::AbstractIntensityMap) = img.psize
+
+"""
+    phasecenter(img::AbstractIntensityMap)
+
+Returns the phase center of the image `img` as a Tuple
+where the first element is in the RA direction and the second the DEC.
+"""
+phasecenter(img::AbstractIntensityMap) = img.phasecenter
 
 """
     flux(im::AbstractIntensityMap)
@@ -119,7 +146,7 @@ fov(m::AbstractIntensityMap) = (m.fovx, m.fovy)
 Computes the flux of a intensity map
 """
 function flux(im::AbstractIntensityMap{T,S}) where {T,S}
-    f = sum(im.im)#*(flux(im.pulse))^2
+    f = sum(im.img)#*(flux(im.pulse))^2
     return f#*prod(pixelsizes(im))
 end
 
@@ -185,17 +212,16 @@ end
 
 
 # Define the array interface
-Base.IndexStyle(::Type{<: IntensityMap{T,S,K}}) where {T,S,K} = Base.IndexStyle(S)
-Base.size(im::AbstractIntensityMap) = size(im.im)
-Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, i::Int) = getindex(im.im, i)
-Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, I...) = getindex(im.im, I...)
-Base.@propagate_inbounds Base.setindex!(im::AbstractIntensityMap, x, i::Int) = setindex!(im.im, x, i)
-Base.@propagate_inbounds Base.setindex!(im::IntensityMap, x, i::Int) = setindex!(im.im, x, i)
-Base.@propagate_inbounds Base.setindex!(im::IntensityMap, x, i) = setindex!(im.im, x, i)
+Base.IndexStyle(::Type{<: AbstractIntensityMap{T,S}}) where {T,S} = Base.IndexStyle(S)
+Base.size(im::AbstractIntensityMap) = size(im.img)
+Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, i::Int) = getindex(im.img, i)
+Base.@propagate_inbounds Base.getindex(im::AbstractIntensityMap, I...) = getindex(im.img, I...)
+Base.@propagate_inbounds Base.setindex!(im::AbstractIntensityMap, x, i::Int) = setindex!(im.img, x, i)
+Base.@propagate_inbounds Base.setindex!(im::AbstractIntensityMap, x, i) = setindex!(im.img, x, i)
 
 function Base.similar(im::IntensityMap, ::Type{T}) where{T}
-    sim = similar(im.im, T)
-    return IntensityMap(sim, im.fovx, im.fovy, im.pulse)
+    sim = similar(im.img, T)
+    return IntensityMap(sim, fov(im), im.phasecenter, im.pulse)
 end
 
 #function Base.similar(im::AbstractIntensityMap, ::Type{T}, dims::Dims) where {T}
@@ -218,7 +244,7 @@ function Base.similar(bc::Broadcast.Broadcasted{IntensityMapStyle}, ::Type{ElTyp
     #fovys = getproperty.(Im, Ref(:fovy))
     #@assert all(i->i==first(fovxs), fovxs) "IntensityMap fov must be equal to add"
     #@assert all(i->i==first(fovys), fovys) "IntensityMap fov must be equal to add"
-    return IntensityMap(similar(Array{ElType}, axes(bc)), Im.fovx, Im.fovy, Im.pulse)
+    return IntensityMap(similar(Array{ElType}, axes(bc)), fov(Im), Im.phasecenter, Im.pulse)
 end
 
 #Finds the first IntensityMap and uses that as the base
@@ -227,28 +253,32 @@ _find_sim(bc::Base.Broadcast.Broadcasted) = _find_sim(bc.args)
 _find_sim(args::Tuple) = _find_sim(_find_sim(args[1]), Base.tail(args))
 _find_sim(x) = x
 _find_sim(::Tuple{}) = nothing
-_find_sim(a::AbstractIntensityMap, rest) = a
+_find_sim(a::AbstractIntensityMap, _) = a
 _find_sim(::Any, rest) = _find_sim(rest)
 
 #Guards to prevent someone from adding two Images with different FOV's
 function Base.:+(x::AbstractIntensityMap, y::AbstractIntensityMap)
     @assert fov(x) == fov(y) "IntensityMaps must share same field of view"
+    @assert phasecenter(x) == phasecenter(y) "IntensityMaps must share same phasecenter"
     return x .+ y
 end
 
 
 @inline function pixelsizes(im::AbstractIntensityMap)
     ny,nx = size(im)
-    return im.fovx/nx, im.fovy/ny
+    fovx, fovy = fov(im)
+    return fovx/nx, fovy/ny
 end
 
-@inline function imagepixels(fovx, fovy, nx::Int, ny::Int)
+@inline function imagepixels(fovx, fovy, x0, y0, nx::Int, ny::Int)
     px = fovx/nx; py = fovy/ny
-    return range(-fovx/2+px/2, step=px, length=nx),
-           range(-fovy/2+py/2, step=py, length=ny)
+    return range(-fovx/2+px/2 - x0, step=px, length=nx),
+           range(-fovy/2+py/2 - y0, step=py, length=ny)
 end
 
 @inline function imagepixels(im::AbstractIntensityMap)
     ny,nx = size(im)
-    return imagepixels(im.fovx, im.fovy, nx, ny)
+    x0 ,y0 = phasecenter(im)
+    fovx, fovy = fov(im)
+    return imagepixels(fovx, fovy, x0, y0, nx, ny)
 end
