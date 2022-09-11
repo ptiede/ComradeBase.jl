@@ -22,7 +22,7 @@ end
 """
     $(TYPEDEF)
 Static matrix that holds construct the coherency matrix of a polarized
-complex visibility
+complex visibility in the circular basis
 
 To convert between a `StokesVector` and `CoherencyMatrix` use the `convert`
 function
