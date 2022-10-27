@@ -1,7 +1,8 @@
 module ComradeBase
 
-using DocStringExtensions
 using ChainRulesCore
+using DocStringExtensions
+using DimensionalData
 using FLoops
 using StaticArrays
 using StructArrays
