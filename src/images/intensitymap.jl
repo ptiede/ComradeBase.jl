@@ -1,73 +1,44 @@
 export IntensityMap, fov, imagepixels, pixelsizes, stokes, centroid, inertia, phasecenter
 
 """
-    $(TYPEDEF)
-Image array type. This is an Matrix with a number of internal fields
-to describe the field of view, pixel size, and the `pulse` function that
-makes the image a continuous quantity.
+    IntensityMap{A<:AbstractDimArray, P}
 
-To use it you just specify the array and the field of view/pulse
-``julia
-img = IntensityMap(zeros(512,512), 100.0, 100.0, DeltaPulse)
-```
-
-# Fields
-$(FIELDS)
 
 """
-struct IntensityMap{T,S<:AbstractMatrix, F, K<:Pulse} <: AbstractIntensityMap{T,S}
+struct ContinuousImage{A <: DimensionalData, P} <: AbstractModel
     """
-    Image matrix
+    Discrete representation of the image. This must be a DimArray where at least two of the
     """
-    img::S
+    img::A
     """
-    field of view first is in x direction second in y
+    Image Kernel that transforms from the discrete image to a continuous one. This is
+    sometimes called a pulse function.
     """
-    fov::F
-    """
-    pixel sizes in the x, y direction
-    """
-    psize::F
-    """
-    phase center offset of the image
-    """
-    phasecenter::F
-    """
-    pulse function that turns the image grid into a continuous object
-    """
-    pulse::K
+    kernel::P
 end
 
-function IntensityMap(im::AbstractMatrix, fov::NTuple{2}, phasecenter=(0.0, 0.0), pulse=DeltaPulse())
-    ny,nx = size(im)
-    fovx, fovy = fov
-    psizex=fovx/max(nx-1,1)
-    psizey=fovy/max(ny-1,1)
-    psize = (psizex, psizey)
-    F = promote_type(eltype(fov), eltype(phasecenter))
-    TF = Tuple{F,F}
-    return IntensityMap{eltype(im), typeof(im), TF, typeof(pulse)}(im,
-                       convert.(F, fov),
-                       psize,
-                       convert.(F,phasecenter),
-                       pulse
-                       )
+function ContinuousImage(im::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse; kwargs...)
+    xitr, yitr = imagepixels(fovx, fovy, x0, y0, size(im,2), size(im,2))
+    img = DimArray(im, (X=xitr, Y=yitr); kwargs...)
+    return IntensityMap(img, pulse)
 end
 
-function IntensityMap(im::AbstractMatrix, fovx::Real, fovy::Real, phasecenter=(0.0, 0.0), pulse=DeltaPulse())
-    return IntensityMap(im, (fovx, fovy), phasecenter, pulse)
+function ContinuousImage(im::AbstractMatrix, fov::Real, x0::Real, y0::Real, pulse; kwargs...)
+    return IntensityMap(im, fov, fov, x0, y0, pulse; kwargs...)
 end
 
-function IntensityMap(im::AbstractMatrix, fovx::Real, phasecenter=(0.0, 0.0), pulse=DeltaPulse())
-    return IntensityMap(im, (fovx, fovx), phaecenter, pulse)
-end
+Base.getindex(img::IntensityMap, args...) = getindex(img.img, args...)
+Base.setindex!(img::IntensityMap, args...) = setindex!(img.img, args...)
+
+
+imagepixels(img::IntensityMap, )
 
 # IntensityMap will obey the Comrade interface. This is so I can make easy models
-visanalytic(::Type{<:IntensityMap}) = NotAnalytic()
+visanalytic(::Type{<:IntensityMap}) = NotAnalytic() # not analytic b/c we want to hook into FFT stuff
 imanalytic(::Type{<:IntensityMap}) = IsAnalytic()
 isprimitive(::Type{<:IntensityMap}) = IsPrimitive()
 
-function intensity_point(m::IntensityMap, x, y)
+function intensity_point(m::ContinuousImage, x, y)
     dx, dy = pixelsizes(m)
     xitr,yitr = imagepixels(m)
     sum = zero(eltype(m))
@@ -83,38 +54,14 @@ function intensity_point(m::IntensityMap, x, y)
 end
 
 
-function IntensityMap(img::Matrix{<:StokesVector}, fov, phasecenter, pulse)
-    return IntensityMap(StructArray(img), fov, phasecenter, pulse)
-end
-
-function IntensityMap(img::IntensityMap{<:StokesVector}, fov, phasecenter, pulse)
-    return IntensityMap(img, fov, phasecenter, pulse)
-end
-
-function stokes(img::IntensityMap{<:StokesVector}, p::Symbol)
-    @assert p ∈ propertynames(img.img) "$p is not a valid stokes parameter"
-    return IntensityMap(getproperty(img.img, p), fov(img), img.phasecenter, img.pulse)
-end
-
-function IntensityMap(I::AbstractIntensityMap,
-                      Q::AbstractIntensityMap,
-                      U::AbstractIntensityMap,
-                      V::AbstractIntensityMap
-                      )
-    @assert I.fov == Q.fov == U.fov == V.fov "Must have matching field of view"
-    @assert I.pulse == Q.pulse == U.pulse == V.pulse "Must have matching pulses"
-    @assert I.phasecenter == Q.phasecenter == U.phasecenter == V.phasecenter "Must have matching phasecenter"
-    simg = StructArray{StokesVector{eltype(I)}}((I,Q,U,V))
-    return IntensityMap(simg, fov(I), I.phasecenter, I.pulse)
-end
-
-
-
 # function ChainRulesCore.rrule(::Type{<:IntensityMap}, im, fovx, fovy, pulse)
 #     y = IntensityMap(im, fovx, fovy, pulse)
 #     intensity_pullback(Δy) = (NoTangent(), IntensityMap(Δy.im, fovx, fovy, pulse), Δy.fovx, Δy.fovy, Δy.pulse)
 #     return y, intensity_pullback
 # end
+
+
+
 
 """
     fov(img::AbstractIntensityMap)

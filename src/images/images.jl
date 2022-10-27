@@ -1,11 +1,11 @@
-abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
 
 
-#abstract type AbstractPolarizedMap{I,Q,U,V} end
+
+
 """
     intensitymap(model::AbstractModel, fov, dims; phasecenter = (0.0,0.0), executor=SequentialEx(), pulse=DeltaPulse())
 
-Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap`
+Computes the intensity map or _image_ of the `model`. This returns an `DimArray`
 object that have a field of view of `fov` where the first element is in the x direction
 and the second in the y. The image viewed as a matrix will have dimension `dims` where
 the first element is the number of rows or _pixels in the y direction_ and the second
@@ -26,7 +26,6 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
                               fov::NTuple{2},
                               dims::Dims{2};
                               phasecenter = (0.0, 0.0),
-                              pulse=ComradeBase.DeltaPulse(),
                               executor=SequentialEx()) where {M<:AbstractModel}
     return intensitymap(imanalytic(M), s, fov, dims; phasecenter, pulse, executor)
 end
