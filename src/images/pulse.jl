@@ -1,4 +1,4 @@
-export DeltaPulse, SqExpPulse, BSplinePulse
+export DeltaKernel, SqExpKernel, BSplinePulse
 
 """
 Pulse
@@ -10,30 +10,30 @@ kernel for the image.
 To see the implemented Pulses please use the subtypes function i.e.
 `subtypes(Pulse)`
 """
-abstract type Pulse <: AbstractModel end
+abstract type Kernel <: AbstractModel end
 
-visanalytic(::Type{<:Pulse}) = IsAnalytic()
-imanalytic(::Type{<:Pulse}) = IsAnalytic()
-isprimitive(::Type{<:Pulse}) = IsPrimitive()
+visanalytic(::Type{<:Kernel}) = IsAnalytic()
+imanalytic(::Type{<:Kernel}) = IsAnalytic()
+isprimitive(::Type{<:Kernel}) = IsPrimitive()
 
-@inline intensity_point(p::Pulse, x,y) = κ(p::Pulse, x)*κ(p::Pulse, y)
-@inline visibility_point(p::Pulse, u,v) = ω(p::Pulse, u)*ω(p::Pulse, v)
+@inline intensity_point(k::Kernel, p) = κ(k, p[:X])*κ(k, p[:Y])
+@inline visibility_point(k::Kernel, p) = ω(k, p[:U])*ω(k, p[:V])
 
 
-flux(p::Pulse) = κflux(p)^2
+flux(p::Kernel) = κflux(p)^2
 
 """
     $(TYPEDEF)
 A dirac comb pulse function. This means the image is just the
 dicrete Fourier transform
 """
-struct DeltaPulse{T} <: Pulse end
-DeltaPulse() = DeltaPulse{Float64}()
+struct DeltaKernel{T} <: Kernel end
+DeltaKernel() = DeltaKernel{Float64}()
 # This should really be a delta function but whatever
-κflux(::DeltaPulse{T}) where {T} = one(T)
-@inline κ(::DeltaPulse{T}, x) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
-@inline ω(::DeltaPulse{T}, u) where {T} = one(T)
-@inline radialextent(::Pulse) = 1.0
+κflux(::DeltaKernel{T}) where {T} = one(T)
+@inline κ(::DeltaKernel{T}, x) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
+@inline ω(::DeltaKernel{T}, u) where {T} = one(T)
+@inline radialextent(::Kernel) = 1.0
 
 """
     $(TYPEDEF)
@@ -41,13 +41,13 @@ Normalized square exponential kernel, i.e. a Gaussian. Note the
 smoothness is modfied with `ϵ` which is the inverse variance in units of
 1/pixels².
 """
-struct SqExpPulse{T} <: Pulse
+struct SqExpKernel{T} <: Kernel
     ϵ::T
 end
-@inline @fastmath κ(b::SqExpPulse, x) = exp(-0.5*b.ϵ^2*x^2)/sqrt(2*π/b.ϵ^2)
-@inline κflux(::SqExpPulse{T}) where {T} = one(T)
-@inline @fastmath ω(b::SqExpPulse, u) = exp(-2*(π*u/b.ϵ)^2)
-@inline radialextent(p::SqExpPulse) = 5/p.ϵ
+@inline @fastmath κ(b::SqExpKernel, x) = exp(-0.5*b.ϵ^2*x^2)/sqrt(2*π/b.ϵ^2)
+@inline κflux(::SqExpKernel{T}) where {T} = one(T)
+@inline @fastmath ω(b::SqExpKernel, u) = exp(-2*(π*u/b.ϵ)^2)
+@inline radialextent(p::SqExpKernel) = 5/p.ϵ
 
 @doc raw"""
     $(TYPEDEF)
@@ -69,18 +69,18 @@ for us.
 
 Currently only the 0,1,3 order kernels are implemented.
 """
-struct BSplinePulse{N} <: Pulse end
-@inline ω(::BSplinePulse{N}, u) where {N} = sinc(u)^(N+1)
-@inline κflux(::BSplinePulse) = 1.0
+struct BSplineKernel{N} <: Kernel end
+@inline ω(::BSplineKernel{N}, u) where {N} = sinc(u)^(N+1)
+@inline κflux(::BSplineKernel) = 1.0
 
-@inline κ(::BSplinePulse{0}, x::T) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
+@inline κ(::BSplineKernel{0}, x::T) where {T} = abs(x) < 0.5 ? one(T) : zero(T)
 
-@inline function κ(::BSplinePulse{1}, x::T) where {T}
+@inline function κ(::BSplineKernel{1}, x::T) where {T}
     mag = abs(x)
     return mag < 1 ? 1-mag : zero(T)
 end
 
-@inline function κ(::BSplinePulse{3}, x::T) where {T}
+@inline function κ(::BSplineKernel{3}, x::T) where {T}
     mag = abs(x)
     if mag < 1
         return evalpoly(mag, (4, 0, -6, 3))/6

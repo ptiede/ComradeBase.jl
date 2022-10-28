@@ -1,5 +1,13 @@
+"""
+    GriddedPositions(grids...)
 
-
+A grid that contains all the gridded information for an image.
+This is usually built on `DimensionalData`'s `Dim` types which
+gives the meaning to each grid.
+"""
+struct GriddedPositions{G}
+    grids::G
+end
 
 
 """
@@ -23,15 +31,30 @@ to continuous quantity
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
 @inline function intensitymap(s::M,
-                              fov::NTuple{2},
-                              dims::Dims{2};
-                              phasecenter = (0.0, 0.0),
-                              executor=SequentialEx()) where {M<:AbstractModel}
-    return intensitymap(imanalytic(M), s, fov, dims; phasecenter, pulse, executor)
+                              dims...,
+                              ;executor=SequentialEx()) where {M<:AbstractModel}
+    return intensitymap(imanalytic(M), s, dims...; executor)
 end
 
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, args...; kwargs...)
-    return intensitymap(s, (fovx, fovy), (ny, nx), args...; kwargs...)
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real, y0::Real)
+    psizex=fovx/max(nx,1)
+    psizey=fovy/max(ny,1)
+
+    xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2, nx)
+    yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2, ny)
+
+    return X(xitr), Y(yitr)
+end
+
+function pixelsizes(img::DimArray)
+    d = dims(img)
+    n = name.(d)
+    return NamedTuple{n}(step.(d))
+end
+
+function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; kwargs...)
+    X, Y = imagepixels(fovx, fovy, nx, ny, x0, y0)
+    return intensitymap(s, X, Y; kwargs...)
 end
 
 """
@@ -43,29 +66,25 @@ object `img`.
 Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
-@inline function intensitymap!(img::AbstractIntensityMap, s::M, executor=SequentialEx()) where {M}
+@inline function intensitymap!(img::Union{AbstractDimArray, AbstractDimStack}, s::M; executor=SequentialEx()) where {M}
     return intensitymap!(imanalytic(M), img, s, executor)
 end
 
 function intensitymap(::IsAnalytic, s,
-                      fov::NTuple{2},
-                      dims::Dims{2};
-                      phasecenter = (0.0, 0.0),
-                      pulse=ComradeBase.DeltaPulse(),
+                      dims...;
                       executor=SequentialEx())
     T = typeof(intensity_point(s, 0.0, 0.0))
-    ny, nx = dims
-    img = IntensityMap(zeros(T, ny, nx), fov, convert.(Ref(T), phasecenter), pulse)
+    img = DimArray(zeros(T, dims...), dims)
     intensitymap!(IsAnalytic(), img, s, executor)
     return img
 end
 
-function intensitymap!(::IsAnalytic, img::AbstractIntensityMap, s, executor=SequentialEx())
-    x,y = imagepixels(img)
+function intensitymap!(::IsAnalytic, img::Union{AbstractDimArray, AbstractDimStack}, s, executor=SequentialEx())
     dx, dy = pixelsizes(img)
-    @floop executor for I in CartesianIndices(img)
-        iy,ix = Tuple(I)
-        img[I] = intensity_point(s, x[ix], y[iy])*dx*dy
+    n = name.(dims(img))
+    @floop executor for p in DimPoints(img)
+        np = NamedTuple{n}(p)
+        img[I] = intensity_point(s, np)*dx*dy
     end
     return img
 end
