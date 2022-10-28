@@ -12,7 +12,7 @@ function
 convert(::CoherencyMatrix, StokesVector(1.0, 0.1, 0.1, 0.4))
 ```
 """
-struct StokesVector{T} <: FieldVector{4,T}
+struct StokesParameters{T} <: FieldVector{4,T}
     I::T
     Q::T
     U::T

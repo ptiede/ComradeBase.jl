@@ -66,7 +66,7 @@ object `img`.
 Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
-@inline function intensitymap!(img::Union{AbstractDimArray, AbstractDimStack}, s::M; executor=SequentialEx()) where {M}
+@inline function intensitymap!(img::AbstractDimArray, s::M; executor=SequentialEx()) where {M}
     return intensitymap!(imanalytic(M), img, s, executor)
 end
 
