@@ -5,7 +5,7 @@ export fov, imagepixels, pixelsizes, stokes, centroid, inertia, phasecenter
 
 
 """
-struct ContinuousImage{A <: DimensionalData, P} <: AbstractModel
+struct ContinuousImage{A <: AbstractDimArray, P} <: AbstractModel
     """
     Discrete representation of the image. This must be a DimArray where at least two of the
     """
@@ -20,7 +20,7 @@ end
 function ContinuousImage(im::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse; kwargs...)
     xitr, yitr = imagepixels(fovx, fovy, x0, y0, size(im,2), size(im,2))
     img = DimArray(im, (X=xitr, Y=yitr); kwargs...)
-    return IntensityMap(img, pulse)
+    return ContinuousImage(img, pulse)
 end
 
 function ContinuousImage(im::AbstractMatrix, fov::Real, x0::Real, y0::Real, pulse; kwargs...)
@@ -34,31 +34,24 @@ Base.setindex!(img::ContinuousImage, args...) = setindex!(img.img, args...)
 imagepixels(img::ContinuousImage) = NamedTuple{names.(dims(img.img))}(dims(img.img))
 
 # IntensityMap will obey the Comrade interface. This is so I can make easy models
-visanalytic(::Type{<:IntensityMap}) = NotAnalytic() # not analytic b/c we want to hook into FFT stuff
-imanalytic(::Type{<:IntensityMap}) = IsAnalytic()
-isprimitive(::Type{<:IntensityMap}) = IsPrimitive()
+visanalytic(::Type{<:ContinuousImage}) = NotAnalytic() # not analytic b/c we want to hook into FFT stuff
+imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
+isprimitive(::Type{<:ContinuousImage}) = IsPrimitive()
 
-function intensity_point(m::ContinuousImage, x, y)
+function intensity_point(m::ContinuousImage, p)
+    x = p[:X]
+    y = p[:Y]
     dx, dy = pixelsizes(m)
     xitr,yitr = imagepixels(m)
     sum = zero(eltype(m))
     #The kernel is written in terms of pixel number so we convert x to it
-    @inbounds for (i,xx) in pairs(xitr), (j,yy) in pairs(yitr)
-        Δx = (x-xx)/dx
-        Δy = (y-yy)/dy
-        k = intensity_point(m.pulse, Δx, Δy)
+    @inbounds for p in DimPoints(m.img)
+        k = intensity_point(m.pulse, p)
         #println(Δx," ", Δy, " ",   k)
         sum += m[j, i]*k/(dx*dy)
     end
     return sum
 end
-
-
-# function ChainRulesCore.rrule(::Type{<:IntensityMap}, im, fovx, fovy, pulse)
-#     y = IntensityMap(im, fovx, fovy, pulse)
-#     intensity_pullback(Δy) = (NoTangent(), IntensityMap(Δy.im, fovx, fovy, pulse), Δy.fovx, Δy.fovy, Δy.pulse)
-#     return y, intensity_pullback
-# end
 
 
 
@@ -79,13 +72,7 @@ where the first element is in the RA direction and the second the DEC.
 """
 psizes(img::AbstractIntensityMap) = img.psize
 
-"""
-    phasecenter(img::AbstractIntensityMap)
 
-Returns the phase center of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-phasecenter(img::AbstractIntensityMap) = img.phasecenter
 
 """
     flux(im::AbstractIntensityMap)
@@ -137,7 +124,7 @@ function inertia(im::DimArray; center=true)
     yy = zero(eltype(im))
     f = flux(im)
     xitr, yitr = imagepixels(im)
-    for i in axes(im, 2), j in axes(im, 1)
+    for i in
         x = xitr[i]
         y = yitr[j]
         xx += x^2*im[j,i]

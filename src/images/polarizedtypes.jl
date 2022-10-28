@@ -12,34 +12,39 @@ function
 convert(::CoherencyMatrix, StokesVector(1.0, 0.1, 0.1, 0.4))
 ```
 """
-struct StokesVector{T} <: FieldVector{4,T}
+struct StokesParameters{T} <: FieldVector{4,T}
     I::T
     Q::T
     U::T
     V::T
 end
 
+linearpol(s::StokesParameters) = s.Q + is.U
+
+
+
 """
     $(TYPEDEF)
 Static matrix that holds construct the coherency matrix of a polarized
-complex visibility in the circular basis
+complex visibility in a basis given by `B`. There are a two main bases we
+use `:RL` for a circular basis, and `:XY` for linear basis.
 
-To convert between a `StokesVector` and `CoherencyMatrix` use the `convert`
-function
 
 ```julia
 convert(::StokesVector, CoherencyMatrix(1.0, 0.1, 0.1, 0.4))
 ```
 """
-struct CoherencyMatrix{T} <: FieldMatrix{2,2,T}
-    rr::T
-    lr::T
-    rl::T
-    ll::T
+struct CoherencyMatrix{B,T} <: FieldMatrix{2,2,T}
+    c11::T
+    c21::T
+    c22::T
 end
 
 
-@inline function Base.convert(::Type{CoherencyMatrix}, p::StokesVector)
+Base.getindex(c::CoherencyMatrix, I...)
+
+
+@inline function Base.convert(::Type{CoherencyMatrix{:Circ}}, p::StokesVector)
     rr = p.I + p.V
     ll = p.I - p.V
     rl = p.Q + 1im*p.U
@@ -61,7 +66,7 @@ Compute the fractional linear polarization of a stokes vector
 or coherency matrix
 """
 m̆(m::StokesVector) = (m.Q + 1im*m.U)/(m.I + eps())
-m̆(m::CoherencyMatrix) = 2*m.rl/(m.rr+m.ll)
+m̆(m::CoherencyMatrix{:RL}) = 2*m.c12/(m.c11+m.c22)
 
 """
     $(SIGNATURES)
