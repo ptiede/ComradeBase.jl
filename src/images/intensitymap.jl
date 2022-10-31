@@ -55,43 +55,18 @@ end
 
 
 
-
 """
-    fov(img::AbstractIntensityMap)
-
-Returns the field of view (fov) of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-fov(m::AbstractIntensityMap) = ()
-
-"""
-    psizes(img::AbstractIntensityMap)
-
-Returns the pixel sizes of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-psizes(img::AbstractIntensityMap) = img.psize
-
-
-
-"""
-    flux(im::AbstractIntensityMap)
+    flux(im::AbstractDimArray)
 
 Computes the flux of a intensity map
 """
-function flux(im::AbstractIntensityMap{T,S}) where {T,S}
-    f = sum(im.img)#*(flux(im.pulse))^2
+function flux(im::AbstractDimArray)
+    f = sum(im, dims=(:X, :Y))#*(flux(im.pulse))^2
     return f#*prod(pixelsizes(im))
 end
 
-"""
-    $(SIGNATURES)
-"""
-function flux(im::AbstractIntensityMap{T,S}) where {F,T<:StokesVector{F},S}
-    I = stokes(im, :I)
-    flux(I)
-end
 
+const SpatialOnly = Union{Tuple{<:X, <:Y}, Tuple{<:Y, <:X}}
 
 
 """
@@ -99,14 +74,14 @@ end
 
 Computes the image centroid aka the center of light of the image.
 """
-function centroid(im::DimArray)
+function centroid(im::DimArray{T,2, <:SpatialOnly}) where {T}
     xitr, yitr = imagepixels(im)
-    x0 = zero(eltype(im))
-    y0 = zero(eltype(im))
+    x0 = zero(T)
+    y0 = zero(T)
     f = flux(im)
-    for i in axes(im,2), j in axes(im,1)
-        x0 += xitr[i]*im[j,i]
-        y0 += yitr[j]*im[j,i]
+    for i in axes(im,:X), j in axes(im,:Y)
+        x0 += xitr[i].*im[X=i, Y=j]
+        y0 += yitr[j].*im[X=I, Y=j]
     end
     return x0/f, y0/f
 end
@@ -118,13 +93,13 @@ Computes the image inertia aka **second moment** of the image.
 By default we really return the second **cumulant** or second centered
 second moment, which is specified by the `center` argument.
 """
-function inertia(im::DimArray; center=true)
-    xx = zero(eltype(im))
-    xy = zero(eltype(im))
-    yy = zero(eltype(im))
+function inertia(im::DimArray{T,2, <:SpatialOnly}; center=true) where {T}
+    xx = zero(T)
+    xy = zero(T)
+    yy = zero(T)
     f = flux(im)
     xitr, yitr = imagepixels(im)
-    for i in
+    for i in axes(img, :X) j in axes(img, :Y)
         x = xitr[i]
         y = yitr[j]
         xx += x^2*im[j,i]

@@ -5,11 +5,11 @@ export StokesVector, CoherencyMatrix, evpa, m̆, SingleStokes, CircBasis, LinBas
 Static vector that holds the stokes parameters of a polarized
 complex visibility
 
-To convert between a `StokesVector` and `CoherencyMatrix` use the `convert`
+To convert between a `StokesParameters` and `CoherencyMatrix` use the `convert`
 function
 
 ```julia
-convert(::CoherencyMatrix, StokesVector(1.0, 0.1, 0.1, 0.4))
+convert(::CoherencyMatrix, StokesParameters(1.0, 0.1, 0.1, 0.4))
 ```
 """
 struct StokesParameters{T} <: FieldVector{4,T}
@@ -162,42 +162,21 @@ end
     return CoherencyMatrix(RX, LX, RY, LY, CircBasis(), LinBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis,CircBasis}}, s::StokesVector)
-    (;I,Q,U,V) = s
-    prefac = inv(2*sqrt(oftype(2, eltype(s.I))))
-    XR = prefac*(I + Q + 1im*U - V)
-    YR = prefac*(I + Q -1im*U + V)
-    XL = prefac*(1im*I - 1im*Q + U - 1im*V)
-    YL = prefac*(-1im*I + 1im*Q + U - 1im*V)
-    return CoherencyMatrix(XR, YR, XL, YL, LinBasis(), CircBasis())
+
+
+@inline function Base.convert(::Type{CoherencyMatrix{:RL}}, p::StokesParameters)
+    rr = p.I + p.V
+    ll = p.I - p.V
+    rl = p.Q + 1im*p.U
+    return CoherencyMatrix(rr, conj(rl), rl, ll)
 end
 
-
-@inline function Base.convert(::Type{StokesVector}, c::CoherencyMatrix{CircBasis, CircBasis})
-    I = c.e11 + c.e22
-    Q = c.e21 + c.e12
-    U = 1im*(c.e21 - c.e12)
-    V = c.e11 - c.e22
-    return StokesVector(I, Q, U, V)
-end
-
-@inline function Base.convert(::Type{StokesVector}, c::CoherencyMatrix{LinBasis, LinBasis})
-    I = c.e11 + c.e22
-    Q = c.e11 - c.e22
-    U = c.e21 + c.e12
-    V = 1im*(c.e21 - c.e12)
-    return StokesVector(I, Q, U, V)
-end
-
-
-
-"""
-    $(SIGNATURES)
-
-Computes `linearpol` from a set of stokes parameters `s`.
-"""
-function linearpol(s::StokesVector)
-    return s.Q + 1im*s.U
+@inline function Base.convert(::Type{StokesParameters}, p::CoherencyMatrix{:RL})
+    i = (p.c11 + p.c22)/2
+    v = (p.c11 - p.c22)/2
+    q = (p.c21 + p.c12)/2
+    u = (p.c21 - p.c12)/(2im)
+    return StokesParameters(i, q, u, v)
 end
 
 """
@@ -205,16 +184,16 @@ end
 Compute the fractional linear polarization of a stokes vector
 or coherency matrix
 """
-m̆(m::StokesVector{T}) where {T} = (m.Q + 1im*m.U)/(m.I + eps(T))
-m̆(m::CoherencyMatrix{CircBasis,CircBasis}) = 2*m.e12/(m.e11+m.e22)
+m̆(m::StokesParameters) = (m.Q + 1im*m.U)/(m.I + eps())
+m̆(m::CoherencyMatrix{:RL}) = 2*m.c12/(m.c11+m.c22)
 
 """
     $(SIGNATURES)
 Compute the evpa of a stokes vector or cohereny matrix.
 """
-evpa(m::StokesVector) = 1/2*atan(m.U,m.Q)
-evpa(m::StokesVector{<:Complex}) = 1/2*angle(m.U/m.Q)
-evpa(m::CoherencyMatrix) = evpa(convert(StokesVector, m))
+evpa(m::StokesParameters) = 1/2*atan(m.U,m.Q)
+evpa(m::StokesParameters{<:Complex}) = 1/2*angle(m.U/m.Q)
+evpa(m::CoherencyMatrix) = evpa(convert(StokesParameters, m))
 
 
 """
@@ -254,7 +233,7 @@ isprimitive(::Type{SingleStokes{M,S}}) where {M,S} = isprimitive(M)
 
 
 # Base.Base.@propagate_inbounds function Base.getindex(pimg::PolarizedMap, i...)
-# return StokesVector(pimg.I[i...], pimg.Q[i...], pimg.U[i...], pimg.V[i...])
+# return StokesParameters(pimg.I[i...], pimg.Q[i...], pimg.U[i...], pimg.V[i...])
 # end
 
 # @inline stokes_parameter(pimg::PolarizedMap, p::Symbol) = getproperty(pimg, p)
