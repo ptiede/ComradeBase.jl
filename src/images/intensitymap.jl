@@ -44,8 +44,8 @@ end
 
 function IntensityMap(im, fovx, fovy, pulse=DeltaPulse())
     ny,nx = size(im)
-    psizex=fovx/max(nx-1,1)
-    psizey=fovy/max(ny-1,1)
+    psizex=fovx/nx
+    psizey=fovy/ny
     F = promote_type(typeof(fovx), typeof(fovy))
     return IntensityMap{eltype(im), typeof(im), F, typeof(pulse)}(im,
                        convert(typeof(psizex),fovx),
