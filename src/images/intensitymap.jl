@@ -5,26 +5,26 @@ export fov, imagepixels, pixelsizes, stokes, centroid, inertia, phasecenter
 
 
 """
-struct ContinuousImage{A <: AbstractDimArray, P} <: AbstractModel
+struct ContinuousImage{A <: KeyedArray, P} <: AbstractModel
     """
     Discrete representation of the image. This must be a DimArray where at least two of the
     """
     img::A
     """
     Image Kernel that transforms from the discrete image to a continuous one. This is
-    sometimes called a pulse function.
+    sometimes called a pulse function in `eht-imaging`.
     """
     kernel::P
 end
 
-function ContinuousImage(im::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse; kwargs...)
+function ContinuousImage(im::AbstractMatrix, fovx::Real, fovy::Real, x0::Real, y0::Real, pulse, header=nothing)
     xitr, yitr = imagepixels(fovx, fovy, x0, y0, size(im,2), size(im,2))
-    img = DimArray(im, (X=xitr, Y=yitr); kwargs...)
+    img = IntensityMap(im, (X=xitr, Y=yitr), header)
     return ContinuousImage(img, pulse)
 end
 
-function ContinuousImage(im::AbstractMatrix, fov::Real, x0::Real, y0::Real, pulse; kwargs...)
-    return ContinuousImage(im, fov, fov, x0, y0, pulse; kwargs...)
+function ContinuousImage(im::AbstractMatrix, fov::Real, x0::Real, y0::Real, pulse, header=nothing)
+    return ContinuousImage(im, fov, fov, x0, y0, pulse, header)
 end
 
 Base.getindex(img::ContinuousImage, args...) = getindex(img.img, args...)
@@ -39,34 +39,30 @@ imanalytic(::Type{<:ContinuousImage}) = IsAnalytic()
 isprimitive(::Type{<:ContinuousImage}) = IsPrimitive()
 
 function intensity_point(m::ContinuousImage, p)
-    x = p[:X]
-    y = p[:Y]
     dx, dy = pixelsizes(m)
-    xitr,yitr = imagepixels(m)
-    sum = zero(eltype(m))
-    #The kernel is written in terms of pixel number so we convert x to it
-    @inbounds for p in DimPoints(m.img)
-        k = intensity_point(m.pulse, p)
-        #println(Δx," ", Δy, " ",   k)
-        sum += m[j, i]*k/(dx*dy)
+    sum = zero(eltype(m.img))
+    @inbounds for (I, p0) in pairs(grid(m.img))
+        dp = (p.X - p0.X, p.Y - p0.Y)
+        k = intensity_point(m.pulse, dp)
+        sum += m.img[I]*k/(dx*dy)
     end
     return sum
 end
 
 
 
+
+# const SpatialOnly = Union{Tuple{<:X, <:Y}, Tuple{<:Y, <:X}}
+
 """
     flux(im::AbstractDimArray)
 
 Computes the flux of a intensity map
 """
-function flux(im::AbstractDimArray)
-    f = sum(im, dims=(:X, :Y))#*(flux(im.pulse))^2
-    return f#*prod(pixelsizes(im))
+function flux(im::IntensityMap)
+    return sum(im, dims=(:X, :Y))
 end
 
-
-const SpatialOnly = Union{Tuple{<:X, <:Y}, Tuple{<:Y, <:X}}
 
 
 """
@@ -74,7 +70,7 @@ const SpatialOnly = Union{Tuple{<:X, <:Y}, Tuple{<:Y, <:X}}
 
 Computes the image centroid aka the center of light of the image.
 """
-function centroid(im::DimArray{T,2, <:SpatialOnly}) where {T}
+function centroid(im::IntensityMap)
     xitr, yitr = imagepixels(im)
     x0 = zero(T)
     y0 = zero(T)
@@ -93,7 +89,7 @@ Computes the image inertia aka **second moment** of the image.
 By default we really return the second **cumulant** or second centered
 second moment, which is specified by the `center` argument.
 """
-function inertia(im::DimArray{T,2, <:SpatialOnly}; center=true) where {T}
+function inertia(im::IntensityMap; center=true)
     xx = zero(T)
     xy = zero(T)
     yy = zero(T)
