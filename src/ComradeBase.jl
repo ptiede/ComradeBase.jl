@@ -1,9 +1,9 @@
 module ComradeBase
 
+using AxisKeys
 using ChainRulesCore
 using DocStringExtensions
-using DimensionalData
-using FLoops
+using RectiGrids
 using StaticArrays
 using StructArrays
 

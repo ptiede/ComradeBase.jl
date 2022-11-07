@@ -1,13 +1,47 @@
-"""
-    GriddedPositions(grids...)
 
-A grid that contains all the gridded information for an image.
-This is usually built on `DimensionalData`'s `Dim` types which
-gives the meaning to each grid.
-"""
-struct GriddedPositions{G}
-    grids::G
+const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)}}
+const SpatialOnly = NamedTuple{(:X, :Y)}
+using NamedDims
+struct ImageDimensions{N,T,H}
+    dims::T
+    header::H
 end
+
+function ImageDimensions(nt::NamedTuple{N}, header=nothing) where {N}
+    dims = Tuple(nt)
+    return ImageDimensions{N, typeof(dims), typeof(header)}(dims, header)
+end
+
+
+dims(d::ImageDimensions) = d.dims
+
+# Make ImageDimensions act like a tuple
+Base.getindex(d::ImageDimensions, i) = getindex(dims(d), i)
+Base.length(d::ImageDimensions) = length(d.dims)
+Base.firstindex(d::ImageDimensions) = 1
+Base.lastindex(d::ImageDimensions) = length(d)
+Base.axes(d::ImageDimensions) = axes(d.dims)
+Base.iterate(t::ImageDimensions, i::Int=1) = iterate(t.dims, i)
+Base.map(f, d::ImageDimensions) = map(f, d.dims)
+Base.front(d::ImageDimensions) = Base.front(d.dims)
+Base.eltype(d::ImageDimensions) = eltype(d.dims)
+
+RectiGrids.grid(k::KeyedArray{T,N,A,<:ImageDimensions}) where {T,N,A} = grid(named_axiskeys(k))
+
+const IntensityMap{T,N,Na} = KeyedArray{T,N,<:AbstractArray{T,N}, <:ImageDimensions{Na}}
+
+function AxisKeys.KeyedArray(data::AbstractArray{T,N}, keys::ImageDimensions{Na}) where {T,N,Na}
+    AxisKeys.construction_check(data, keys.dims)
+    a = NamedDimsArray(data, Na)
+    return KeyedArray{T,N,typeof(a), typeof(keys)}(data, keys)
+end
+
+
+function IntensityMap(data::AbstractArray, dims::NamedTuple, header=nothing)
+    deht = ImageDimensions(dims, header)
+    return KeyedArray(data, deht)
+end
+
 
 
 """
@@ -18,44 +52,36 @@ object that have a field of view of `fov` where the first element is in the x di
 and the second in the y. The image viewed as a matrix will have dimension `dims` where
 the first element is the number of rows or _pixels in the y direction_ and the second
 is the number of columns for _pixels in the x direction_.
-
-# Warning
-Note that the order of fov and dims are switched.
-
-# Keywords
-Optionally the user can specify the:
-    - `phasecenter` the offset from the center of the image that we define as the origin
-    - `pulse` function that converts the image from a discrete
-to continuous quantity
-    - `executor` that uses `FLoops.jl` to specify how the loop is
-done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
 @inline function intensitymap(s::M,
-                              dims...,
-                              ;executor=SequentialEx()) where {M<:AbstractModel}
-    return intensitymap(imanalytic(M), s, dims...; executor)
+                              dims::NamedTuple, header=nothing
+                              ) where {M<:AbstractModel}
+    return intensitymap(imanalytic(M), s, dims)
 end
 
 function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real, y0::Real)
-    psizex=fovx/max(nx,1)
-    psizey=fovy/max(ny,1)
+    @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
+    psizex=fovx/nx
+    psizey=fovy/ny
 
     xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2, nx)
     yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2, ny)
 
-    return X(xitr), Y(yitr)
+    return (X=xitr, Y=yitr)
 end
 
-function pixelsizes(img::DimArray)
-    d = dims(img)
-    n = name.(d)
-    return NamedTuple{n}(step.(d))
+function pixelsizes(img::KeyedArray)
+    keys = named_axiskeys(img)
+    x = keys.X
+    y = keys.Y
+    return (X=step(x), Y=step(y))
 end
 
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; kwargs...)
+function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; frequency=0.0:0.0, time=0.0:0.0, kwargs...)
     X, Y = imagepixels(fovx, fovy, nx, ny, x0, y0)
-    return intensitymap(s, X, Y; kwargs...)
+    return intensitymap(s, X, Y, Ti(time), Fq(frequency); kwargs...)
 end
+
 
 """
     intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())
@@ -66,27 +92,25 @@ object `img`.
 Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
-@inline function intensitymap!(img::AbstractDimArray, s::M; executor=SequentialEx()) where {M}
-    return intensitymap!(imanalytic(M), img, s, executor)
+@inline function intensitymap!(img::KeyedArray, s::M) where {M}
+    return intensitymap!(imanalytic(M), img, s)
 end
 
 function intensitymap(::IsAnalytic, s,
-                      dims...;
-                      executor=SequentialEx())
-    T = typeof(intensity_point(s, 0.0, 0.0))
-    img = DimArray(zeros(T, dims...), dims)
-    intensitymap!(IsAnalytic(), img, s, executor)
-    return img
+                      dims::NamedTuple{N}, header=nothing) where {N}
+    dx = step(dims.X)
+    dy = step(dims.Y)
+    img = intensity_point.(Ref(s), grid(dims)).*dx.*dy
+    return KeyedArray(img, ImageDimensions(dims, header))
 end
 
-function intensitymap!(::IsAnalytic, img::Union{AbstractDimArray, AbstractDimStack}, s, executor=SequentialEx())
+using RectiGrids
+
+function intensitymap!(::IsAnalytic, img::KeyedArray, s, header=nothing)
     dx, dy = pixelsizes(img)
-    n = name.(dims(img))
-    @floop executor for p in DimPoints(img)
-        np = NamedTuple{n}(p)
-        img[I] = intensity_point(s, np)*dx*dy
-    end
-    return img
+    g = grid(named_axiskeys(img))
+    img .= intensity_point.(Ref(s), g).*dx.*dy
+    return KeyedArray(img, dims)
 end
 
 
@@ -112,7 +136,6 @@ end
 
 
 
-include("pulse.jl")
 include("polarizedtypes.jl")
 include("intensitymap.jl")
 #include("polarizedmap.jl")

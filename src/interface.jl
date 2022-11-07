@@ -146,7 +146,7 @@ Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic
 
 
 """
-    visibility_point(model::AbstractModel, u, v, args...)
+    visibility_point(model::AbstractModel, p)
 
 Function that computes the pointwise visibility. This must be implemented
 in the model interface if `visanalytic(::Type{MyModel}) == IsAnalytic()`
@@ -154,7 +154,7 @@ in the model interface if `visanalytic(::Type{MyModel}) == IsAnalytic()`
 function visibility_point end
 
 """
-    intensity_point(model::AbstractModel, x, y, args...)
+    intensity_point(model::AbstractModel, p)
 
 Function that computes the pointwise intensity if the model has the trait
 in the image domain `IsAnalytic()`. Otherwise it will use construct the image in visibility
@@ -164,7 +164,7 @@ function intensity_point end
 
 
 """
-    intensitymap!(buffer::AbstractMatrix, model::AbstractModel, args...)
+    intensitymap!(buffer::AbstractDimArray, model::AbstractModel)
 
 Computes the intensity map of `model` by modifying the `buffer`
 """

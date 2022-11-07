@@ -4,13 +4,6 @@ export StokesParameters, CoherencyMatrix, evpa, m̆, SingleStokes
     $(TYPEDEF)
 Static vector that holds the stokes parameters of a polarized
 complex visibility
-
-To convert between a `StokesParameters` and `CoherencyMatrix` use the `convert`
-function
-
-```julia
-convert(::CoherencyMatrix, StokesParameters(1.0, 0.1, 0.1, 0.4))
-```
 """
 struct StokesParameters{T} <: FieldVector{4,T}
     I::T
@@ -19,7 +12,51 @@ struct StokesParameters{T} <: FieldVector{4,T}
     V::T
 end
 
-linearpol(s::StokesParameters) = s.Q + is.U
+
+
+const StokesIntensityMap{T,N,Na} = StructArray{<:StokesParameters, N, <:NamedTuple{(:I,:Q,:U,:V), <:NTuple{4, <:IntensityMap{T, N, Na}}}} where {N}
+
+
+"""
+    stackstokes(I, Q, U, V)
+
+Create an array of full stokes parameters. The image is stored as a `StructArray` of
+@ref[StokesParameters]. Each of the four
+"""
+function stackstokes(I::IntensityMap{T}, Q::IntensityMap{T}, U::IntensityMap{T}, V::IntensityMap{T}) where {T}
+    @assert check_grid(I,Q,U,V) "Intensity grids are not the same across the 4 stokes parameters"
+    return StructArray{StokesParameters{T}}(;I,Q,U,V)
+end
+
+# simple check to ensure that the four grids are equal across stokes parameters
+function check_grid(I,Q,U,V)
+    named_axiskeys(I) == named_axiskeys(Q) == named_axiskeys(U) == named_axiskeys(V)
+end
+
+function AxisKeys.named_axiskeys(simg::StokesIntensityMap)
+    return named_axiskeys(simg.I)
+end
+
+function Base.summary(io::IO, x::StokesIntensityMap)
+    return _summary(io, x)
+end
+
+function _summary(io, x::StokesIntensityMap{T,N,Na}) where {T,N,Na}
+    println(io, ndims(x.I), "-dimensional")
+    println(io, "StokesIntensityMap{$T, $N, $Na}")
+    for d in 1:ndims(x)
+        print(io, d==1 ? "↓" : d==2 ? "→" : d==3 ? "◪" : "▨", "   ")
+        c = AxisKeys.colour(x, d)
+        AxisKeys.hasnames(x.I) && printstyled(io, AxisKeys.dimnames(x.I,d), " ∈ ", color=c)
+        printstyled(io, length(axiskeys(x.I,d)), "-element ", AxisKeys.shorttype(axiskeys(x.I,d)), "\n", color=c)
+    end
+    println(io, "Polarizations ", propertynames(x))
+end
+
+Base.show(io::IO, img::StokesIntensityMap) = summary(io, img)
+
+
+linearpol(s::StokesParameters) = s.Q + im*s.U
 
 
 
@@ -48,7 +85,8 @@ end
     rr = p.I + p.V
     ll = p.I - p.V
     rl = p.Q + 1im*p.U
-    return CoherencyMatrix(rr, conj(rl), rl, ll)
+    lr = p.Q - 1im*p.U
+    return CoherencyMatrix(rr, lr, rl, ll)
 end
 
 @inline function Base.convert(::Type{StokesParameters}, p::CoherencyMatrix{:RL})
@@ -65,7 +103,6 @@ Compute the fractional linear polarization of a stokes vector
 or coherency matrix
 """
 m̆(m::StokesParameters) = (m.Q + 1im*m.U)/(m.I + eps())
-m̆(m::CoherencyMatrix{:RL}) = 2*m.c12/(m.c11+m.c22)
 
 """
     $(SIGNATURES)
@@ -73,7 +110,6 @@ Compute the evpa of a stokes vector or cohereny matrix.
 """
 evpa(m::StokesParameters) = 1/2*atan(m.U,m.Q)
 evpa(m::StokesParameters{<:Complex}) = 1/2*angle(m.U/m.Q)
-evpa(m::CoherencyMatrix) = evpa(convert(StokesParameters, m))
 
 
 """
