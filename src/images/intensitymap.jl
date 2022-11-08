@@ -54,64 +54,6 @@ end
 
 # const SpatialOnly = Union{Tuple{<:X, <:Y}, Tuple{<:Y, <:X}}
 
-"""
-    flux(im::AbstractDimArray)
-
-Computes the flux of a intensity map
-"""
-function flux(im::IntensityMap)
-    return sum(im, dims=(:X, :Y))
-end
-
-
-
-"""
-    centroid(im::AbstractIntensityMap)
-
-Computes the image centroid aka the center of light of the image.
-"""
-function centroid(im::IntensityMap)
-    xitr, yitr = imagepixels(im)
-    x0 = zero(T)
-    y0 = zero(T)
-    f = flux(im)
-    for i in axes(im,:X), j in axes(im,:Y)
-        x0 += xitr[i].*im[X=i, Y=j]
-        y0 += yitr[j].*im[X=I, Y=j]
-    end
-    return x0/f, y0/f
-end
-
-"""
-    inertia(im::AbstractIntensityMap; center=true)
-
-Computes the image inertia aka **second moment** of the image.
-By default we really return the second **cumulant** or second centered
-second moment, which is specified by the `center` argument.
-"""
-function inertia(im::IntensityMap; center=true)
-    xx = zero(T)
-    xy = zero(T)
-    yy = zero(T)
-    f = flux(im)
-    xitr, yitr = imagepixels(im)
-    for i in axes(img, :X) j in axes(img, :Y)
-        x = xitr[i]
-        y = yitr[j]
-        xx += x^2*im[j,i]
-        yy += y^2*im[j,i]
-        xy += x*y*im[j,i]
-    end
-
-    if center
-        x0, y0 = centroid(im)
-        xx -= x0^2
-        yy -= y0^2
-        xy -= x0*y0
-    end
-
-    return @SMatrix [xx/f xy/f; xy/f yy/f]
-end
 
 
 
