@@ -79,6 +79,19 @@ ComradeBase.isprimitive(::Type{MyModel}) = ComradeBase.IsPrimitive()
 """
 function isprimitive end
 
+
+struct IsPolarized end
+struct NotPolarized end
+
+"""
+    ispolarized(::Type)
+
+Trait function that defines whether a model is polarized or not.
+"""
+ispolarized(::Type{<:AbstractModel}) = NotPolarized()
+
+
+
 @inline isprimitive(::Type{<:AbstractModel}) = NotPrimitive()
 
 """

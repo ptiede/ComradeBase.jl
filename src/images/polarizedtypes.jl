@@ -13,7 +13,6 @@ struct StokesParameters{T} <: FieldVector{4,T}
 end
 
 
-
 const StokesIntensityMap{T,N,Na} = StructArray{<:StokesParameters, N, <:NamedTuple{(:I,:Q,:U,:V), <:NTuple{4, <:IntensityMap{T, N, Na}}}} where {N}
 
 
