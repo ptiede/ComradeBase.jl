@@ -23,7 +23,12 @@ StaticArrays.similar_type(::Type{StokesParams}, ::Type{T}, s::Size{(4,)}) where 
 
 
 
-abstract type PolBasis end
+const BASES = Union{
+                    (:X,:Y), (:X,missing), (missing, :Y),
+                    (:R,:L), (:R, missing), (missing, :L)
+                    }
+
+struct PolBasis{B<:BASES} end
 
 """
     CircBasis <: PolBasis
@@ -31,7 +36,7 @@ abstract type PolBasis end
 Measurement uses the circular polarization basis, which is typically used for circular
 feed interferometers.
 """
-struct CircBasis <: PolBasis end
+const CircBasis = PolBasis{(:R,:L)}
 
 """
     LinBasis <: PolBasis
@@ -39,7 +44,9 @@ struct CircBasis <: PolBasis end
 Measurement uses the linear polarization basis, which is typically used for linear
 feed interferometers.
 """
-struct LinBasis <: PolBasis end
+const LinBasis = PolBasis{(:X, :Y)}
+
+
 
 """
     CoherencyMatrix{T,B1,B2}

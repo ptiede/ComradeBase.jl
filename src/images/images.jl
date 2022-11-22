@@ -95,6 +95,5 @@ end
 
 
 include("pulse.jl")
-include("polarizedtypes.jl")
 include("intensitymap.jl")
 #include("polarizedmap.jl")
