@@ -104,54 +104,6 @@ end
 
 # const SpatialOnly = Union{Tuple{<:X, <:Y}, Tuple{<:Y, <:X}}
 
-# function ChainRulesCore.rrule(::Type{<:IntensityMap}, im, fovx, fovy, pulse)
-#     y = IntensityMap(im, fovx, fovy, pulse)
-#     intensity_pullback(Δy) = (NoTangent(), IntensityMap(Δy.im, fovx, fovy, pulse), Δy.fovx, Δy.fovy, Δy.pulse)
-#     return y, intensity_pullback
-# end
-
-"""
-    fov(img::AbstractIntensityMap)
-
-Returns the field of view (fov) of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-fov(m::AbstractIntensityMap) = m.fov
-
-"""
-    psizes(img::AbstractIntensityMap)
-
-Returns the pixel sizes of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-psizes(img::AbstractIntensityMap) = img.psize
-
-"""
-    phasecenter(img::AbstractIntensityMap)
-
-Returns the phase center of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-phasecenter(img::AbstractIntensityMap) = img.phasecenter
-
-"""
-    flux(im::AbstractIntensityMap)
-
-Computes the flux of a intensity map
-"""
-function flux(im::AbstractIntensityMap{T,S}) where {T,S}
-    f = sum(im.img)#*(flux(im.pulse))^2
-    return f#*prod(pixelsizes(im))
-end
-
-"""
-    phasecenter(img::AbstractIntensityMap)
-
-Returns the phase center of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-phasecenter(img::AbstractIntensityMap) = img.phasecenter
-
 
 # Define the array interface
 Base.IndexStyle(::Type{<: AbstractIntensityMap{T,S}}) where {T,S} = Base.IndexStyle(S)

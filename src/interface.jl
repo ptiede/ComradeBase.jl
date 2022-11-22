@@ -34,13 +34,27 @@ If not analytic then `imanalytic` should return `NotAnalytic()`.
 
 """
 abstract type AbstractModel end
+
+"""
+        $(TYPEDEF)
+
+Type the classifies a model as being intrinsically polarized. This means that any call
+to visibility must return a `StokesParams` to denote the full stokes polarization of the model.
+"""
 abstract type AbstractPolarizedModel <: AbstractModel end
 
 struct IsPolarized end
 struct NotPolarized end
 
-ispolarized(::Type{<:Any}) = NotPolarized()
+
+"""
+    ispolarized(::Type)
+
+Trait function that defines whether a model is polarized or not.
+"""
+ispolarized(::Type{<:AbstractModel}) = NotPolarized()
 ispolarized(::Type{<:AbstractPolarizedModel}) = IsPolarized()
+
 
 
 """
@@ -84,15 +98,7 @@ ComradeBase.isprimitive(::Type{MyModel}) = ComradeBase.IsPrimitive()
 function isprimitive end
 
 
-struct IsPolarized end
-struct NotPolarized end
 
-"""
-    ispolarized(::Type)
-
-Trait function that defines whether a model is polarized or not.
-"""
-ispolarized(::Type{<:AbstractModel}) = NotPolarized()
 
 
 
