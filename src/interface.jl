@@ -36,7 +36,11 @@ If not analytic then `imanalytic` should return `NotAnalytic()`.
 abstract type AbstractModel end
 abstract type AbstractPolarizedModel <: AbstractModel end
 
+struct IsPolarized end
+struct NotPolarized end
 
+ispolarized(::Type{<:Any}) = NotPolarized()
+ispolarized(::Type{<:AbstractPolarizedModel}) = IsPolarized()
 
 
 """
