@@ -341,6 +341,6 @@ end
 
 
 
-include("polarizedtypes.jl")
+include("pulse.jl")
 include("intensitymap.jl")
 #include("polarizedmap.jl")
