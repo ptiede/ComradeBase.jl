@@ -1,4 +1,4 @@
-export DeltaPulse, SqExpPulse, BSplinePulse, BicubicPulse
+export DeltaPulse, SqExpPulse, BSplinePulse, BicubicPulse, RaisedCosinePulse
 
 """
 Pulse
@@ -119,4 +119,27 @@ function ω(m::BicubicPulse, u)
     k4 = k3*k
     c2 = c^2 - s^2
     return -4*s*(2*b*c + 4*b + 3)*inv(k3) + 12*inv(k4)*(b*(1-c2) + 2*(1-c))
+end
+
+struct RaisedCosinePulse{T} <: Pulse
+    rolloff::T
+end
+
+RaisedCosinePulse() = RaisedCosinePulse{Float64}(0.5)
+
+function κ(k::RaisedCosinePulse, x::T) where {T}
+    mag = abs(x)
+    β = k.rolloff
+    if 2*mag < 1-β
+        return one(T)
+    elseif 1-β <= 2*mag <= 1+β
+        return 1/2*(1 + cospi((mag - (1-β)/2)/β))
+    else
+        return zero(T)
+    end
+end
+
+function ω(k::RaisedCosinePulse, u::T) where {T}
+    β = k.rolloff
+    return sinc(u)*cos(β*u)*inv(1 - (2β*u/π)^2)
 end
