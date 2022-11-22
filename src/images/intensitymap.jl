@@ -54,19 +54,6 @@ end
 
 # const SpatialOnly = Union{Tuple{<:X, <:Y}, Tuple{<:Y, <:X}}
 
-Returns the pixel sizes of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-psizes(img::AbstractIntensityMap) = img.psize
-
-"""
-    phasecenter(img::AbstractIntensityMap)
-
-Returns the phase center of the image `img` as a Tuple
-where the first element is in the RA direction and the second the DEC.
-"""
-phasecenter(img::AbstractIntensityMap) = img.phasecenter
-
 
 # Define the array interface
 # Base.IndexStyle(::Type{<: AbstractIntensityMap{T,S}}) where {T,S} = Base.IndexStyle(S)

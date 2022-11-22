@@ -355,6 +355,5 @@ end
 
 
 
-include("polarizedtypes.jl")
 include("intensitymap.jl")
 #include("polarizedmap.jl")

@@ -20,18 +20,18 @@ struct StokesParams{T} <: FieldVector{4,T}
 end
 
 
-const StokesIntensityMap{T,N,Na} = StructArray{<:StokesParameters, N, <:NamedTuple{(:I,:Q,:U,:V), <:NTuple{4, <:IntensityMap{T, N, Na}}}} where {N}
+const StokesIntensityMap{T,N,Na} = StructArray{<:StokesParams, N, <:NamedTuple{(:I,:Q,:U,:V), <:NTuple{4, <:IntensityMap{T, N, Na}}}} where {N}
 
 
 """
     stackstokes(I, Q, U, V)
 
 Create an array of full stokes parameters. The image is stored as a `StructArray` of
-@ref[StokesParameters]. Each of the four
+@ref[StokesParams]. Each of the four
 """
 function stackstokes(I::IntensityMap{T}, Q::IntensityMap{T}, U::IntensityMap{T}, V::IntensityMap{T}) where {T}
     @assert check_grid(I,Q,U,V) "Intensity grids are not the same across the 4 stokes parameters"
-    return StructArray{StokesParameters{T}}(;I,Q,U,V)
+    return StructArray{StokesParams{T}}(;I,Q,U,V)
 end
 
 # simple check to ensure that the four grids are equal across stokes parameters
@@ -62,20 +62,26 @@ end
 Base.show(io::IO, img::StokesIntensityMap) = summary(io, img)
 
 
-linearpol(s::StokesParameters) = s.Q + im*s.U
 
 
 
 StaticArrays.similar_type(::Type{StokesParams}, ::Type{T}, s::Size{(4,)}) where {T} = StokesParams{T}
 
+abstract type ElectricFieldBasis end
+
+struct R <: ElectricFieldBasis end
+struct L <: ElectricFieldBasis end
+struct X <: ElectricFieldBasis end
+struct Y <: ElectricFieldBasis end
+
+struct PolBasis{B1, B2} end
 
 
-const BASES = Union{
-                    (:X,:Y), (:X,missing), (missing, :Y),
-                    (:R,:L), (:R, missing), (missing, :L)
+const POLBASES = Union{
+                    PolBasis{X,Y}, PolBasis{X, Missing}, PolBasis{Missing, Y},
+                    PolBasis{R,L}, PolBasis{R, Missing}, PolBasis{Missing, L}
                     }
 
-struct PolBasis{B<:BASES} end
 
 """
     CircBasis <: PolBasis
@@ -83,7 +89,7 @@ struct PolBasis{B<:BASES} end
 Measurement uses the circular polarization basis, which is typically used for circular
 feed interferometers.
 """
-const CircBasis = PolBasis{(:R,:L)}
+const CircBasis = PolBasis{R,L}
 
 """
     LinBasis <: PolBasis
@@ -91,7 +97,7 @@ const CircBasis = PolBasis{(:R,:L)}
 Measurement uses the linear polarization basis, which is typically used for linear
 feed interferometers.
 """
-const LinBasis = PolBasis{(:X, :Y)}
+const LinBasis = PolBasis{X, Y}
 
 
 
@@ -260,15 +266,15 @@ end
 Compute the fractional linear polarization of a stokes vector
 or coherency matrix
 """
-m̆(m::StokesVector{T}) where {T} = (m.Q + 1im*m.U)/(m.I + eps(T))
-m̆(m::CoherencyMatrix{CircBasis,CircBasis,T}) = 2*m.e12/(m.e11+m.e22)
+m̆(m::StokesParams{T}) where {T} = (m.Q + 1im*m.U)/(m.I + eps(T))
+m̆(m::CoherencyMatrix{CircBasis,CircBasis}) = 2*m.e12/(m.e11+m.e22)
 
 """
     $(SIGNATURES)
 Compute the evpa of a stokes vector or cohereny matrix.
 """
-evpa(m::StokesParameters) = 1/2*atan(m.U,m.Q)
-evpa(m::StokesParameters{<:Complex}) = 1/2*angle(m.U/m.Q)
+evpa(m::StokesParams) = 1/2*atan(m.U,m.Q)
+evpa(m::StokesParams{<:Complex}) = 1/2*angle(m.U/m.Q)
 
 
 """
@@ -308,7 +314,7 @@ isprimitive(::Type{SingleStokes{M,S}}) where {M,S} = isprimitive(M)
 
 
 # Base.Base.@propagate_inbounds function Base.getindex(pimg::PolarizedMap, i...)
-# return StokesParameters(pimg.I[i...], pimg.Q[i...], pimg.U[i...], pimg.V[i...])
+# return StokesParams(pimg.I[i...], pimg.Q[i...], pimg.U[i...], pimg.V[i...])
 # end
 
 # @inline stokes_parameter(pimg::PolarizedMap, p::Symbol) = getproperty(pimg, p)
