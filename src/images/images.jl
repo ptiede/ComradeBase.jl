@@ -215,6 +215,7 @@ end
 
 function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real, y0::Real)
     @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
+
     psizex=fovx/nx
     psizey=fovy/ny
 
@@ -223,6 +224,8 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real,
 
     return (X=xitr, Y=yitr)
 end
+
+imagepixels(img::IntensityMap) = (X=img.X, Y=img.Y)
 
 function pixelsizes(img::IntensityMap)
     keys = named_axiskeys(img)
@@ -330,6 +333,9 @@ function second_moment(im::IntensityMap{T,2}; center=true) where {T}
 
     return @SMatrix [xx/f xy/f; xy/f yy/f]
 end
+
+
+
 
 
 

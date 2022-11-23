@@ -9,7 +9,8 @@ using StructArrays
 
 export  visibility, intensitymap, intensitymap!,
         StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
-        flux, fov, imagepixels, pixelsizes, IntensityMap
+        flux, fov, imagepixels, pixelsizes, IntensityMap,
+        named_axiskeys
 
 include("interface.jl")
 include("images/images.jl")
