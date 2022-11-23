@@ -1,4 +1,4 @@
-export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, CircBasis, LinBasis
+export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, CirBasis, LinBasis, coherencymatrix, stokesparams
 
 """
     $(TYPEDEF)
@@ -19,9 +19,10 @@ struct StokesParams{T} <: FieldVector{4,T}
     V::T
 end
 
+#const NdPi{Na, T, N} = NamedDimsArray{Na, T, N, <:StructArray{T, N}}
+#StokesIntensityMap{T,N,Na} = KeyedArray{StokesParams{T}, N, <:NdPi{Na, StokesParams{T}, N}}
 
-const StokesIntensityMap{T,N,Na} = StructArray{<:StokesParams, N, <:NamedTuple{(:I,:Q,:U,:V), <:NTuple{4, <:IntensityMap{T, N, Na}}}} where {N}
-
+baseimage(s::IntensityMap) = parent(parent(s))
 
 """
     stackstokes(I, Q, U, V)
@@ -29,9 +30,10 @@ const StokesIntensityMap{T,N,Na} = StructArray{<:StokesParams, N, <:NamedTuple{(
 Create an array of full stokes parameters. The image is stored as a `StructArray` of
 @ref[StokesParams]. Each of the four
 """
-function stackstokes(I::IntensityMap{T}, Q::IntensityMap{T}, U::IntensityMap{T}, V::IntensityMap{T}) where {T}
+function StokesIntensityMap(I::IntensityMap{T}, Q::IntensityMap{T}, U::IntensityMap{T}, V::IntensityMap{T}) where {T}
     @assert check_grid(I,Q,U,V) "Intensity grids are not the same across the 4 stokes parameters"
-    return StructArray{StokesParams{T}}(;I,Q,U,V)
+    polimg = StructArray{StokesParams{T}}(I=baseimage(I), Q=baseimage(Q), U=baseimage(U), V=baseimage(V))
+    return IntensityMap(polimg, named_axiskeys(I))
 end
 
 # simple check to ensure that the four grids are equal across stokes parameters
@@ -79,17 +81,19 @@ struct PolBasis{B1, B2} end
 
 const POLBASES = Union{
                     PolBasis{X,Y}, PolBasis{X, Missing}, PolBasis{Missing, Y},
-                    PolBasis{R,L}, PolBasis{R, Missing}, PolBasis{Missing, L}
+                    PolBasis{R,L}, PolBasis{R, Missing}, PolBasis{Missing, L},
+                    PolBasis{X,R}, PolBasis{Y,R}, PolBasis{X,L}, PolBasis{Y,L},
+                    PolBasis{R,X}, PolBasis{R,Y}, PolBasis{L,X}, PolBasis{L,Y},
                     }
 
 
 """
-    CircBasis <: PolBasis
+    CirBasis <: PolBasis
 
 Measurement uses the circular polarization basis, which is typically used for circular
 feed interferometers.
 """
-const CircBasis = PolBasis{R,L}
+const CirBasis = PolBasis{R,L}
 
 """
     LinBasis <: PolBasis
@@ -102,7 +106,7 @@ const LinBasis = PolBasis{X, Y}
 
 
 """
-    CoherencyMatrix{T,B1,B2}
+    CoherencyMatrix{B1,B2,T}
 
 Coherency matrix for a single baseline with bases `B1` and `B2`. The two bases correspond
 to the type of feeds used for each telescope and should be subtypes of `PolBasis`. To see which
@@ -115,7 +119,7 @@ LR RR
 ```
 which can be constructed using
 ```julia-repl
-c = CoherencyMatrix(RR, LR, RL, LL, CircBasis())
+c = CoherencyMatrix(RR, LR, RL, LL, CirBasis())
 ```
 
 For a linear basis the layout of the coherency matrix is
@@ -125,7 +129,7 @@ YX YY
 ```
 which can be constructed using
 ```julia-repl
-c = CoherencyMatrix(XX, YX, XY, YY, CircBasis())
+c = CoherencyMatrix(XX, YX, XY, YY, CirBasis())
 ```
 
 For a mixed (e.g., circular and linear basis) the layout of the coherency matrix is
@@ -142,10 +146,10 @@ YR YL
 
 which can be construct using
 ```julia-repl
-c = CoherencyMatrix(XX, YX, XY, YY, CircBasis(), LinBasis())
+c = CoherencyMatrix(XX, YX, XY, YY, CirBasis(), LinBasis())
 # or
 c = Coherency in a basis given by `B`. There are a two main bases we
-use `:RL` for a circular basis, and `:XY` for linear basis.Matrix(XX, YX, XY, YY, (CircBasis(), LinBasis()))
+use `:RL` for a circular basis, and `:XY` for linear basis.Matrix(XX, YX, XY, YY, (CirBasis(), LinBasis()))
 ```
 
 
@@ -153,11 +157,11 @@ use `:RL` for a circular basis, and `:XY` for linear basis.Matrix(XX, YX, XY, YY
 
 There are a number of different ways to construct a coherency matrix:
 ```julia-repl
-m1 = CoherencyMatrix(1.0, 0.0, 0.0, 1.0, CircBasis())
+m1 = CoherencyMatrix(1.0, 0.0, 0.0, 1.0, CirBasis())
 m2 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, LinBasis())
-m3 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, CircBasis(), CircBasis())
-m4 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, CircBasis(), LinBasis())
-m4 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, (CircBasis(), LinBasis()))
+m3 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, CirBasis(), CirBasis())
+m4 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, CirBasis(), LinBasis())
+m4 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, (CirBasis(), LinBasis()))
 ```
 
 # Warning
@@ -172,8 +176,8 @@ struct CoherencyMatrix{B1,B2,T} <: StaticArrays.FieldMatrix{2,2,T}
 end
 
 function CoherencyMatrix(e11, e21, e12, e22, basis::NTuple{2,PolBasis})
-    T = promote_type(e11, e12, e21, e22)
-    return CoherencyMatrix{T, typeof(basis[1]), typeof(basis[2])}(T(e11), T(e21), T(e12), T(e22))
+    T = promote_type(typeof(e11), typeof(e12), typeof(e21), typeof(e22))
+    return CoherencyMatrix{typeof(basis[1]), typeof(basis[2]),T}(T(e11), T(e21), T(e12), T(e22))
 end
 
 function CoherencyMatrix(e11, e21, e12, e22, basis::PolBasis)
@@ -191,20 +195,24 @@ end
 # Needed to ensure everything is constructed nicely
 StaticArrays.similar_type(::Type{CoherencyMatrix{B1,B2}}, ::Type{T}, s::Size{(2,2)}) where {B1,B2,T} = CoherencyMatrix{B1,B2,T}
 
-@inline function coherencymatrix(s::StokesParams, basis1::PolBasis, basis2::PolBasis)
-    return convert(CoherencyMatrix{typeof(basis1), typeof(basis2)}, s)
+function CoherencyMatrix(s::StokesParams, b1::PolBasis, b2::PolBasis)
+    return convert(CoherencyMatrix{typeof(b1), typeof(b2)}, s)
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{CircBasis,CircBasis}}, s::StokesParams)
+function CoherencyMatrix{B1,B2}(s::StokesParams) where {B1, B2}
+    return convert(CoherencyMatrix{B1, B2}, s)
+end
+
+@inline function Base.convert(::Type{<:CoherencyMatrix{CirBasis, CirBasis}}, s::StokesParams)
     (;I,Q,U,V) = s
-    RR = (I + V)/2
+    RR = complex((I + V)/2)
     LR = (Q - 1im*U)/2
     RL = (Q + 1im*U)/2
-    LL = (I - V)/2
-    return CoherencyMatrix(RR, LR, RL, LL, CircBasis(), CircBasis())
+    LL = complex((I - V)/2)
+    return CoherencyMatrix(RR, LR, RL, LL, CirBasis(), CirBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis,LinBasis}}, s::StokesParams)
+@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis, LinBasis}}, s::StokesParams)
     (;I,Q,U,V) = s
     XX = (I + Q)/2
     YX = (U - 1im*V)/2
@@ -213,28 +221,28 @@ end
     return CoherencyMatrix(XX, YX, XY, YY, LinBasis(), LinBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{CircBasis,LinBasis}}, s::StokesParams)
+@inline function Base.convert(::Type{<:CoherencyMatrix{CirBasis, LinBasis}}, s::StokesParams)
     (;I,Q,U,V) = s
-    prefac = inv(2*sqrt(oftype(2, eltype(s.I))))
+    prefac = oftype(s.I, inv(2*sqrt(2)))
     RX = prefac*(I + Q - 1im*U - V)
     LX = prefac*(I + Q + 1im*U + V)
     RY = prefac*(-1im*I - 1im*Q + U + 1im*V)
     LY = prefac*(1im*I -1im*Q + U + 1im*V)
-    return CoherencyMatrix(RX, LX, RY, LY, CircBasis(), LinBasis())
+    return CoherencyMatrix(RX, LX, RY, LY, CirBasis(), LinBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis,CircBasis}}, s::StokesParams)
+@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis, CirBasis}}, s::StokesParams)
     (;I,Q,U,V) = s
-    prefac = inv(2*sqrt(oftype(2, eltype(s.I))))
+    prefac = oftype(s.I, inv(2*sqrt(2)))
     XR = prefac*(I + Q + 1im*U - V)
     YR = prefac*(I + Q -1im*U + V)
     XL = prefac*(1im*I - 1im*Q + U - 1im*V)
     YL = prefac*(-1im*I + 1im*Q + U - 1im*V)
-    return CoherencyMatrix(XR, YR, XL, YL, LinBasis(), CircBasis())
+    return CoherencyMatrix(XR, YR, XL, YL, LinBasis(), CirBasis())
 end
 
 
-@inline function Base.convert(::Type{StokesParams}, c::CoherencyMatrix{CircBasis, CircBasis})
+@inline function StokesParams(c::CoherencyMatrix{CirBasis, CirBasis})
     I = c.e11 + c.e22
     Q = c.e21 + c.e12
     U = 1im*(c.e21 - c.e12)
@@ -242,7 +250,7 @@ end
     return StokesParams(I, Q, U, V)
 end
 
-@inline function Base.convert(::Type{StokesParams}, c::CoherencyMatrix{LinBasis, LinBasis})
+@inline function StokesParams(c::CoherencyMatrix{LinBasis, LinBasis})
     I = c.e11 + c.e22
     Q = c.e11 - c.e22
     U = c.e21 + c.e12
@@ -267,7 +275,7 @@ Compute the fractional linear polarization of a stokes vector
 or coherency matrix
 """
 m̆(m::StokesParams{T}) where {T} = (m.Q + 1im*m.U)/(m.I + eps(T))
-m̆(m::CoherencyMatrix{CircBasis,CircBasis}) = 2*m.e12/(m.e11+m.e22)
+m̆(m::CoherencyMatrix{CirBasis,CirBasis}) = 2*m.e12/(m.e11+m.e22)
 
 """
     $(SIGNATURES)

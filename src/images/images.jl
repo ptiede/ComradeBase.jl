@@ -217,8 +217,25 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
     return intensitymap(imanalytic(M), s, fov, dims; phasecenter, pulse, executor)
 end
 
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, args...; kwargs...)
-    return intensitymap(s, (fovx, fovy), (ny, nx), args...; kwargs...)
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real, y0::Real)
+    @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
+
+    psizex=fovx/nx
+    psizey=fovy/ny
+
+    xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2, nx)
+    yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2, ny)
+
+    return (X=xitr, Y=yitr)
+end
+
+imagepixels(img::IntensityMap) = (X=img.X, Y=img.Y)
+
+function pixelsizes(img::IntensityMap)
+    keys = named_axiskeys(img)
+    x = keys.X
+    y = keys.Y
+    return (X=step(x), Y=step(y))
 end
 
 """
@@ -316,6 +333,9 @@ function second_moment(im::IntensityMap{T,2}; center=true) where {T}
 
     return @SMatrix [xx/f xy/f; xy/f yy/f]
 end
+
+
+
 
 
 
