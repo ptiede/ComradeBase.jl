@@ -1,25 +1,25 @@
-export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, CircBasis, LinBasis
+export StokesVector, CoherencyMatrix, evpa, m̆, SingleStokes, CircBasis, LinBasis
 
 """
     $(TYPEDEF)
 Static vector that holds the stokes parameters of a polarized
 complex visibility
 
-To convert between a `StokesParams` and `CoherencyMatrix` use the `convert`
+To convert between a `StokesVector` and `CoherencyMatrix` use the `convert`
 function
 
 ```julia
 convert(::CoherencyMatrix, StokesVector(1.0, 0.1, 0.1, 0.4))
 ```
 """
-struct StokesParams{T} <: FieldVector{4,T}
+struct StokesVector{T} <: FieldVector{4,T}
     I::T
     Q::T
     U::T
     V::T
 end
 
-StaticArrays.similar_type(::Type{StokesParams}, ::Type{T}, s::Size{(4,)}) where {T} = StokesParams{T}
+StaticArrays.similar_type(::Type{StokesVector}, ::Type{T}, s::Size{(4,)}) where {T} = StokesVector{T}
 
 
 
@@ -130,11 +130,11 @@ end
 # Needed to ensure everything is constructed nicely
 StaticArrays.similar_type(::Type{CoherencyMatrix{B1,B2}}, ::Type{T}, s::Size{(2,2)}) where {B1,B2,T} = CoherencyMatrix{B1,B2,T}
 
-@inline function coherencymatrix(s::StokesParams, basis1::PolBasis, basis2::PolBasis)
+@inline function coherencymatrix(s::StokesVector, basis1::PolBasis, basis2::PolBasis)
     return convert(CoherencyMatrix{typeof(basis1), typeof(basis2)}, s)
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{CircBasis,CircBasis}}, s::StokesParams)
+@inline function Base.convert(::Type{<:CoherencyMatrix{CircBasis,CircBasis}}, s::StokesVector)
     (;I,Q,U,V) = s
     RR = (I + V)/2
     LR = (Q - 1im*U)/2
@@ -143,7 +143,7 @@ end
     return CoherencyMatrix(RR, LR, RL, LL, CircBasis(), CircBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis,LinBasis}}, s::StokesParams)
+@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis,LinBasis}}, s::StokesVector)
     (;I,Q,U,V) = s
     XX = (I + Q)/2
     YX = (U - 1im*V)/2
@@ -152,7 +152,7 @@ end
     return CoherencyMatrix(XX, YX, XY, YY, LinBasis(), LinBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{CircBasis,LinBasis}}, s::StokesParams)
+@inline function Base.convert(::Type{<:CoherencyMatrix{CircBasis,LinBasis}}, s::StokesVector)
     (;I,Q,U,V) = s
     prefac = inv(2*sqrt(oftype(2, eltype(s.I))))
     RX = prefac*(I + Q - 1im*U - V)
@@ -162,7 +162,7 @@ end
     return CoherencyMatrix(RX, LX, RY, LY, CircBasis(), LinBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis,CircBasis}}, s::StokesParams)
+@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis,CircBasis}}, s::StokesVector)
     (;I,Q,U,V) = s
     prefac = inv(2*sqrt(oftype(2, eltype(s.I))))
     XR = prefac*(I + Q + 1im*U - V)
@@ -173,20 +173,20 @@ end
 end
 
 
-@inline function Base.convert(::Type{StokesParams}, c::CoherencyMatrix{CircBasis, CircBasis})
+@inline function Base.convert(::Type{StokesVector}, c::CoherencyMatrix{CircBasis, CircBasis})
     I = c.e11 + c.e22
     Q = c.e21 + c.e12
     U = 1im*(c.e21 - c.e12)
     V = c.e11 - c.e22
-    return StokesParams(I, Q, U, V)
+    return StokesVector(I, Q, U, V)
 end
 
-@inline function Base.convert(::Type{StokesParams}, c::CoherencyMatrix{LinBasis, LinBasis})
+@inline function Base.convert(::Type{StokesVector}, c::CoherencyMatrix{LinBasis, LinBasis})
     I = c.e11 + c.e22
     Q = c.e11 - c.e22
     U = c.e21 + c.e12
     V = 1im*(c.e21 - c.e12)
-    return StokesParams(I, Q, U, V)
+    return StokesVector(I, Q, U, V)
 end
 
 
@@ -196,7 +196,7 @@ end
 
 Computes `linearpol` from a set of stokes parameters `s`.
 """
-function linearpol(s::StokesParams)
+function linearpol(s::StokesVector)
     return s.Q + 1im*s.U
 end
 
