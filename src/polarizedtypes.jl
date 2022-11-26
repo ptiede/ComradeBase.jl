@@ -1,4 +1,6 @@
-export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, CirBasis, LinBasis, coherencymatrix, stokesparams
+export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, R, L, X, Y, PolBasis, CirBasis, LinBasis,
+       basis_components, basis_transform, coherencymatrix, stokesparams
+
 
 """
     $(TYPEDEF)
@@ -19,8 +21,8 @@ struct StokesParams{T} <: FieldVector{4,T}
     V::T
 end
 
-#const NdPi{Na, T, N} = NamedDimsArray{Na, T, N, <:StructArray{T, N}}
-#StokesIntensityMap{T,N,Na} = KeyedArray{StokesParams{T}, N, <:NdPi{Na, StokesParams{T}, N}}
+const NdPi{Na, T, N} = NamedDimsArray{Na, T, N, <:StructArray{T, N}}
+StokesIntensityMap{T,N,Na} = KeyedArray{StokesParams{T}, N, <:NdPi{Na, StokesParams{T}, N}}
 
 baseimage(s::IntensityMap) = parent(parent(s))
 
@@ -50,15 +52,15 @@ function Base.summary(io::IO, x::StokesIntensityMap)
 end
 
 function _summary(io, x::StokesIntensityMap{T,N,Na}) where {T,N,Na}
-    println(io, ndims(x.I), "-dimensional")
+    println(io, ndims(x), "-dimensional")
     println(io, "StokesIntensityMap{$T, $N, $Na}")
     for d in 1:ndims(x)
         print(io, d==1 ? "↓" : d==2 ? "→" : d==3 ? "◪" : "▨", "   ")
         c = AxisKeys.colour(x, d)
-        AxisKeys.hasnames(x.I) && printstyled(io, AxisKeys.dimnames(x.I,d), " ∈ ", color=c)
-        printstyled(io, length(axiskeys(x.I,d)), "-element ", AxisKeys.shorttype(axiskeys(x.I,d)), "\n", color=c)
+        AxisKeys.hasnames(x) && printstyled(io, AxisKeys.dimnames(x,d), " ∈ ", color=c)
+        printstyled(io, length(axiskeys(x,d)), "-element ", AxisKeys.shorttype(axiskeys(x,d)), "\n", color=c)
     end
-    println(io, "Polarizations ", propertynames(x))
+    println(io, "Polarizations ", propertynames(parent(x).data))
 end
 
 Base.show(io::IO, img::StokesIntensityMap) = summary(io, img)
@@ -75,6 +77,11 @@ struct R <: ElectricFieldBasis end
 struct L <: ElectricFieldBasis end
 struct X <: ElectricFieldBasis end
 struct Y <: ElectricFieldBasis end
+
+
+
+
+
 
 struct PolBasis{B1, B2} end
 
@@ -103,6 +110,59 @@ feed interferometers.
 """
 const LinBasis = PolBasis{X, Y}
 
+"""
+    basis_components([T=Float64,], e::ElectricFieldBasis, b::PolBasis)
+
+Returns a static vector that contains the components of the electric field basis vector `e`
+in terms of the polarization basis `b`. The first argument is optionally the eltype of the
+static vector.
+
+# Examples
+```julia
+julia> basis_components(Float64, R(), PolBasis{X,Y}())
+2-element StaticArraysCore.SVector{2, ComplexF64} with indices SOneTo(2):
+ 0.7071067811865475 + 0.0im
+                0.0 - 0.7071067811865475im
+
+julia> basis_components(R(), PolBasis{X,Y}())
+2-element StaticArraysCore.SVector{2, ComplexF64} with indices SOneTo(2):
+ 0.7071067811865475 + 0.0im
+                0.0 - 0.7071067811865475im
+
+
+julia> basis_components(Float64, X(), PolBasis{X,Y}())
+2-element StaticArraysCore.SVector{2, ComplexF64} with indices SOneTo(2):
+ 1.0 + 0.0im
+ 0.0 + 0.0im
+```
+"""
+function basis_components end
+
+@inline basis_components(::Type{T}, ::R, ::PolBasis{R, B}) where {T, R, B<:ElectricFieldBasis} = SVector{2,T}(one(T), zero(T))
+@inline basis_components(::Type{T}, ::R, ::PolBasis{B, R}) where {T, R, B<:ElectricFieldBasis} = SVector{2,T}(zero(T), one(T))
+
+@inline basis_components(::Type{T}, ::R, ::LinBasis) where {T} = inv(sqrt(T(2)))*SVector(one(T), -1im*one(T))
+@inline basis_components(::Type{T}, ::L, ::LinBasis) where {T} = inv(sqrt(T(2)))*SVector(one(T), 1im*one(T))
+
+@inline basis_components(::Type{T}, ::X, ::CirBasis) where {T} = inv(sqrt(T(2)))*SVector(one(T),  one(T))
+@inline basis_components(::Type{T}, ::Y, ::CirBasis) where {T} = inv(sqrt(T(2)))*SVector(one(T)*1im, -one(T)*1im)
+
+
+@inline basis_components(v::ElectricFieldBasis, b::PolBasis) = basis_components(Float64, v, b)
+
+"""
+    basis_transform([T=Float64,], b1::PolBasis, b2::PolBasis)
+    basis_transform([T=Float64,], b1::PolBasis=>b2::PolBasis)
+
+Produces the transformation matrix that transforms from basis `b1` to basis `b2`. This means that if
+for example `E` is the circular basis then `basis_transform(CirBasis=>LinBasis)E` is in the
+linear basis. With this convention
+"""
+@inline basis_transform(::Type{T}, b1::PolBasis{E1,E2}, b2::PolBasis) where {E1,E2,T} = hcat(basis_components(T, E1(), b2), basis_components(T, E2(), b2))
+@inline basis_transform(b1::PolBasis, b2::PolBasis) = basis_transform(Float64, b1, b2)
+
+@inline basis_transform(::Type{T}, p::Pair{B1,B2}) where {T, B1<:PolBasis, B2<:PolBasis} = basis_transform(T, B1(), B2())
+@inline basis_transform(::Pair{B1,B2}) where {B1<:PolBasis, B2<:PolBasis} = basis_transform(Float64, B1(), B2())
 
 
 """
@@ -146,10 +206,10 @@ YR YL
 
 which can be construct using
 ```julia-repl
-c = CoherencyMatrix(XX, YX, XY, YY, CirBasis(), LinBasis())
-# or
-c = Coherency in a basis given by `B`. There are a two main bases we
-use `:RL` for a circular basis, and `:XY` for linear basis.Matrix(XX, YX, XY, YY, (CirBasis(), LinBasis()))
+# Circular and linear feeds i.e., R⊗X
+c = CoherencyMatrix(RX, LX, RY, LY, LinBasis(), CirBasis())
+# Linear and circular feeds i.e., X⊗R
+c = CoherencyMatrix(XR, YR, XL, YL, LinBasis(), CirBasis())
 ```
 
 
@@ -175,6 +235,11 @@ struct CoherencyMatrix{B1,B2,T} <: StaticArrays.FieldMatrix{2,2,T}
     e22::T
 end
 
+# Needed to ensure everything is constructed nicely
+StaticArrays.similar_type(::Type{CoherencyMatrix{B1,B2}}, ::Type{T}, s::Size{(2,2)}) where {B1,B2,T} = CoherencyMatrix{B1,B2,T}
+
+
+
 function CoherencyMatrix(e11, e21, e12, e22, basis::NTuple{2,PolBasis})
     T = promote_type(typeof(e11), typeof(e12), typeof(e21), typeof(e22))
     return CoherencyMatrix{typeof(basis[1]), typeof(basis[2]),T}(T(e11), T(e21), T(e12), T(e22))
@@ -192,11 +257,13 @@ function CoherencyMatrix(mat::AbstractMatrix, basis::Vararg{Any, N}) where {N}
     return CoherencyMatrix(mat[1], mat[2], mat[3], mat[4], basis...)
 end
 
-# Needed to ensure everything is constructed nicely
-StaticArrays.similar_type(::Type{CoherencyMatrix{B1,B2}}, ::Type{T}, s::Size{(2,2)}) where {B1,B2,T} = CoherencyMatrix{B1,B2,T}
 
 function CoherencyMatrix(s::StokesParams, b1::PolBasis, b2::PolBasis)
     return convert(CoherencyMatrix{typeof(b1), typeof(b2)}, s)
+end
+
+function CoherencyMatrix(s::StokesParams, b::PolBasis)
+    return convert(CoherencyMatrix{typeof(b), typeof(b)}, s)
 end
 
 function CoherencyMatrix{B1,B2}(s::StokesParams) where {B1, B2}
@@ -221,25 +288,6 @@ end
     return CoherencyMatrix(XX, YX, XY, YY, LinBasis(), LinBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{CirBasis, LinBasis}}, s::StokesParams)
-    (;I,Q,U,V) = s
-    prefac = oftype(s.I, inv(2*sqrt(2)))
-    RX = prefac*(I + Q - 1im*U - V)
-    LX = prefac*(I + Q + 1im*U + V)
-    RY = prefac*(-1im*I - 1im*Q + U + 1im*V)
-    LY = prefac*(1im*I -1im*Q + U + 1im*V)
-    return CoherencyMatrix(RX, LX, RY, LY, CirBasis(), LinBasis())
-end
-
-@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis, CirBasis}}, s::StokesParams)
-    (;I,Q,U,V) = s
-    prefac = oftype(s.I, inv(2*sqrt(2)))
-    XR = prefac*(I + Q + 1im*U - V)
-    YR = prefac*(I + Q -1im*U + V)
-    XL = prefac*(1im*I - 1im*Q + U - 1im*V)
-    YL = prefac*(-1im*I + 1im*Q + U - 1im*V)
-    return CoherencyMatrix(XR, YR, XL, YL, LinBasis(), CirBasis())
-end
 
 
 @inline function StokesParams(c::CoherencyMatrix{CirBasis, CirBasis})
@@ -256,6 +304,14 @@ end
     U = c.e21 + c.e12
     V = 1im*(c.e21 - c.e12)
     return StokesParams(I, Q, U, V)
+end
+
+function StokesParams(c::CoherencyMatrix{B1, B2}) where {B1, B2}
+    # Flip because there are the dual elements
+    t1 = basis_transform(CirBasis()=>B1())
+    t2 = basis_transform(B2()=>CirBasis())
+    c_cir = CoherencyMatrix(t2*c*t1, CirBasis())
+    return StokesParams(c_cir)
 end
 
 
