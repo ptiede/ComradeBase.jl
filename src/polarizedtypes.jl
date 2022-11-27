@@ -102,8 +102,8 @@ function basis_components end
 @inline innerprod(::Type{T}, ::X, ::R) where {T} = complex(inv(sqrt(T(2))), zero(T))
 @inline innerprod(::Type{T}, ::X, ::L) where {T} = complex(inv(sqrt(T(2))), zero(T))
 
-@inline innerprod(::Type{T}, ::Y, ::R) where {T} = complex(zero(T), inv(sqrt(T(2))))
-@inline innerprod(::Type{T}, ::Y, ::L) where {T} = complex(zero(T), -inv(sqrt(T(2))))
+@inline innerprod(::Type{T}, ::Y, ::R) where {T} = complex(zero(T), -inv(sqrt(T(2))))
+@inline innerprod(::Type{T}, ::Y, ::L) where {T} = complex(zero(T), inv(sqrt(T(2))))
 
 # use the conjugate symmetry of the inner product
 @inline innerprod(::Type{T}, c::Union{R,L}, l::Union{X,Y}) where {T} = conj(innerprod(T, l, c))
