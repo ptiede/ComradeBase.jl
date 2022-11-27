@@ -1,6 +1,3 @@
-
-
-
 export IntensityMap, ImageDimensions, named_dims, dims, grid,
        named_axiskeys, imagepixels, pixelsizes, fov
 include("keyed_image.jl")
@@ -13,4 +10,3 @@ include("moments.jl")
 
 export ContinuousImage
 include("continuous_image.jl")
-#include("polarizedmap.jl")
