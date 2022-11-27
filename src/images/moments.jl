@@ -32,6 +32,16 @@ function centroid(im::IntensityMap{T,2})::Tuple{T,T} where {T}
 end
 
 """
+    centroid(im::AbstractIntensityMap)
+
+Computes the image centroid aka the center of light of the image.
+"""
+function second_moment(im::IntensityMap{T,N}) where {T,N}
+    (X, Y) = named_axiskeys(im)
+    return mapslices(x->second_moment(IntensityMap(x, (;X, Y))), im; dims=(:X, :Y))
+end
+
+"""
     second_moment(im::AbstractIntensityMap; center=true)
 
 Computes the image second moment tensor of the image.

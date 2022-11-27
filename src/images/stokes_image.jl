@@ -22,14 +22,17 @@ function StokesIntensityMap(
 
     polimg = StructArray{StokesParams{T}}(;I,Q,U,V)
     return IntensityMap(polimg, dims, header)
+end
 
 # simple check to ensure that the four grids are equal across stokes parameters
 function check_grid(I,Q,U,V)
     named_axiskeys(I) == named_axiskeys(Q) == named_axiskeys(U) == named_axiskeys(V)
 end
 
-function AxisKeys.named_axiskeys(simg::StokesIntensityMap)
-    return named_axiskeys(simg.I)
+function stokes(pimg::StokesIntensityMap, v::Symbol)
+    imgb = baseimage(pimg)
+    imgs = getproperty(imgb, v)
+    return IntensityMap(imgs, named_axiskeys(pimg))
 end
 
 function Base.summary(io::IO, x::StokesIntensityMap)
