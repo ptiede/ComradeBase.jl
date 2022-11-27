@@ -1,4 +1,4 @@
-export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, R, L, X, Y, PolBasis, CirBasis, LinBasis,
+export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, RPol, LPol, XPol, YPol, PolBasis, CirBasis, LinBasis,
        basis_components, basis_transform, coherencymatrix, stokesparams
 
 
@@ -14,28 +14,28 @@ abstract type ElectricFieldBasis end
 
 The right circular electric field basis, i.e. a right-handed circular feed.
 """
-struct R <: ElectricFieldBasis end
+struct RPol <: ElectricFieldBasis end
 
 """
     $(TYPEDEF)
 
 The left circular electric field basis, i.e. a left-handed circular feed.
 """
-struct L <: ElectricFieldBasis end
+struct LPol <: ElectricFieldBasis end
 
 """
     $(TYPEDEF)
 
 The horizontal or X electric feed basis, i.e. the horizontal linear feed.
 """
-struct X <: ElectricFieldBasis end
+struct XPol <: ElectricFieldBasis end
 
 """
     $(TYPEDEF)
 
 The vertical or Y electric feed basis, i.e. the vertical linear feed.
 """
-struct Y <: ElectricFieldBasis end
+struct YPol <: ElectricFieldBasis end
 
 
 """
@@ -53,7 +53,7 @@ struct PolBasis{B1<:Union{ElectricFieldBasis, Missing}, B2<:Union{ElectricFieldB
 Measurement uses the circular polarization basis, which is typically used for circular
 feed interferometers.
 """
-const CirBasis = PolBasis{R,L}
+const CirBasis = PolBasis{RPol,LPol}
 
 """
     LinBasis <: PolBasis
@@ -61,7 +61,7 @@ const CirBasis = PolBasis{R,L}
 Measurement uses the linear polarization basis, which is typically used for linear
 feed interferometers.
 """
-const LinBasis = PolBasis{X,Y}
+const LinBasis = PolBasis{XPol,YPol}
 
 """
     basis_components([T=Float64,], e::ElectricFieldBasis, b::PolBasis)
@@ -72,18 +72,18 @@ static vector.
 
 # Examples
 ```julia
-julia> basis_components(Float64, R(), PolBasis{X,Y}())
+julia> basis_components(Float64, R(), PolBasis{XPol,Y}())
 2-element StaticArraysCore.SVector{2, ComplexF64} with indices SOneTo(2):
  0.7071067811865475 + 0.0im
                 0.0 - 0.7071067811865475im
 
-julia> basis_components(R(), PolBasis{X,Y}())
+julia> basis_components(R(), PolBasis{XPol,Y}())
 2-element StaticArraysCore.SVector{2, ComplexF64} with indices SOneTo(2):
  0.7071067811865475 + 0.0im
                 0.0 - 0.7071067811865475im
 
 
-julia> basis_components(Float64, X(), PolBasis{X,Y}())
+julia> basis_components(Float64, X(), PolBasis{XPol,Y}())
 2-element StaticArraysCore.SVector{2, ComplexF64} with indices SOneTo(2):
  1.0 + 0.0im
  0.0 + 0.0im
@@ -91,30 +91,51 @@ julia> basis_components(Float64, X(), PolBasis{X,Y}())
 """
 function basis_components end
 
-@inline innerprod(::Type{T}, ::B, ::B) where {T, B<:ElectricFieldBasis} = complex(one(T), zero(T))
-@inline innerprod(::Type{T}, ::R, ::L) where {T} = complex(zero(T))
-@inline innerprod(::Type{T}, ::L, ::R) where {T} = complex(zero(T))
 
-@inline innerprod(::Type{T}, ::X, ::Y) where {T} = complex(zero(T))
-@inline innerprod(::Type{T}, ::Y, ::X) where {T} = complex(zero(T))
+"""
+    innerprod(::Type{T}, XPol(), YPol())
 
+Computes the complex inner product of two elements of a complex Hilbert space `X` and `Y`
+where base element of the output is T.
+"""
+function innerprod end
 
-@inline innerprod(::Type{T}, ::X, ::R) where {T} = complex(inv(sqrt(T(2))), zero(T))
-@inline innerprod(::Type{T}, ::X, ::L) where {T} = complex(inv(sqrt(T(2))), zero(T))
+# Define that XPol,YPol and RPol,LPol are orthonormal bases
+@inline innerprod(::Type{T}, ::B, ::B) where {T, B<:ElectricFieldBasis} = one(T)
+@inline innerprod(::Type{T}, ::RPol, ::LPol) where {T} = complex(zero(T))
+@inline innerprod(::Type{T}, ::LPol, ::RPol) where {T} = complex(zero(T))
+@inline innerprod(::Type{T}, ::XPol, ::YPol) where {T} = complex(zero(T))
+@inline innerprod(::Type{T}, ::YPol, ::XPol) where {T} = complex(zero(T))
 
-@inline innerprod(::Type{T}, ::Y, ::R) where {T} = complex(zero(T), -inv(sqrt(T(2))))
-@inline innerprod(::Type{T}, ::Y, ::L) where {T} = complex(zero(T), inv(sqrt(T(2))))
+# Now define the projections of linear onto circular
+@inline innerprod(::Type{T}, ::XPol, ::RPol) where {T} = complex(inv(sqrt(T(2))), zero(T))
+@inline innerprod(::Type{T}, ::XPol, ::LPol) where {T} = complex(inv(sqrt(T(2))), zero(T))
 
-# use the conjugate symmetry of the inner product
-@inline innerprod(::Type{T}, c::Union{R,L}, l::Union{X,Y}) where {T} = conj(innerprod(T, l, c))
+@inline innerprod(::Type{T}, ::YPol, ::RPol) where {T} = complex(zero(T), -inv(sqrt(T(2))))
+@inline innerprod(::Type{T}, ::YPol, ::LPol) where {T} = complex(zero(T), inv(sqrt(T(2))))
 
-# Now handle missing
+# use the conjugate symmetry of the inner product to define projections of circular onto linear.
+@inline innerprod(::Type{T}, c::Union{RPol,LPol}, l::Union{XPol,YPol}) where {T} = conj(innerprod(T, l, c))
+
+# Now handle missing basis vectors (important when you are missing a feed)
 @inline innerprod(::Type{T}, c::Missing, l::ElectricFieldBasis) where {T} = missing
 @inline innerprod(::Type{T}, l::ElectricFieldBasis, c::Missing) where {T} = missing
 
-
-@inline basis_components(::Type{T}, b1::Union{ElectricFieldBasis,Missing}, ::PolBasis{B1,B2}) where {T, B1,B2} = SVector{2}(innerprod(T, b1, B1()), innerprod(T, b1, B2()))
+# Now give me the components of electic fields in both linear and circular bases.
+@inline basis_components(::Type{T}, b1::Union{ElectricFieldBasis,Missing}, ::PolBasis{B1,B2}) where {T, B1,B2} = SVector{2}(innerprod(T, B1(), b1), innerprod(T, B2(), b1))
 @inline basis_components(v::Union{ElectricFieldBasis, Missing}, b::PolBasis) = basis_components(Float64, v, b)
+
+#This handles non-orthogonal bases
+# @inline basis_components(::Type{T}, b1::B1, ::PolBasis{B1, B2}) where {T, B1<:ElectricFieldBasis, B2<:ElectricFieldBasis} = SVector{2}(complex(one(T)), complex(zero(T)))
+# @inline basis_components(::Type{T}, b1::B2, ::PolBasis{B1, B2}) where {T, B1<:ElectricFieldBasis, B2<:ElectricFieldBasis} = SVector{2}(complex(zero(T)), complex(one(T)))
+# @inline basis_components(::Type{T}, b1::B1, ::PolBasis{B1, B1}) where {T, B1<:ElectricFieldBasis} = SVector{2}(complex(one(T)), complex(one(T)))
+
+
+for (E1, E2) in [(:XPol,:RPol), (:RPol, :XPol), (:RPol,:YPol), (:YPol,:RPol), (:XPol,:LPol), (:LPol,:XPol), (:YPol,:LPol), (:LPol,:YPol)]
+    @eval begin
+        PolBasis{$E1,$E2}() = throw(AssertionError("Non-orthogonal bases not implemented"))
+    end
+end
 
 """
     basis_transform([T=Float64,], b1::PolBasis, b2::PolBasis)
@@ -136,6 +157,7 @@ julia> basis_transform(CirBasis()=>LinBasis())
 function basis_transform end
 
 @inline basis_transform(::Type{T}, b1::PolBasis{E1,E2}, b2::PolBasis) where {E1,E2,T} = hcat(basis_components(T, E1(), b2), basis_components(T, E2(), b2))
+# @inline basis_transform(::Type{T}, b1::B, b2::B) where {T, B<:PolBasis} = SMatrix{2,2,Complex{T}}(1.0, 0.0, 0.0, 1.0)
 @inline basis_transform(b1::PolBasis, b2::PolBasis) = basis_transform(Float64, b1, b2)
 
 @inline basis_transform(::Type{T}, p::Pair{B1,B2}) where {T, B1<:PolBasis, B2<:PolBasis} = basis_transform(T, B1(), B2())
@@ -145,6 +167,7 @@ function basis_transform end
 
 """
     $(TYPEDEF)
+
 Static vector that holds the stokes parameters of a polarized
 complex visibility
 
@@ -167,7 +190,7 @@ StaticArrays.similar_type(::Type{StokesParams}, ::Type{T}, s::Size{(4,)}) where 
 
 
 """
-    CoherencyMatrix{B1,B2,T}
+    $(TYPEDEF)
 
 Coherency matrix for a single baseline with bases `B1` and `B2`. The two bases correspond
 to the type of feeds used for each telescope and should be subtypes of `PolBasis`. To see which
@@ -175,8 +198,8 @@ bases are implemented type `subtypes(Rimes.PolBasis)` in the REPL.
 
 For a circular basis the layout of the coherency matrix is
 ```
-RR RL
-LR RR
+RR* RL*
+LR* RR*
 ```
 which can be constructed using
 ```julia-repl
@@ -185,8 +208,8 @@ c = CoherencyMatrix(RR, LR, RL, LL, CirBasis())
 
 For a linear basis the layout of the coherency matrix is
 ```
-XX XY
-YX YY
+XX* XY*
+YX* YY*
 ```
 which can be constructed using
 ```julia-repl
@@ -195,39 +218,24 @@ c = CoherencyMatrix(XX, YX, XY, YY, CirBasis())
 
 For a mixed (e.g., circular and linear basis) the layout of the coherency matrix is
 ```
-RX RY
-LX LY
+RX* RY*
+LX* LY*
 ```
 
 or e.g., linear and circular the layout of the coherency matrix is
 ```
-XR XL
-YR YL
+XR* XL*
+YR* YL*
 ```
 
-which can be construct using
+These coherency matrices can be constructed using:
 ```julia-repl
-# Circular and linear feeds i.e., R⊗X
+# Circular and linear feeds i.e., |R><X|
 c = CoherencyMatrix(RX, LX, RY, LY, LinBasis(), CirBasis())
-# Linear and circular feeds i.e., X⊗R
+# Linear and circular feeds i.e., |X><R|
 c = CoherencyMatrix(XR, YR, XL, YL, LinBasis(), CirBasis())
 ```
 
-
-# Examples
-
-There are a number of different ways to construct a coherency matrix:
-```julia-repl
-m1 = CoherencyMatrix(1.0, 0.0, 0.0, 1.0, CirBasis())
-m2 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, LinBasis())
-m3 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, CirBasis(), CirBasis())
-m4 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, CirBasis(), LinBasis())
-m4 = CoherencyMatrix(1.0, 0.0, 0.1, 1.0, (CirBasis(), LinBasis()))
-```
-
-# Warning
-Note that because the CoherencyMatrix is a `FieldMatrix` the elements are specified
-in a column-major order when constructing.
 """
 struct CoherencyMatrix{B1,B2,T} <: StaticArrays.FieldMatrix{2,2,T}
     e11::T
@@ -240,27 +248,124 @@ end
 StaticArrays.similar_type(::Type{CoherencyMatrix{B1,B2}}, ::Type{T}, s::Size{(2,2)}) where {B1,B2,T} = CoherencyMatrix{B1,B2,T}
 
 
+"""
+    CoherencyMatrix(e11, e21, e12, e22, basis::NTuple{2, PolBasis})
 
+Constructs the coherency matrix with components
+   e11 e12
+   e21 e22
+relative to the tensor product basis, `|basis[1]><basis[2]|`. Note that basis[1] and basis[2]
+could be different.
+
+For instance
+```julia
+c = Coherency(1.0, 0.0, 0.0, 1.0, CirBasis(), LinBasis())
+```
+elements correspond to
+    RX* RY*
+    LX* LY*
+"""
 @inline function CoherencyMatrix(e11, e21, e12, e22, basis::NTuple{2,PolBasis})
     T = promote_type(typeof(e11), typeof(e12), typeof(e21), typeof(e22))
     return CoherencyMatrix{typeof(basis[1]), typeof(basis[2]),T}(T(e11), T(e21), T(e12), T(e22))
 end
 
+"""
+    CoherencyMatrix(e11, e21, e12, e22, basis::PolBasis)
+
+Constructs the coherency matrix with components
+   e11 e12
+   e21 e22
+relative to the tensor product basis, `basis` given by `|basis><basis|`.
+
+For instance
+```julia
+c = Coherency(1.0, 0.0, 0.0, 1.0, CirBasis())
+```
+elements correspond to
+    RR* RL*
+    LR* LL*
+
+"""
 @inline function CoherencyMatrix(e11, e21, e12, e22, basis::PolBasis)
     return CoherencyMatrix(e11, e21, e12, e22, (basis, basis))
 end
 
+"""
+    CoherencyMatrix(e11, e21, e12, e22, basis1::PolBasis basis2::PolBasis)
+
+Constructs the coherency matrix with components
+   e11 e12
+   e21 e22
+relative to the tensor product basis, `basis` given by `|basis1><basis2|`.
+
+For instance
+```julia
+c = Coherency(1.0, 0.0, 0.0, 1.0, CirBasis(), LinBasis())
+```
+elements correspond to
+    RX* RY*
+    LX* LY*
+
+"""
 @inline function CoherencyMatrix(e11, e21, e12, e22, basis1::PolBasis, basis2::PolBasis)
     return CoherencyMatrix(e11, e21, e12, e22, (basis1, basis2))
 end
 
-@inline function CoherencyMatrix(mat::AbstractMatrix, basis::Vararg{Any, N}) where {N}
-    return CoherencyMatrix(mat[1], mat[2], mat[3], mat[4], basis...)
+@inline function CoherencyMatrix(mat::AbstractMatrix, basis1, basis2)
+    return CoherencyMatrix(mat[1], mat[2], mat[3], mat[4], basis1, basis2)
+end
+
+@inline function CoherencyMatrix(mat::AbstractMatrix, basis)
+    return CoherencyMatrix(mat[1], mat[2], mat[3], mat[4], basis)
 end
 
 
-@inline function CoherencyMatrix(s::StokesParams, b1::PolBasis, b2::PolBasis)
-    return convert(CoherencyMatrix{typeof(b1), typeof(b2)}, s)
+"""
+    CoherencyMatrix(s::StokesParams, basis1::PolBasis)
+    CoherencyMatrix(s::StokesParams, basis1::PolBasis, basis2::PolBasis)
+    CoherencyMatrix(s::StokesParams, basis1::PolBasis, basis2::PolBasis, refbasis=CirBasis())
+
+Constructs the coherency matrix from the set of stokes parameters `s`.
+This is specialized on `basis1` and `basis2` which form the tensor product basis
+`|basis1><basis2|`, or if a single basis is given then by `|basis><basis|`.
+
+For example
+```julia
+CoherencyMatrix(s, CircBasis())
+```
+will give the coherency matrix
+
+   1|I+V   Q+iU|
+   2|Q-iU  I-V |
+
+while
+```julia
+CoherencyMatrix(s, LinBasis())
+```
+will give
+    1|I+Q   U+iV|
+    2|U-iV  I-Q |
+
+# Notes
+
+Internally this function first converts to a reference basis and then the final basis.
+You can select the reference basis used with the optional argument refbasis. By default
+we use the circular basis as our reference. Note that this is only important for mixed bases,
+e.g., if `basis1` and `basis2` are different. If `basis1==basis2` then the reference basis
+is never used.
+"""
+@inline function CoherencyMatrix(s::StokesParams, b1::PolBasis, b2::PolBasis, refbasis::Union{LinBasis, CirBasis}=CirBasis())
+    t1 = basis_transform(refbasis=>b1)
+    # Flip because these are the dual elements
+    t2 = basis_transform(b2=>refbasis)
+    # Use circular basis as a reference
+    c_cir = CoherencyMatrix(s, refbasis)
+    return CoherencyMatrix(t1*c_cir*t2, b1, b2)
+end
+
+function CoherencyMatrix(s::StokesParams, b1::T, b2::T, refbasis=CirBasis()) where {T<:PolBasis}
+    return CoherencyMatrix(s, b1)
 end
 
 @inline function CoherencyMatrix(s::StokesParams, b::PolBasis)

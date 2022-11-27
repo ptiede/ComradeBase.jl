@@ -2,7 +2,7 @@ export IntensityMap, ImageDimensions, named_dims, dims, grid,
        named_axiskeys, imagepixels, pixelsizes, fov
 include("keyed_image.jl")
 
-export StokesIntensityMap
+export StokesIntensityMap, stokes
 include("stokes_image.jl")
 
 export flux, centroid, second_moment

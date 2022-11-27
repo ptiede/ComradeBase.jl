@@ -104,10 +104,12 @@ dims(d::ImageDimensions) = d.dims
 Returns the dimensions as a tuple of image dimensions
 """
 named_dims(d::ImageDimensions{Na}) where {Na} = NamedTuple{Na}(d.dims)
+Base.keys(::ImageDimensions{Na}) where {Na} = Na
 # AxisKeys.getkey(A::IntensityMap; kw...)
 
 # Make ImageDimensions act like a tuple
 Base.getindex(d::ImageDimensions, i::Int) = getindex(dims(d), i)
+Base.getindex(d::ImageDimensions, inds::Tuple) = getindex(dims(d), inds)
 Base.length(d::ImageDimensions) = length(d.dims)
 Base.firstindex(d::ImageDimensions) = 1
 Base.lastindex(d::ImageDimensions) = length(d)
@@ -121,6 +123,8 @@ Base.eltype(d::ImageDimensions) = eltype(d.dims)
 # Now we define our custom image type which is a parametric KeyedArray with a specific key type.
 const IntensityMap{T,N,Na} = KeyedArray{T,N,<:AbstractArray{T,N}, <:ImageDimensions{Na}}
 
+AxisKeys.axiskeys(img::IntensityMap{T,1}, d::Int) where {T} = d==1 ? getindex(getfield(img, :keys),1) : OneTo(1)
+AxisKeys.axiskeys(img::IntensityMap{T,1}) where {T} = dims(getfield(img, :keys))
 # This to make sure that broadcasting and map preverse the keys type
 AxisKeys.unify_longest(x::ImageDimensions) = x
 AxisKeys.unify_longest(x::ImageDimensions{Na}, y::ImageDimensions{Na}) where {Na} = ImageDimensions{Na}(AxisKeys.unify_longest(dims(x), dims(y)), x.header)
@@ -150,7 +154,7 @@ for (get_or_view, key_get, maybe_copy) in [
 
         end
 
-        @inline function $key_get(keys::ImageDimensions, inds::Tuple{AbstractVector, Vararg{Any}})
+        @inline function $key_get(keys::ImageDimensions, inds)
             $key_get(keys.dims, inds)
         end
     end
@@ -228,7 +232,7 @@ end
 imagepixels(img::IntensityMap) = (X=img.X, Y=img.Y)
 
 function pixelsizes(img::IntensityMap)
-    keys = named_axiskeys(img)
+    keys = imagepixels(img)
     x = keys.X
     y = keys.Y
     return (X=step(x), Y=step(y))
