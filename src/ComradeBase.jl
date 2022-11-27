@@ -13,8 +13,8 @@ export  visibility, intensitymap, intensitymap!,
         named_axiskeys
 
 include("interface.jl")
-include("images/images.jl")
 include("polarizedtypes.jl")
+include("images/images.jl")
 
 
 end
