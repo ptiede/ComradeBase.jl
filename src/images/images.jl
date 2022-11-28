@@ -7,6 +7,3 @@ include("stokes_image.jl")
 
 export flux, centroid, second_moment
 include("moments.jl")
-
-export ContinuousImage
-include("continuous_image.jl")
