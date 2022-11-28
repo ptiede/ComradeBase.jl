@@ -231,6 +231,17 @@ end
 
 imagepixels(img::IntensityMap) = (X=img.X, Y=img.Y)
 
+function fieldofview(img::IntensityMap)
+    return fieldofview(named_axiskeys(img))
+end
+
+function fieldofview(dims::DataNames)
+    (;X,Y) = dims
+    dx = step(X)
+    dy = step(Y)
+    (X=abs(last(X) - first(X))+dx, Y=abs(last(Y)-first(Y))+dy)
+end
+
 function pixelsizes(img::IntensityMap)
     keys = imagepixels(img)
     x = keys.X
