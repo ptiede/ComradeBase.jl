@@ -130,6 +130,24 @@ AxisKeys.unify_longest(x::ImageDimensions) = x
 AxisKeys.unify_longest(x::ImageDimensions{Na}, y::ImageDimensions{Na}) where {Na} = ImageDimensions{Na}(AxisKeys.unify_longest(dims(x), dims(y)), x.header)
 AxisKeys.unify_longest(x::ImageDimensions{Na}, y::Tuple) where {Na} = ImageDimensions{Na}(AxisKeys.unify_longest(dims(x), y), x.header)
 AxisKeys.unify_longest(x::Tuple, y::ImageDimensions{Na}) where {Na} = ImageDimensions{Na}(AxisKeys.unify_longest(x, dims(y)), y.header)
+
+function AxisKeys.unify_keys(left::ImageDimensions{Na}, right::ImageDimensions) where {Na}
+    s = map(AxisKeys.unify_one, dims(left), dims(right))
+    return ImageDimensions{Na}(Tuple(s))
+end
+
+function AxisKeys.unify_keys(left::ImageDimensions{Na}, right::Tuple) where {Na}
+    return ImageDimensions{Na}(AxisKeys.unify_keys(dims(left), right))
+end
+
+function AxisKeys.unify_keys(left::Tuple, right::ImageDimensions{Na}) where {Na}
+    return ImageDimensions{Na}(AxisKeys.unify_keys(left, dims(right)))
+end
+
+
+AxisKeys.unify_keys(left::ImageDimensions) = left
+
+
 AxisKeys.named_axiskeys(img::IntensityMap) = named_dims(axiskeys(img))
 
 for (get_or_view, key_get, maybe_copy) in [
@@ -252,9 +270,9 @@ end
 """
     intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0; frequency=230:230, time=0.0:0.0)
 """
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; frequency=0.0:0.0, time=0.0:0.0, header=nothing)
+function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; frequency=nothing, time=nothing, header=nothing)
     (;X, Y) = imagepixels(fovx, fovy, nx, ny, x0, y0)
-    return intensitymap(s, (X=X, Y=Y, T=time, F=frequency), header)
+    return intensitymap(s, (X=X, Y=Y), header)
 end
 
 
@@ -276,13 +294,13 @@ function intensitymap(::IsAnalytic, s,
     dx = step(dims.X)
     dy = step(dims.Y)
     img = intensity_point.(Ref(s), grid(dims)).*dx.*dy
-    return KeyedArray(img, ImageDimensions(dims, header))
+    return IntensityMap(baseimage(img), dims, header)
 end
 
 
-function intensitymap!(::IsAnalytic, img::KeyedArray, s)
+function intensitymap!(::IsAnalytic, img::IntensityMap, s)
     dx, dy = pixelsizes(img)
-    g = grid(named_axiskeys(img))
+    g = grid(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy
-    return KeyedArray(img, dims)
+    return img
 end

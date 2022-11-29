@@ -1,7 +1,7 @@
 const NdPi{Na, T, N} = NamedDimsArray{Na, T, N, <:StructArray{T, N}}
 StokesIntensityMap{T,N,Na} = KeyedArray{StokesParams{T}, N, <:NdPi{Na, StokesParams{T}, N}}
 
-baseimage(s::IntensityMap) = parent(parent(s))
+baseimage(s::KeyedArray) = parent(parent(s))
 
 """
     stackstokes(I, Q, U, V)
