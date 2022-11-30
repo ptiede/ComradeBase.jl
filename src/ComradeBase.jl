@@ -1,16 +1,15 @@
 module ComradeBase
 
-using AxisKeys
 using ChainRulesCore
+using DimensionalData
 using DocStringExtensions
-using RectiGrids
 using StaticArrays
 using StructArrays
 
 export  visibility, intensitymap, intensitymap!,
         StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
         flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
-        named_axiskeys
+        named_dims
 
 include("interface.jl")
 include("polarizedtypes.jl")
