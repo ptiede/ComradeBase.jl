@@ -1,10 +1,11 @@
 module ComradeBase
 
+using AxisKeys
 using ChainRulesCore
-using DimensionalData
 using DocStringExtensions
 using StaticArrays
 using StructArrays
+using RectiGrids
 
 export  visibility, intensitymap, intensitymap!,
         StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
