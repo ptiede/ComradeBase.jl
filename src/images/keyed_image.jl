@@ -7,11 +7,12 @@ const NDA = AxisKeys.NamedDims.NamedDimsArray
 const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)}, <:NamedTuple{(:X,:Y)}}
 const DataArr = Union{NDA{(:X, :Y, :T, :F)}, NDA{(:X, :Y, :F, :T)}, NDA{(:X, :Y)}}
 
+const SpatialDataArr = NDA{(:X, :Y)}
 
 
 # # Now we define our custom image type which is a parametric KeyedArray with a specific key type.
 const IntensityMap{T,N} = KeyedArray{T,N,<:DataArr}
-
+const SpatialIntensityMap{T,N} = KeyedArray{T,2,<:SpatialDataArr}
 
 """
     grid(k::IntensityMap)

@@ -1,4 +1,5 @@
- export IntensityMap, ImageDimensions,
+ export IntensityMap, SpatialIntensityMap,
+        DataArr, SpatialDataArr, DataNames,
         named_axiskeys, imagepixels, pixelsizes, imagegrid
  include("keyed_image.jl")
 
