@@ -6,6 +6,7 @@ using DocStringExtensions
 using StaticArrays
 using StructArrays
 using RectiGrids
+using Statistics
 
 export  visibility, intensitymap, intensitymap!,
         StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
