@@ -23,12 +23,8 @@ This is useful for broadcasting a model across an abritrary grid.
 """
 imagegrid(img::IntensityMap) = grid(named_axiskeys(img))
 
-# This is a special constructor to work with ImageDimensions.
-function AxisKeys.KeyedArray(data::AbstractArray{T,N}, keys::NamedTuple{Na}) where {T,N, Na}
-    AxisKeys.construction_check(data, values(keys))
-    a = NamedDimsArray(data, Na)
-    return KeyedArray{T,N,typeof(a), typeof(keys)}(data, keys)
-end
+imagegrid(dims::DataNames) = grid(dims)
+
 
 """
     IntensityMap(data::AbstractArray, dims::NamedTuple)
@@ -43,9 +39,16 @@ dims = (X=range(-10.0, 10.0, length=100), Y = range(-10.0, 10.0, length=100),
 imgk = IntensityMap(rand(100,100,5,1), dims)
 ```
 """
-function IntensityMap(data::AbstractArray, dims::DataNames)
+function IntensityMap(data::AbstractArray{T,N}, dims::DataNames) where {T,N}
     a = _build_named_dims(data, dims)
-    return KeyedArray(a, dims)
+    AxisKeys.construction_check(data, values(dims))
+    a = NamedDimsArray(data, keys(dims))
+    return KeyedArray{T,N,typeof(a), typeof(values(dims))}(data, values(dims))
+end
+
+function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real)
+    X, Y = imagepixels(fovx, fovy, size(data)..., 0.0, 0.0)
+    return IntensityMap(data, (;X, Y))
 end
 
 function _build_named_dims(data, ::NamedTuple{Na}) where {Na}
@@ -81,6 +84,12 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real,
     yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2, ny)
 
     return (X=xitr, Y=yitr)
+end
+
+function phasecenter(img::IntensityMap)
+    x0 = median(img.X)
+    y0 = median(img.Y)
+    return (X=x0, Y=y0)
 end
 
 imagepixels(img::IntensityMap) = (X=img.X, Y=img.Y)
@@ -130,14 +139,14 @@ end
 function intensitymap(::IsAnalytic, s, dims::DataNames)
     dx = step(dims.X)
     dy = step(dims.Y)
-    img = intensity_point.(Ref(s), grid(dims)).*dx.*dy
+    img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
     return img
 end
 
 
 function intensitymap!(::IsAnalytic, img::IntensityMap, s)
     dx, dy = pixelsizes(img)
-    g = grid(img)
-    img .= intensity_point.(Ref(s), g).*dx.*dy
+    g = imagegrid(img)
+    parent(img) .= intensity_point.(Ref(s), g).*dx.*dy
     return img
 end

@@ -54,7 +54,7 @@ function second_moment(im::IntensityMap{T,2}; center=true) where {T}
     yy = zero(T)
     f = flux(im)
     (;X,Y) = named_axiskeys(im)
-    for (i,x) in pairs(X), (j,y) in pairs(Y)
+    for (i,y) in pairs(Y), (j,x) in pairs(X)
         xx += x^2*im[j,i]
         yy += y^2*im[j,i]
         xy += x*y*im[j,i]

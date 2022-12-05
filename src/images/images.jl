@@ -1,6 +1,7 @@
  export IntensityMap, SpatialIntensityMap,
         DataArr, SpatialDataArr, DataNames,
-        named_axiskeys, imagepixels, pixelsizes, imagegrid
+        named_axiskeys, imagepixels, pixelsizes, imagegrid,
+        phasecenter
  include("keyed_image.jl")
 
 export StokesIntensityMap, stokes

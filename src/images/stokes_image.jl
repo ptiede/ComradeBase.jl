@@ -1,13 +1,13 @@
 const NdPi{Na, T, N} = NamedDimsArray{Na, T, N, <:StructArray{T, N}}
-StokesIntensityMap{T,N,Na} = KeyedArray{StokesParams{T}, N, <:NdPi{DataNames, StokesParams{T}, N}}
+const StokesIntensityMap{T,N,Na} = KeyedArray{StokesParams{T}, N, <:DataArr}
 
 baseimage(s::KeyedArray) = parent(parent(s))
 
 """
-    stackstokes(I, Q, U, V)
+    StokesIntensityMap(I, Q, U, V)
 
 Create an array of full stokes parameters. The image is stored as a `StructArray` of
-@ref[StokesParams]. Each of the four
+@ref[StokesParams].
 """
 function StokesIntensityMap(I::IntensityMap{T}, Q::IntensityMap{T}, U::IntensityMap{T}, V::IntensityMap{T}) where {T}
     @assert check_grid(I,Q,U,V) "Intensity grids are not the same across the 4 stokes parameters"
@@ -28,10 +28,10 @@ end
 function StokesIntensityMap(
     I::AbstractArray{T,N}, Q::AbstractArray{T,N},
     U::AbstractArray{T,N}, V::AbstractArray{T,N},
-    dims::NamedTuple{Na,<:NTuple{N,Any}}, header=nothing) where {T, N, Na}
+    dims::NamedTuple{Na,<:NTuple{N,Any}}) where {T, N, Na}
 
     polimg = StructArray{StokesParams{T}}(;I,Q,U,V)
-    return IntensityMap(polimg, dims, header)
+    return IntensityMap(polimg, dims)
 end
 
 # simple check to ensure that the four grids are equal across stokes parameters
