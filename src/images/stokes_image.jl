@@ -1,5 +1,4 @@
-const NdPi{Na, T, N} = NamedDimsArray{Na, T, N, <:StructArray{T, N}}
-const StokesIntensityMap{T,N,Na} = KeyedArray{StokesParams{T}, N, <:DataArr}
+const StokesIntensityMap{T,N} = KeyedArray{StokesParams{T}, N, <:DataArr} where {T, N}
 
 baseimage(s::KeyedArray) = parent(parent(s))
 
@@ -15,7 +14,8 @@ function StokesIntensityMap(I::IntensityMap{T}, Q::IntensityMap{T}, U::Intensity
     return IntensityMap(polimg, named_axiskeys(I))
 end
 
-# function Base.getproperty(s::StokesIntensityMap{T,N,Na}, v::Symbol) where {T,N,Na}
+# # not type piracy because I own StokesParams
+# function Base.getproperty(s::StokesIntensityMap{T,N,Na}, v::Symbol) where {T,N,Na<:DataArr}
 #     if v ∈ propertynames(s)
 #         return axiskeys(s, AxisKeys.NamedDims.dim(Na, v))
 #     elseif v ∈ (:I, :Q, :U, :V)

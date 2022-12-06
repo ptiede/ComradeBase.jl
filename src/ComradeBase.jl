@@ -11,7 +11,7 @@ using Statistics
 export  visibility, intensitymap, intensitymap!,
         StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
         flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
-        named_dims
+        named_dims, IntensityMapTypes
 
 include("interface.jl")
 include("polarizedtypes.jl")
