@@ -36,6 +36,7 @@ function IntensityMap(data::AbstractArray{T,N}, dims::DataNames) where {T,N}
     return KeyedArray{T,N,typeof(a), typeof(values(dims))}(data, values(dims))
 end
 
+
 function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real)
     X, Y = imagepixels(fovx, fovy, size(data)..., 0.0, 0.0)
     return IntensityMap(data, (;X, Y))
