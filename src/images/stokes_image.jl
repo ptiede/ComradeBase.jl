@@ -34,6 +34,16 @@ function StokesIntensityMap(
     return IntensityMap(polimg, dims)
 end
 
+function StokesIntensityMap(
+    I::AbstractArray{T,N}, Q::AbstractArray{T,N},
+    U::AbstractArray{T,N}, V::AbstractArray{T,N},
+    args...) where {T, N}
+
+    polimg = StructArray{StokesParams{T}}(;I,Q,U,V)
+    return IntensityMap(polimg, args...)
+end
+
+
 # simple check to ensure that the four grids are equal across stokes parameters
 function check_grid(I,Q,U,V)
     named_axiskeys(I) == named_axiskeys(Q) == named_axiskeys(U) == named_axiskeys(V)
