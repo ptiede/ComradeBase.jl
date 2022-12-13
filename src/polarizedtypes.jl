@@ -244,6 +244,21 @@ struct CoherencyMatrix{B1,B2,T} <: StaticArrays.FieldMatrix{2,2,T}
     e22::T
 end
 
+ChainRulesCore.ProjectTo(x::CoherencyMatrix{B1, B2, <: Number}) where {B1, B2} = ProjectTo{CoherencyMatrix}(; element = ProjectTo(eltype(x)), basis1=B1(), basis2=B2())
+function (project::ProjectTo{CoherencyMatrix})(dx::AbstractMatrix)
+    @assert size(dx) == (2,2) "Issue in Coherency pullback the matrix is not 2x2"
+    return CoherencyMatrix(dx, project.basis1, project.basis2)
+end
+
+# function ChainRulesCore.rrule(::Type{<:CoherencyMatrix}, e11, e21, e12, e22, basis::NTuple{2, <:PolBasis})
+#     c = CoherencyMatrix(e11, e21, e12, e22, basis)
+#     pr = ProjectTo(e11)
+#     function _CoherencyMatrix_sep_pullback(Δ)
+#         return NoTangent(), pr(Δ[1,1]), pr(Δ[2,1]), pr(Δ[1,2]), pr(Δ[2,2]), NoTangent()
+#     end
+#     return c, _CoherencyMatrix_sep_pullback
+# end
+
 # Needed to ensure everything is constructed nicely
 StaticArrays.similar_type(::Type{CoherencyMatrix{B1,B2}}, ::Type{T}, s::Size{(2,2)}) where {B1,B2,T} = CoherencyMatrix{B1,B2,T}
 
@@ -265,7 +280,7 @@ elements correspond to
     RX* RY*
     LX* LY*
 """
-@inline function CoherencyMatrix(e11, e21, e12, e22, basis::NTuple{2,PolBasis})
+@inline function CoherencyMatrix(e11::Number, e21::Number, e12::Number, e22::Number, basis::NTuple{2,PolBasis})
     T = promote_type(typeof(e11), typeof(e12), typeof(e21), typeof(e22))
     return CoherencyMatrix{typeof(basis[1]), typeof(basis[2]),T}(T(e11), T(e21), T(e12), T(e22))
 end
@@ -287,7 +302,7 @@ elements correspond to
     LR* LL*
 
 """
-@inline function CoherencyMatrix(e11, e21, e12, e22, basis::PolBasis)
+@inline function CoherencyMatrix(e11::Number, e21::Number, e12::Number, e22::Number, basis::PolBasis)
     return CoherencyMatrix(e11, e21, e12, e22, (basis, basis))
 end
 
@@ -308,15 +323,15 @@ elements correspond to
     LX* LY*
 
 """
-@inline function CoherencyMatrix(e11, e21, e12, e22, basis1::PolBasis, basis2::PolBasis)
+@inline function CoherencyMatrix(e11::Number, e21::Number, e12::Number, e22::Number, basis1::PolBasis, basis2::PolBasis)
     return CoherencyMatrix(e11, e21, e12, e22, (basis1, basis2))
 end
 
-@inline function CoherencyMatrix(mat::AbstractMatrix, basis1, basis2)
+@inline function CoherencyMatrix(mat::AbstractMatrix, basis1::PolBasis, basis2::PolBasis)
     return CoherencyMatrix(mat[1], mat[2], mat[3], mat[4], basis1, basis2)
 end
 
-@inline function CoherencyMatrix(mat::AbstractMatrix, basis)
+@inline function CoherencyMatrix(mat::AbstractMatrix, basis::PolBasis)
     return CoherencyMatrix(mat[1], mat[2], mat[3], mat[4], basis)
 end
 
@@ -372,11 +387,7 @@ end
     return convert(CoherencyMatrix{typeof(b), typeof(b)}, s)
 end
 
-@inline function CoherencyMatrix{B1,B2}(s::StokesParams) where {B1, B2}
-    return convert(CoherencyMatrix{B1, B2}, s)
-end
-
-@inline function Base.convert(::Type{<:CoherencyMatrix{CirBasis, CirBasis}}, s::StokesParams)
+@inline function CoherencyMatrix{CirBasis,CirBasis}(s::StokesParams)
     (;I,Q,U,V) = s
     RR = complex((I + V)/2)
     LR = (Q - 1im*U)/2
@@ -385,7 +396,8 @@ end
     return CoherencyMatrix(RR, LR, RL, LL, CirBasis(), CirBasis())
 end
 
-@inline function Base.convert(::Type{<:CoherencyMatrix{LinBasis, LinBasis}}, s::StokesParams)
+
+@inline function CoherencyMatrix{LinBasis, LinBasis}(s::StokesParams)
     (;I,Q,U,V) = s
     XX = (I + Q)/2
     YX = (U - 1im*V)/2
