@@ -351,16 +351,16 @@ CoherencyMatrix(s, CircBasis())
 ```
 will give the coherency matrix
 
-   1|I+V   Q+iU|
-   2|Q-iU  I-V |
+   |I+V   Q+iU|
+   |Q-iU  I-V |
 
 while
 ```julia
 CoherencyMatrix(s, LinBasis())
 ```
 will give
-    1|I+Q   U+iV|
-    2|U-iV  I-Q |
+    |I+Q   U+iV|
+    |U-iV  I-Q |
 
 # Notes
 
@@ -389,30 +389,30 @@ end
 
 @inline function CoherencyMatrix{CirBasis,CirBasis}(s::StokesParams)
     (;I,Q,U,V) = s
-    RR = complex((I + V)/2)
-    LR = (Q - 1im*U)/2
-    RL = (Q + 1im*U)/2
-    LL = complex((I - V)/2)
+    RR = complex((I + V))
+    LR = (Q - 1im*U)
+    RL = (Q + 1im*U)
+    LL = complex((I - V))
     return CoherencyMatrix(RR, LR, RL, LL, CirBasis(), CirBasis())
 end
 
 
 @inline function CoherencyMatrix{LinBasis, LinBasis}(s::StokesParams)
     (;I,Q,U,V) = s
-    XX = (I + Q)/2
-    YX = (U - 1im*V)/2
-    XY = (U + 1im*V)/2
-    YY = (I - Q)/2
+    XX = (I + Q)
+    YX = (U - 1im*V)
+    XY = (U + 1im*V)
+    YY = (I - Q)
     return CoherencyMatrix(XX, YX, XY, YY, LinBasis(), LinBasis())
 end
 
 
 
 @inline function StokesParams(c::CoherencyMatrix{CirBasis, CirBasis})
-    I = c.e11 + c.e22
-    Q = c.e21 + c.e12
-    U = 1im*(c.e21 - c.e12)
-    V = c.e11 - c.e22
+    I = (c.e11 + c.e22)/2
+    Q = (c.e21 + c.e12)/2
+    U = 1im*(c.e21 - c.e12)/2
+    V = (c.e11 - c.e22)/2
     return StokesParams(I, Q, U, V)
 end
 

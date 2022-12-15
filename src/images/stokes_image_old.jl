@@ -50,7 +50,7 @@ function check_grid(I,Q,U,V)
 end
 
 function stokes(pimg::StokesIntensityMap, v::Symbol)
-    imgb = baseimage(pimg)
+    imgb = keyless_uname(pimg)
     imgs = getproperty(imgb, v)
     return IntensityMap(imgs, named_axiskeys(pimg))
 end
