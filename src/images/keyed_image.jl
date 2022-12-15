@@ -37,8 +37,8 @@ function IntensityMap(data::AbstractArray{T,N}, dims::DataNames) where {T,N}
 end
 
 
-function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real)
-    X, Y = imagepixels(fovx, fovy, size(data)..., 0.0, 0.0)
+function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0.0, y0::Real=0.0)
+    X, Y = imagepixels(fovx, fovy, size(data)..., x0, y0)
     return IntensityMap(data, (;X, Y))
 end
 

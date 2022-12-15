@@ -25,6 +25,35 @@ end
 #     end
 # end
 
+export PolIntensityMap
+struct PolIntensityMap{T, S<:IntensityMap{T}}
+    """
+    Stokes I image
+    """
+    I::S
+    """
+    Stokes Q image
+    """
+    Q::S
+    """
+    Stokes U image
+    """
+    U::S
+    """
+    Stokes V image
+    """
+    V::S
+end
+
+Base.size(im::PolIntensityMap) = size(im.I)
+Base.eltype(::PolIntensityMap{T}) where {T} = StokesParams{T}
+Base.@propagate_inbounds Base.getindex(im::PolIntensityMap, i::Int) = StokesParams(getindex(im.I, i),getindex(im.Q, i),getindex(im.U, i),getindex(im.V, i))
+Base.@propagate_inbounds Base.getindex(im::PolIntensityMap, I...) = StokesParams.(getindex(im.I, I...), getindex(im.Q, I...), getindex(im.U, I...), getindex(im.V, I...))
+pixelsizes(img::PolIntensityMap) = pixelsizes(img.I)
+imagepixels(img::PolIntensityMap) = imagepixels(img.I)
+fieldofview(img::PolIntensityMap) = fieldofview(img.I)
+imagegrid(img::PolIntensityMap) = imagegrid(img.I)
+
 function StokesIntensityMap(
     I::AbstractArray{T,N}, Q::AbstractArray{T,N},
     U::AbstractArray{T,N}, V::AbstractArray{T,N},
@@ -50,10 +79,25 @@ function check_grid(I,Q,U,V)
 end
 
 function stokes(pimg::StokesIntensityMap, v::Symbol)
-    imgb = baseimage(pimg)
-    imgs = getproperty(imgb, v)
+    imgb = parent(pimg).data
+    imgs = extract_image(imgb, v)
     return IntensityMap(imgs, named_axiskeys(pimg))
 end
+
+function stokes(pimg::PolIntensityMap, v::Symbol)
+    return getpropety(pimg, v)
+end
+
+
+function extract_image(img::StructArray{<:StokesParams}, v)
+    return getproperty(img, v)
+end
+
+function extract_image(img::AbstractArray{<:StokesParams}, v)
+    return getproperty.(img, v)
+end
+
+
 
 function Base.summary(io::IO, x::StokesIntensityMap)
     return _summary(io, x)

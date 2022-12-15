@@ -17,8 +17,8 @@ Computes the phase center of an intensity map. Note this is the pixels that is i
 the middle of the image.
 """
 function phasecenter(img::IntensityMapTypes)
-    x0 = median(img.X)
-    y0 = median(img.Y)
+    x0 = -median(img.X)
+    y0 = -median(img.Y)
     return (X=x0, Y=y0)
 end
 
