@@ -74,7 +74,7 @@ end
 
 
 # simple check to ensure that the four grids are equal across stokes parameters
-function check_grid(I,Q,U,V)
+function check_grid(I::IntensityMap, Q::IntensityMap,U::IntensityMap ,V::IntensityMap)
     named_axiskeys(I) == named_axiskeys(Q) == named_axiskeys(U) == named_axiskeys(V)
 end
 
@@ -85,7 +85,7 @@ function stokes(pimg::StokesIntensityMap, v::Symbol)
 end
 
 function stokes(pimg::PolIntensityMap, v::Symbol)
-    return getpropety(pimg, v)
+    return getproperty(pimg, v)
 end
 
 
