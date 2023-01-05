@@ -6,8 +6,9 @@ using DimensionalData: AbstractDimArray, NoName, NoMetadata, format, DimTuple,
 
 DD.@dim Fr "frequency"
 
+export DimIntensityMap, dimintensitymap
 
-struct IntensityMap{T,N,D<:Tuple,R<:Tuple,A<:AbstractArray{T,N},Na,Me} <: AbstractDimArray{T,N,D,A}
+struct DimIntensityMap{T,N,D<:Tuple,R<:Tuple,A<:AbstractArray{T,N},Na,Me} <: AbstractDimArray{T,N,D,A}
     data::A
     dims::D
     refdims::R
@@ -15,39 +16,38 @@ struct IntensityMap{T,N,D<:Tuple,R<:Tuple,A<:AbstractArray{T,N},Na,Me} <: Abstra
     metadata::Me
 end
 
-function IntensityMap(
+function DimIntensityMap(
         data::AbstractArray{T,N}, dims::Union{<:NTuple{N, Dimension}, NamedTuple{Na, NTuple{N}}};
         refdims=(), name=NoName(), metadata=NoMetadata()) where {T,N,Na}
 
-    return IntensityMap(data, dims, refdims, name, metadata)
+    return DimIntensityMap(data, dims, refdims, name, metadata)
 end
 
-function IntensityMap(; data, dims, refdims=(), name=NoName(), metadata=NoMetadata())
-    return IntensityMap(data, dims; refdims, name, metadata)
+function DimIntensityMap(; data, dims, refdims=(), name=NoName(), metadata=NoMetadata())
+    return DimIntensityMap(data, dims; refdims, name, metadata)
 end
 
 
-function IntensityMap(A::AbstractDimArray;
+function DimIntensityMap(A::AbstractDimArray;
     data=data(A), dims=dims(A), refdims=refdims(A), name=name(A), metadata=metadata(A)
 )
-    return IntensityMap(data, dims; refdims, name, metadata)
+    return DimIntensityMap(data, dims; refdims, name, metadata)
 end
 
 @inline function DD.rebuild(
-        ::IntensityMap, data::AbstractArray,
+        ::DimIntensityMap, data::AbstractArray,
         dims::Tuple, refdims::Tuple, name, metadata)
-
-    return IntensityMap(data, dims, refdims, name, metadata)
+    return DimIntensityMap(data, format(dims,data), refdims, name, metadata)
 end
 
-const StokesIntensityMap{T,D,N,A} = IntensityMap{StokesParams{T},N,D,<:Tuple,<:Tuple,A}
+const StokesDimIntensityMap{T,D,N,A} = DimIntensityMap{StokesParams{T},N,D,<:Tuple,<:Tuple,A}
 
 function check_grid(I,Q,U,V)
     named_dims(I) == named_dims(Q) == named_dims(U) == named_dims(V)
 end
 
-function StokesIntensityMap(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V::IntensityMap)
-    @assert check_grid(I,Q,U,V) "I,Q,U,V have different griddings/dimensions, this is not supported in StokesIntensityMap"
+function StokesDimIntensityMap(I::DimIntensityMap, Q::DimIntensityMap, U::DimIntensityMap, V::DimIntensityMap)
+    @assert check_grid(I,Q,U,V) "I,Q,U,V have different griddings/dimensions, this is not supported in StokesDimIntensityMap"
     pI = parent(I)
     pQ = parent(Q)
     pU = parent(U)
@@ -55,12 +55,12 @@ function StokesIntensityMap(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V
     return rebuild(I, StructArray{StokesParams{eltype(pI)}}((I=pI, Q=pQ, U=pU, V=pV)))
 end
 
-function named_dims(img::IntensityMap)
+function named_dims(img::DimIntensityMap)
     d = dims(img)
     return NamedTuple{name(d)}(d)
 end
 
-function stokes(pimg::StokesIntensityMap, v::Symbol)
+function stokes(pimg::StokesDimIntensityMap, v::Symbol)
     imgb = parent(pimg)
     imgs = getproperty(imgb, v)
     return rebuild(pimg, imgs)
@@ -72,15 +72,15 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real,
     psizex=fovx/nx
     psizey=fovy/ny
 
-    xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2, nx)
-    yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2, ny)
+    xitr = range(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2, length=nx)
+    yitr = range(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2, length=ny)
 
     return (X(xitr), Y(yitr))
 end
 
-imagepixels(img::IntensityMap) = (X=dims(img, X), Y=dims(img, Y))
+imagepixels(img::DimIntensityMap) = (X=dims(img, X), Y=dims(img, Y))
 
-function fieldofview(img::IntensityMap)
+function fieldofview(img::DimIntensityMap)
     x,y = dims(img, X, Y)
     dx = step(x)
     dy = step(y)
@@ -88,15 +88,15 @@ function fieldofview(img::IntensityMap)
 end
 
 
-function IntensityMap(data, fovx::Real, fovy::Real, x0::Real = 0.0, y0::Real = 0.0; kw...)
+function DimIntensityMap(data, fovx::Real, fovy::Real, x0::Real = 0.0, y0::Real = 0.0; kw...)
     dims = imagepixels(fovx, fovy, size(data)..., x0, y0)
-    return IntensityMap(dta, dims; kw...)
+    return DimIntensityMap(dta, dims; kw...)
 end
 
 """
-    intensitymap(model::AbstractModel, dims, header=nothing)
+    dimintensitymap(model::AbstractModel, dims, header=nothing)
 
-Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap` which
+Computes the intensity map or _image_ of the `model`. This returns an `DimIntensityMap` which
 is a `KeyedArray` with [`ImageDimensions`](@ref) as keys. The dimensions are a `NamedTuple`
 and must have one of the following names:
     - (:X, :Y, :T, :F)
@@ -105,34 +105,36 @@ and must have one of the following names:
 where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
 the time direction and `:F` is the frequency direction.
 """
-@inline function intensitymap(s::M,
+@inline function dimintensitymap(s::M,
                               dims::Union{DimTuple, NamedTuple}, kw...
                               ) where {M<:AbstractModel}
-    return intensitymap(imanalytic(M), s, dims, kw...)
+    return dimintensitymap(imanalytic(M), s, dims, kw...)
 end
 
 
 """
-    intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0; frequency=230:230, time=0.0:0.0)
+    dimintensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0; frequency=230:230, time=0.0:0.0)
 """
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; kwargs...)
+function dimintensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0; kwargs...)
     dims = imagepixels(fovx, fovy, nx, ny, x0, y0)
-    return intensitymap(s, dims, kwargs...)
+    return dimintensitymap(s, dims, kwargs...)
 end
 
 
 """
-    intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())
+    dimintensitymap!(img::AbstractDimIntensityMap, mode;, executor = SequentialEx())
 
-Computes the intensity map or _image_ of the `model`. This updates the `IntensityMap`
+Computes the intensity map or _image_ of the `model`. This updates the `DimIntensityMap`
 object `img`.
 
 Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
-@inline function intensitymap!(img::IntensityMap, s::M) where {M}
-    return intensitymap!(imanalytic(M), img, s)
+@inline function dimintensitymap!(img::DimIntensityMap, s::M) where {M}
+    return dimintensitymap!(imanalytic(M), img, s)
 end
+
+export namedtuple2dim
 
 using DimensionalData
 function namedtuple2dim(d::NamedTuple)
@@ -141,10 +143,10 @@ function namedtuple2dim(d::NamedTuple)
     return rebuild.(n, v)
 end
 
-function intensitymap(::IsAnalytic, s,
+function dimintensitymap(::IsAnalytic, s,
                       dims::NamedTuple; kwargs...)
     d = namedtuple2dim(dims)
-    return intensitymap(IsAnalytic(), s, d; kwargs...)
+    return dimintensitymap(IsAnalytic(), s, d; kwargs...)
 end
 
 struct NamedDimPoints{Na,T,N,D<:NTuple{N,Dimension}} <: DimensionalData.AbstractDimIndices{T,N}
@@ -159,8 +161,8 @@ function NamedDimPoints(dims::DimTuple)
     NamedDimPoints{Na,T,N,typeof(dims)}(dims)
 end
 
-Base.@propagate_inbounds function Base.getindex(dp::NamedDimPoints{Na,T,N}, I::Vararg{Int,N}) where {Na,T,N}
-    dp = getindex.(dp.dims, I)
+@inline function Base.getindex(dp::NamedDimPoints{Na,T,N}, I::Vararg{Int,N}) where {Na,T,N}
+    dp = map(getindex, dp.dims, I)
     return NamedTuple{Na}(dp)
 end
 
@@ -168,11 +170,11 @@ Base.size(d::NamedDimPoints) = map(length, d.dims)
 Base.length(d::NamedDimPoints) = prod(size(d))
 
 
-function intensitymap(::IsAnalytic, s, d::DimTuple)
-    return IntensityMap(_intensitymap_analytic(s, d), d)
+function dimintensitymap(::IsAnalytic, s, d::DimTuple)
+    return DimIntensityMap(_dimintensitymap_analytic(s, d), d)
 end
 
-@noinline function _intensitymap_analytic(s, d)
+@noinline function _dimintensitymap_analytic(s, d)
     dx = step(dims(d,X))
     dy = step(dims(d,Y))
     grid = NamedDimPoints(d)
@@ -181,7 +183,7 @@ end
 end
 
 
-function intensitymap!(::IsAnalytic, img::IntensityMap, s)
+function dimintensitymap!(::IsAnalytic, img::DimIntensityMap, s)
     dx, dy = pixelsizes(img)
     g = grid(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy
