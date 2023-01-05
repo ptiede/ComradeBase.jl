@@ -31,7 +31,7 @@ Returns a named tuple with the image pixels locations `X` and `Y`.
 imagepixels(img::IntensityMapTypes) = (X=img.X, Y=img.Y)
 
 
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real, y0::Real)
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0)
     @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
 
     psizex=fovx/nx
