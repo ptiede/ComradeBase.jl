@@ -68,6 +68,12 @@ function stokes(pimg::StokesIntensityMap, v::Symbol)
     return getproperty(pimg, v)
 end
 
+function stokes(pimg::AbstractArray{<:StokesParams}, v::Symbol)
+    return getproperty.(pimg, v)
+end
+
+baseimage(x::IntensityMap) = AxisKeys.keyless_unname(x)
+
 
 
 function Base.summary(io::IO, x::StokesIntensityMap)
