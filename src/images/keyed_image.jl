@@ -11,8 +11,8 @@ const SpatialDataArr = NDA{(:X, :Y)}
 
 
 # # Our image will be some KeyedArray but where we require specific keys names
-const IntensityMap{T,N} = KeyedArray{T,N,<:DataArr} where {T<:Number, N}
-const SpatialIntensityMap{T,N} = KeyedArray{T,2,<:SpatialDataArr} where {T<:Number}
+const IntensityMap{T,N} = KeyedArray{T,N,<:DataArr} where {T, N}
+const SpatialIntensityMap{T,N} = KeyedArray{T,2,<:SpatialDataArr} where {T}
 
 
 

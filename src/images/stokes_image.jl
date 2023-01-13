@@ -28,6 +28,10 @@ struct StokesIntensityMap{T, N, S<:IntensityMap{T, N}}
     end
 end
 
+function StokesIntensityMap(img::IntensityMap{<:StokesParams})
+    return StokesIntensityMap(stokes(img, :I), stokes(img, :Q), stokes(img, :U), stokes(img, :V))
+end
+
 Base.size(im::StokesIntensityMap) = size(im.I)
 Base.eltype(::StokesIntensityMap{T}) where {T} = StokesParams{T}
 Base.ndims(::StokesIntensityMap{T,N}) where {T,N} = N
