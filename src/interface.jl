@@ -43,6 +43,15 @@ to visibility must return a `StokesParams` to denote the full stokes polarizatio
 """
 abstract type AbstractPolarizedModel <: AbstractModel end
 
+
+export stokes
+"""
+    stokes(m::AbstractPolarizedModel, p::Symbol)
+
+Extract the specific stokes component `p` from the polarized model `m`
+"""
+stokes(m::AbstractPolarizedModel, v::Symbol) = getproperty(m, v)
+
 struct IsPolarized end
 struct NotPolarized end
 
