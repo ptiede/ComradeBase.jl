@@ -45,14 +45,14 @@
         sU = StokesParams(1.0, 0.0, 0.5, 0.0)
         sV = StokesParams(1.0, 0.0, 0.0, 0.5)
 
-        @test CoherencyMatrix(sQ, LinBasis()) ≈ inv(2)*([1.5 0.0; 0.0 0.5])
-        @test CoherencyMatrix(sQ, CirBasis()) ≈ inv(2)*([1.0 0.5; 0.5 1.0])
+        @test CoherencyMatrix(sQ, LinBasis()) ≈ ([1.5 0.0; 0.0 0.5])
+        @test CoherencyMatrix(sQ, CirBasis()) ≈ ([1.0 0.5; 0.5 1.0])
 
-        @test CoherencyMatrix(sU, LinBasis()) ≈ inv(2)*([1.0 0.5; 0.5 1.0])
-        @test CoherencyMatrix(sU, CirBasis()) ≈ inv(2)*([1.0 0.5im; -0.5im 1.0])
+        @test CoherencyMatrix(sU, LinBasis()) ≈ ([1.0 0.5; 0.5 1.0])
+        @test CoherencyMatrix(sU, CirBasis()) ≈ ([1.0 0.5im; -0.5im 1.0])
 
-        @test CoherencyMatrix(sV, LinBasis()) ≈ inv(2)*([1.0 0.5im; -0.5im 1.0])
-        @test CoherencyMatrix(sV, CirBasis()) ≈ inv(2)*([1.5 0.0; 0.0 0.5])
+        @test CoherencyMatrix(sV, LinBasis()) ≈ ([1.0 0.5im; -0.5im 1.0])
+        @test CoherencyMatrix(sV, CirBasis()) ≈ ([1.5 0.0; 0.0 0.5])
     end
 
     @testset "Simple Coherency test" begin
@@ -61,10 +61,10 @@
         cRL = CoherencyMatrix(0.0, 0.0, 0.5, 0.0, CirBasis())
         cLL = CoherencyMatrix(0.0, 0.0, 0.0, 0.5, CirBasis())
 
-        @test StokesParams(cRR) ≈ [0.5, 0.0, 0.0, 0.5]
-        @test StokesParams(cLR) ≈ [0.0, 0.5, 0.5im, 0.0]
-        @test StokesParams(cRL) ≈ [0.0, 0.5, -0.5im, 0.0]
-        @test StokesParams(cLL) ≈ [0.5, 0.0, 0.0, -0.5]
+        @test StokesParams(cRR) ≈ inv(2)*[0.5, 0.0, 0.0, 0.5]
+        @test StokesParams(cLR) ≈ inv(2)*[0.0, 0.5, 0.5im, 0.0]
+        @test StokesParams(cRL) ≈ inv(2)*[0.0, 0.5, -0.5im, 0.0]
+        @test StokesParams(cLL) ≈ inv(2)*[0.5, 0.0, 0.0, -0.5]
 
 
         cXX = CoherencyMatrix(0.5, 0.0, 0.0, 0.0, LinBasis())
@@ -72,21 +72,21 @@
         cXY = CoherencyMatrix(0.0, 0.0, 0.5, 0.0, LinBasis())
         cYY = CoherencyMatrix(0.0, 0.0, 0.0, 0.5, LinBasis())
 
-        @test StokesParams(cXX) ≈ [0.5, 0.5, 0.0, 0.0]
-        @test StokesParams(cYX) ≈ [0.0, 0.0, 0.5, 0.5im]
-        @test StokesParams(cXY) ≈ [0.0, 0.0, 0.5, -0.5im]
-        @test StokesParams(cYY) ≈ [0.5, -0.5, 0.0, 0.0]
+        @test StokesParams(cXX) ≈ inv(2)*[0.5, 0.5, 0.0, 0.0]
+        @test StokesParams(cYX) ≈ inv(2)*[0.0, 0.0, 0.5, 0.5im]
+        @test StokesParams(cXY) ≈ inv(2)*[0.0, 0.0, 0.5, -0.5im]
+        @test StokesParams(cYY) ≈ inv(2)*[0.5, -0.5, 0.0, 0.0]
 
     end
 
     @testset "Conversions back and forward" begin
         s = StokesParams(1.0 .+ 0.0im, 0.2 + 0.2im, 0.2 - 0.2im, 0.1+0.05im)
 
-        s ≈ StokesParams(CoherencyMatrix(s, CirBasis()))
-        s ≈ StokesParams(CoherencyMatrix(s, LinBasis()))
-        s ≈ StokesParams(CoherencyMatrix(s, CirBasis(), LinBasis()))
-        s ≈ StokesParams(CoherencyMatrix(s, LinBasis(), CirBasis()))
-        s ≈ StokesParams(CoherencyMatrix(s, PolBasis{YPol,XPol}(), PolBasis{LPol,RPol}()))
+        @test s ≈ StokesParams(CoherencyMatrix(s, CirBasis()))
+        @test s ≈ StokesParams(CoherencyMatrix(s, LinBasis()))
+        @test s ≈ StokesParams(CoherencyMatrix(s, CirBasis(), LinBasis()))
+        @test s ≈ StokesParams(CoherencyMatrix(s, LinBasis(), CirBasis()))
+        @test s ≈ StokesParams(CoherencyMatrix(s, PolBasis{YPol,XPol}(), PolBasis{LPol,RPol}()))
     end
 
     @testset "Conversion Consistency" begin

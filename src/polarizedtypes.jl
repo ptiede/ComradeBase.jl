@@ -384,7 +384,7 @@ function CoherencyMatrix(s::StokesParams, b1::T, b2::T, refbasis=CirBasis()) whe
 end
 
 @inline function CoherencyMatrix(s::StokesParams, b::PolBasis)
-    return convert(CoherencyMatrix{typeof(b), typeof(b)}, s)
+    return CoherencyMatrix{typeof(b), typeof(b)}(s)
 end
 
 @inline function CoherencyMatrix{CirBasis,CirBasis}(s::StokesParams)
