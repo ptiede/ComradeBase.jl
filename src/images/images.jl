@@ -27,7 +27,7 @@ where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
 the time direction and `:F` is the frequency direction.
 """
 @inline function intensitymap(s::M,
-                              dims::Union{AbstractDims, NamedTuple}
+                              dims::AbstractDims
                               ) where {M<:AbstractModel}
     return intensitymap(imanalytic(M), s, dims)
 end
@@ -59,11 +59,13 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
     return intensitymap!(imanalytic(M), img, s)
 end
 
-function intensitymap(::IsAnalytic, s, dims::NamedTuple)
+intensitymap(s, dims::NamedTuple) = intensitymap(s, GriddedKeys(dims))
+
+function intensitymap(::IsAnalytic, s, dims::GriddedKeys)
     dx = step(dims.X)
     dy = step(dims.Y)
     img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
-    return img
+    return IntensityMap(AxisKeys.keyless_unname(img), dims)
 end
 
 

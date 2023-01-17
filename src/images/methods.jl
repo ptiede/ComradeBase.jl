@@ -5,9 +5,9 @@ Returns the grid the `IntensityMap` is defined as. Note that this is unallocatin
 since it lazily computes the grid. The grid is an example of a KeyedArray and works similarly.
 This is useful for broadcasting a model across an abritrary grid.
 """
-imagegrid(img::IntensityMapTypes) = grid(axiskeys(img))
+imagegrid(img::IntensityMapTypes) = imagegrid(axiskeys(img))
 
-imagegrid(dims::AbstractDims) = grid(dims(dims))
+imagegrid(d::AbstractDims) = grid(named_dims(d))
 
 """
     phasecenter(img::IntensityMap)
