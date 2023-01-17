@@ -4,7 +4,7 @@
 const NDA = AxisKeys.NamedDims.NamedDimsArray
 
 
-abstract type AbstractGrid{N, T} <: AbstractVector{T} end
+abstract type AbstractDims{N, T} <: AbstractVector{T} end
 
 """
     $(TYPEDEF)
@@ -21,28 +21,28 @@ $(FIELDS)
 Warning it is rare you need to access this constructor directly. Instead
 use the direct [`IntensityMap`](@ref) function.
 """
-struct GriddedKeys{N, G, Hd, T} <: AbstractGrid{N, T}
+struct GriddedKeys{N, G, Hd, T} <: AbstractDims{N, T}
     dims::G
     header::Hd
 end
 
-dims(g::AbstractGrid) = g.dims
-header(g::AbstractGrid) = g.header
-Base.keys(::AbstractGrid{N}) where {N} = N
+dims(g::AbstractDims) = g.dims
+header(g::AbstractDims) = g.header
+Base.keys(::AbstractDims{N}) where {N} = N
 
 
-Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
-Base.getindex(d::AbstractGrid, i::Tuple) = getindex(dims(d), i)
-Base.length(d::AbstractGrid) = length(dims(d))
-Base.firstindex(d::AbstractGrid) = 1
-Base.lastindex(d::AbstractGrid) = length(d)
-Base.axes(d::AbstractGrid) = axes(dims(d))
-Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
-Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), header(d))
-Base.front(d::AbstractGrid) = Base.front(dims(d))
-Base.eltype(d::AbstractGrid) = Base.elype(dims(d))
+Base.getindex(d::AbstractDims, i::Int) = getindex(dims(d), i)
+Base.getindex(d::AbstractDims, i::Tuple) = getindex(dims(d), i)
+Base.length(d::AbstractDims) = length(dims(d))
+Base.firstindex(d::AbstractDims) = 1
+Base.lastindex(d::AbstractDims) = length(d)
+Base.axes(d::AbstractDims) = axes(dims(d))
+Base.iterate(d::AbstractDims, i::Int = 1) = iterate(dims(d), i)
+Base.map(f, d::AbstractDims) = rebuild(typeof(d), map(f, dims(d)), header(d))
+Base.front(d::AbstractDims) = Base.front(dims(d))
+Base.eltype(d::AbstractDims) = Base.elype(dims(d))
 
-AxisKeys.findindex(sel, axk::AbstractGrid) = AxisKeys.findindex(sel, dims(axk))
+AxisKeys.findindex(sel, axk::AbstractDims) = AxisKeys.findindex(sel, dims(axk))
 
 
 Base.getproperty(g::GriddedKeys{Na}, p::Symbol) where {Na} = dims(g)[findfirst(==(p), Na)]
@@ -112,18 +112,18 @@ const SpatialDataArr = NDA{(:X, :Y)}
 
 
 # # Our image will be some KeyedArray but where we require specific keys names
-const IntensityMap{T,N, G} = KeyedArray{T,N,<:DataArr, G <: AbstractGrid} where {T, N, G}
-const SpatialIntensityMap{T,2,G} = KeyedArray{T,2,<:SpatialDataArr, G<:AbstractGrid} where {T,G}
+const IntensityMap{T,N, G} = KeyedArray{T,N,<:DataArr, G <: AbstractDims} where {T, N, G}
+const SpatialIntensityMap{T,2,G} = KeyedArray{T,2,<:SpatialDataArr, G<:AbstractDims} where {T,G}
 
 
-function KeyedArray(data::AbstractArray{T, N}, g::AbstractGrid{Na}) where {T, N, Na}
+function KeyedArray(data::AbstractArray{T, N}, g::AbstractDims{Na}) where {T, N, Na}
     narr = NamedDimsArray(data, Na)
     KeyedArray{T, N, typeof(narr), typeof(g)}(narr, g)
 end
 
 """
     IntensityMap(data::AbstractArray, dims::NamedTuple)
-    IntensityMap(data::AbstractArray, grid::AbstractGrid)
+    IntensityMap(data::AbstractArray, grid::AbstractDims)
 
 Constructs an intensitymap using the image dimensions given by `dims`. This returns a
 `KeyedArray` with keys given by an `ImageDimensions` object.
@@ -135,21 +135,14 @@ dims = (X=range(-10.0, 10.0, length=100), Y = range(-10.0, 10.0, length=100),
 imgk = IntensityMap(rand(100,100,5,1), dims)
 ```
 """
-function IntensityMap(data::AbstractArray{T,N}, dims::AbstractGrid) where {T,N}
+function IntensityMap(data::AbstractArray{T,N}, dims::AbstractDims) where {T,N}
     AxisKeys.construction_check(data, values(dims))
     return KeyedArray(data, dims)
 end
 
 IntensityMap(data::AbstractArray, dims::DataNames, header=nothing) = IntensityMap(data, GriddedKeys(dims, header))
 
-
-
-
 function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0.0, y0::Real=0.0)
-    X, Y = imagepixels(fovx, fovy, size(data)..., x0, y0)
-    return IntensityMap(data, (;X, Y))
-end
-
-function _build_named_dims(data, ::NamedTuple{Na}) where {Na}
-    return NamedDimsArray(data, Na)
+    grid = imagepixels(fovx, fovy, size(data)..., x0, y0)
+    return IntensityMap(data, grid)
 end
