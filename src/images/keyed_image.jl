@@ -26,6 +26,27 @@ struct GriddedKeys{N, G, Hd, T} <: AbstractGrid{N, T}
     header::Hd
 end
 
+dims(g::AbstractGrid) = g.dims
+header(g::AbstractGrid) = g.header
+Base.keys(::AbstractGrid{N}) where {N} = N
+
+
+Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
+Base.getindex(d::AbstractGrid, i::Tuple) = getindex(dims(d), i)
+Base.length(d::AbstractGrid) = length(dims(d))
+Base.firstindex(d::AbstractGrid) = 1
+Base.lastindex(d::AbstractGrid) = length(d)
+Base.axes(d::AbstractGrid) = axes(dims(d))
+Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
+Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), header(d))
+Base.front(d::AbstractGrid) = Base.front(dims(d))
+Base.eltype(d::AbstractGrid) = Base.elype(dims(d))
+
+AxisKeys.findindex(sel, axk::AbstractGrid) = AxisKeys.findindex(sel, dims(axk))
+
+
+Base.getproperty(g::GriddedKeys{Na}, p::Symbol) where {Na} = dims(g)[findfirst(==(p), Na)]
+
 """
     GriddedKeys{Na}(dims::Tuple, header=nothing) where {Na}
 
@@ -78,23 +99,6 @@ function rebuild(::Type{<:GriddedKeys{N}}, g, args...) where {N}
     GriddedKeys{N}(g, args...)
 end
 
-dims(g::AbstractGrid) = g.dims
-header(g::AbstractGrid) = g.header
-Base.keys(::AbstractGrid{N}) where {N} = N
-
-
-Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
-Base.getindex(d::AbstractGrid, i::Tuple) = getindex(dims(d), i)
-Base.length(d::AbstractGrid) = length(dims(d))
-Base.firstindex(d::AbstractGrid) = 1
-Base.lastindex(d::AbstractGrid) = length(d)
-Base.axes(d::AbstractGrid) = axes(dims(d))
-Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
-Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), header(d))
-Base.front(d::AbstractGrid) = Base.front(dims(d))
-Base.eltype(d::AbstractGrid) = Base.elype(dims(d))
-
-AxisKeys.findindex(sel, axk::AbstractGrid) = AxisKeys.findindex(sel, dims(axk))
 
 
 
@@ -108,13 +112,18 @@ const SpatialDataArr = NDA{(:X, :Y)}
 
 
 # # Our image will be some KeyedArray but where we require specific keys names
-const IntensityMap{T,N} = KeyedArray{T,N,<:DataArr} where {T, N}
-const SpatialIntensityMap{T,N} = KeyedArray{T,2,<:SpatialDataArr} where {T}
+const IntensityMap{T,N, G} = KeyedArray{T,N,<:DataArr, G <: AbstractGrid} where {T, N, G}
+const SpatialIntensityMap{T,2,G} = KeyedArray{T,2,<:SpatialDataArr, G<:AbstractGrid} where {T,G}
 
 
+function KeyedArray(data::AbstractArray{T, N}, g::AbstractGrid{Na}) where {T, N, Na}
+    narr = NamedDimsArray(data, Na)
+    KeyedArray{T, N, typeof(narr), typeof(g)}(narr, g)
+end
 
 """
     IntensityMap(data::AbstractArray, dims::NamedTuple)
+    IntensityMap(data::AbstractArray, grid::AbstractGrid)
 
 Constructs an intensitymap using the image dimensions given by `dims`. This returns a
 `KeyedArray` with keys given by an `ImageDimensions` object.
@@ -126,12 +135,14 @@ dims = (X=range(-10.0, 10.0, length=100), Y = range(-10.0, 10.0, length=100),
 imgk = IntensityMap(rand(100,100,5,1), dims)
 ```
 """
-function IntensityMap(data::AbstractArray{T,N}, dims::DataNames) where {T,N}
-    a = _build_named_dims(data, dims)
+function IntensityMap(data::AbstractArray{T,N}, dims::AbstractGrid) where {T,N}
     AxisKeys.construction_check(data, values(dims))
-    a = NamedDimsArray(data, keys(dims))
-    return KeyedArray{T,N,typeof(a), typeof(values(dims))}(data, values(dims))
+    return KeyedArray(data, dims)
 end
+
+IntensityMap(data::AbstractArray, dims::DataNames, header=nothing) = IntensityMap(data, GriddedKeys(dims, header))
+
+
 
 
 function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0.0, y0::Real=0.0)
