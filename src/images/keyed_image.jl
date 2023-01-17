@@ -3,6 +3,103 @@
 # a special type. This type is coded to work similar to a Tuple.
 const NDA = AxisKeys.NamedDims.NamedDimsArray
 
+
+abstract type AbstractGrid{N, T} <: AbstractVector{T} end
+
+"""
+    $(TYPEDEF)
+This struct holds the dimensions that the EHT expect. The first type parameter `N`
+defines the names of each dimension. These names are usually one of
+    - (:X, :Y, :T, :F)
+    - (:X, :Y, :F, :T)
+    - (:X, :Y) # spatial only
+where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
+the time direction and `:F` is the frequency direction.
+# Fieldnames
+$(FIELDS)
+# Notes
+Warning it is rare you need to access this constructor directly. Instead
+use the direct [`IntensityMap`](@ref) function.
+"""
+struct GriddedKeys{N, G, Hd, T} <: AbstractGrid{N, T}
+    dims::G
+    header::Hd
+end
+
+"""
+    GriddedKeys{Na}(dims::Tuple, header=nothing) where {Na}
+
+Builds the EHT image dimensions using the names `Na` and dimensions `dims`.
+You can also optionally has a header that stores additional information from e.g.,
+a FITS header.
+The type parameter `Na` defines the names of each dimension.
+These names are usually one of
+    - (:X, :Y, :T, :F)
+    - (:X, :Y, :F, :T)
+    - (:X, :Y) # spatial only
+where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
+the time direction and `:F` is the frequency direction.
+# Notes
+Instead use the direct [`IntensityMap`](@ref) function.
+```julia
+dims = GriddedKeys{(:X, :Y, :T, :F)}((-5.0:0.1:5.0, -4.0:0.1:4.0, [1.0, 1.5, 1.75], [230, 345]))
+```
+"""
+@inline function GriddedKeys{Na}(dims::Tuple, header=nothing) where {Na}
+    @assert length(Na) == length(dims) "The length of names has to equal the number of dims"
+    return GriddedKeys{Na, typeof(dims), typeof(header), eltype(first(dims))}(dims, header)
+end
+
+"""
+    GriddedKeys(dims::NamedTuple{Na}, header=nothing)
+
+Builds the EHT image dimensions using the names `Na` and dimensions are the values of `dims`.
+You can also optionally has a header that stores additional information from e.g.,
+a FITS header.
+The type parameter `Na` defines the names of each dimension.
+These names are usually one of
+    - (:X, :Y, :T, :F)
+    - (:X, :Y, :F, :T)
+    - (:X, :Y) # spatial only
+where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
+the time direction and `:F` is the frequency direction.
+# Notes
+Instead use the direct [`IntensityMap`](@ref) function.
+```julia
+dims = GriddedKeys((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, T=[1.0, 1.5, 1.75], F=[230, 345]))
+```
+"""
+@inline function GriddedKeys(nt::NamedTuple{N}, header=nothing) where {N}
+    dims = values(nt)
+    return GriddedKeys{N}(dims, header)
+end
+
+function rebuild(::Type{<:GriddedKeys{N}}, g, args...) where {N}
+    GriddedKeys{N}(g, args...)
+end
+
+dims(g::AbstractGrid) = g.dims
+header(g::AbstractGrid) = g.header
+Base.keys(::AbstractGrid{N}) where {N} = N
+
+
+Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
+Base.getindex(d::AbstractGrid, i::Tuple) = getindex(dims(d), i)
+Base.length(d::AbstractGrid) = length(dims(d))
+Base.firstindex(d::AbstractGrid) = 1
+Base.lastindex(d::AbstractGrid) = length(d)
+Base.axes(d::AbstractGrid) = axes(dims(d))
+Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
+Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), header(d))
+Base.front(d::AbstractGrid) = Base.front(dims(d))
+Base.eltype(d::AbstractGrid) = Base.elype(dims(d))
+
+AxisKeys.findindex(sel, axk::AbstractGrid) = AxisKeys.findindex(sel, dims(axk))
+
+
+
+
+
 # Define some helpful names for ease typing
 const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)}, <:NamedTuple{(:X,:Y)}}
 const DataArr = Union{NDA{(:X, :Y, :T, :F)}, NDA{(:X, :Y, :F, :T)}, NDA{(:X, :Y)}}
