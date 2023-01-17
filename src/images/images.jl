@@ -27,7 +27,7 @@ where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
 the time direction and `:F` is the frequency direction.
 """
 @inline function intensitymap(s::M,
-                              dims::DataNames
+                              dims::Union{AbstractDims, NamedTuple}
                               ) where {M<:AbstractModel}
     return intensitymap(imanalytic(M), s, dims)
 end
@@ -41,8 +41,8 @@ such that the image has a field of view `fovx`, `fovy`, with the number of pixel
 and the origin or phase center of the image is at `x0`, `y0`.
 """
 function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0)
-    (;X, Y) = imagepixels(fovx, fovy, nx, ny, x0, y0)
-    return intensitymap(s, (X=X, Y=Y))
+    grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
+    return intensitymap(s, grid)
 end
 
 
@@ -59,7 +59,7 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
     return intensitymap!(imanalytic(M), img, s)
 end
 
-function intensitymap(::IsAnalytic, s, dims::DataNames)
+function intensitymap(::IsAnalytic, s, dims::NamedTuple)
     dx = step(dims.X)
     dy = step(dims.Y)
     img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy

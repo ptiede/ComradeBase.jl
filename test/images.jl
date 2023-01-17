@@ -11,14 +11,23 @@
     img3 = IntensityMap(imp, (;X, Y, F, T))
 
     @testset "Slicing" begin
+        @test img1[X=1:1, Y=1:10] isa IntensityMap
+        @test img1[X=5:10, Y=1:end-10] isa IntensityMap
+        @test img2[X=1, Y=1] isa IntensityMap
+
+
         @test img1[X=1, Y=1] ≈ imp[1,1,1,1]
         @test img1[X=1, Y=1:10] ≈ imp[1,1:10,1,1]
         @test img1[X=5:10, Y=1:end-10] ≈ imp[5:10,1:end-10,1,1]
         @test img1[Y=1, X=1] ≈ imp[1,1,1,1]
         @test img2[X=1, Y=1] ≈ imp[1,1,:,:]
 
+
         subimg1 = img1[X=5:10, Y=1:20]
         nk = named_axiskeys(subimg1)
+        nnk = axiskeys(subimg1)
+        @test nnk.X == nk.X
+        @test nnk.Y == nk.Y
         @test nk.X == X[5:10]
         @test nk.Y == Y[1:20]
     end
@@ -29,10 +38,10 @@
     end
 
     @testset "broadcast and map" begin
-        @test typeof(img1) == typeof(img1.^2)
-        @test typeof(img1) == typeof(cos.(img1))
-        @test typeof(img1) == typeof(img1 .+ img1)
-        @test typeof(img1) == typeof(cos.(img2[F=1,T=1]))
+        @test img1.^2 isa IntensityMap
+        @test cos.(img1) isa IntensityMap
+        @test img1 .+ img1 isa IntensityMap
+        @test cos.(img2[F=1,T=1]) isa IntensityMap
     end
 
 
