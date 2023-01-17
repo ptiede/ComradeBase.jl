@@ -51,7 +51,7 @@ end
 Returns a named tuple with the field of view of the image.
 """
 function fieldofview(img::IntensityMapTypes)
-    return fieldofview(named_axiskeys(img))
+    return fieldofview(axiskeys(img))
 end
 
 function fieldofview(dims::GriddedKeys)
