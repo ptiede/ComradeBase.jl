@@ -112,19 +112,19 @@ function AxisKeys.unify_keys(left::AbstractDims, right::AbstractDims)
 end
 
 function AxisKeys.unify_keys(left::AbstractDims{Na}, right::Tuple) where {Na}
-    return AbstractDims{Na}(AxisKeys.unify_keys(dims(left), right))
+    return rebuild(typeof(left), AxisKeys.unify_keys(dims(left), right))
 end
 
-function AxisKeys.unify_keys(left::Tuple, right::AbstractDims{Na}) where {Na}
-    return AbstractDims{Na}(AxisKeys.unify_keys(left, dims(right)))
-end
+AxisKeys.unify_keys(left::Tuple, right::AbstractDims) = AxisKeys.unify_keys(right, left)
 
 
 
 
 
 # Define some helpful names for ease typing
-# const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)}, <:NamedTuple{(:X,:Y)}}
+const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)},
+                        <:NamedTuple{(:X, :Y, :T)}, <:NamedTuple{(:X, :Y, :F)},
+                        <:NamedTuple{(:X,:Y)}}
 # const DataArr = Union{NDA{(:X, :Y, :T, :F)}, NDA{(:X, :Y, :F, :T)}, NDA{(:X, :Y)}}
 
 const SpatialDataArr = NDA{(:X, :Y)}
