@@ -2,7 +2,7 @@
 # AxisKeys.jl. The specialization occurs in the keys themselves for which we define
 # a special type. This type is coded to work similar to a Tuple.
 const NDA = AxisKeys.NamedDims.NamedDimsArray
-export GriddedKeys, named_dims, dims, header
+export GriddedKeys, named_dims, dims, header, axisdims
 
 abstract type AbstractDims{N, T} <: AbstractVector{T} end
 
@@ -42,6 +42,15 @@ Base.iterate(d::AbstractDims, i::Int = 1) = iterate(dims(d), i)
 Base.map(f, d::AbstractDims) = rebuild(typeof(d), map(f, dims(d)), header(d))
 Base.front(d::AbstractDims) = Base.front(dims(d))
 Base.eltype(d::AbstractDims) = Base.eltype(dims(d))
+AxisKeys.axiskeys(img::IntensityMap) = dims(getfield(img, :keys))
+
+
+"""
+    axisdims(img::IntensityMap)
+
+Returns the keys of the `IntensityMap` as the actual internal `AbstractDims` object.
+"""
+axisdims(img::IntensityMap) = getfield(img, :keys)
 
 AxisKeys.findindex(sel, axk::AbstractDims) = AxisKeys.findindex(sel, dims(axk))
 # AxisKeys.keys_getindex(keys::AbstractDims{N}, inds) where {N} = GriddedKeys{N}(AxisKeys.keys_getindex(dims(keys), inds))
