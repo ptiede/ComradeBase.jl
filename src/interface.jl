@@ -34,13 +34,36 @@ If not analytic then `imanalytic` should return `NotAnalytic()`.
 
 """
 abstract type AbstractModel end
+
+"""
+        $(TYPEDEF)
+
+Type the classifies a model as being intrinsically polarized. This means that any call
+to visibility must return a `StokesParams` to denote the full stokes polarization of the model.
+"""
 abstract type AbstractPolarizedModel <: AbstractModel end
+
+
+export stokes
+"""
+    stokes(m::AbstractPolarizedModel, p::Symbol)
+
+Extract the specific stokes component `p` from the polarized model `m`
+"""
+stokes(m::AbstractPolarizedModel, v::Symbol) = getproperty(m, v)
 
 struct IsPolarized end
 struct NotPolarized end
 
-ispolarized(::Type{<:Any}) = NotPolarized()
+
+"""
+    ispolarized(::Type)
+
+Trait function that defines whether a model is polarized or not.
+"""
+ispolarized(::Type{<:AbstractModel}) = NotPolarized()
 ispolarized(::Type{<:AbstractPolarizedModel}) = IsPolarized()
+
 
 
 """
@@ -82,6 +105,11 @@ ComradeBase.isprimitive(::Type{MyModel}) = ComradeBase.IsPrimitive()
 
 """
 function isprimitive end
+
+
+
+
+
 
 @inline isprimitive(::Type{<:AbstractModel}) = NotPrimitive()
 
@@ -150,7 +178,7 @@ Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic
 
 
 """
-    visibility_point(model::AbstractModel, u, v, args...)
+    visibility_point(model::AbstractModel, p)
 
 Function that computes the pointwise visibility. This must be implemented
 in the model interface if `visanalytic(::Type{MyModel}) == IsAnalytic()`
@@ -158,7 +186,7 @@ in the model interface if `visanalytic(::Type{MyModel}) == IsAnalytic()`
 function visibility_point end
 
 """
-    intensity_point(model::AbstractModel, x, y, args...)
+    intensity_point(model::AbstractModel, p)
 
 Function that computes the pointwise intensity if the model has the trait
 in the image domain `IsAnalytic()`. Otherwise it will use construct the image in visibility
@@ -168,7 +196,7 @@ function intensity_point end
 
 
 """
-    intensitymap!(buffer::AbstractMatrix, model::AbstractModel, args...)
+    intensitymap!(buffer::AbstractDimArray, model::AbstractModel)
 
 Computes the intensity map of `model` by modifying the `buffer`
 """

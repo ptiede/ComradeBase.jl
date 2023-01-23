@@ -1,28 +1,53 @@
-abstract type AbstractIntensityMap{T,S} <: AbstractMatrix{T} end
+ export IntensityMap, SpatialIntensityMap,
+        DataArr, SpatialDataArr, DataNames,
+        named_axiskeys, imagepixels, pixelsizes, imagegrid,
+        phasecenter, baseimage
+ include("keyed_image.jl")
+
+export StokesIntensityMap, stokes
+include("stokes_image.jl")
+
+const IntensityMapTypes{T,N} = Union{IntensityMap{T,N}, StokesIntensityMap{T,N}}
+
+export flux, centroid, second_moment, named_axiskeys, axiskeys,
+       imagepixels, pixelsizes, imagegrid, phasecenter
+include("methods.jl")
 
 
-#abstract type AbstractPolarizedMap{I,Q,U,V} end
 """
-    intensitymap(model::AbstractModel, fovx, fovy, nx, ny; executor=SequentialEx(), pulse=DeltaPulse())
+    intensitymap(model::AbstractModel, dims)
 
-Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap`
-object that have a field of view of `fovx, fovy` in the x and y direction  respectively
-with `nx` pixels in the x-direction and `ny` pixels in the y-direction.
-
-Optionally the user can specify the `pulse` function that converts the image from a discrete
-to continuous quantity, and the `executor` that uses `FLoops.jl` to specify how the loop is
-done. By default we use the `SequentialEx` which uses a single-core to construct the image.
+Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap` which
+is a `KeyedArray` with [`ImageDimensions`](@ref) as keys. The dimensions are a `NamedTuple`
+and must have one of the following names:
+    - (:X, :Y, :T, :F)
+    - (:X, :Y, :F, :T)
+    - (:X, :Y) # spatial only
+where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
+the time direction and `:F` is the frequency direction.
 """
 @inline function intensitymap(s::M,
-                              fovx::Number, fovy::Number,
-                              nx::Int, ny::Int;
-                              pulse=ComradeBase.DeltaPulse(),
-                              executor=SequentialEx()) where {M<:AbstractModel}
-    return intensitymap(imanalytic(M), s, fovx, fovy, nx, ny; pulse, executor)
+                              dims::AbstractDims
+                              ) where {M<:AbstractModel}
+    return intensitymap(imanalytic(M), s, dims)
 end
 
+
 """
-    intensitymap!(img::AbstractIntensityMap, model, fovx, fovy, nx, ny; executor, pulse)
+    intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0)
+
+Creates a *spatial only* IntensityMap intensity map whose pixels in the `x`, `y` direction are
+such that the image has a field of view `fovx`, `fovy`, with the number of pixels `nx`, `ny`,
+and the origin or phase center of the image is at `x0`, `y0`.
+"""
+function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0)
+    grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
+    return intensitymap(s, grid)
+end
+
+
+"""
+    intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())
 
 Computes the intensity map or _image_ of the `model`. This updates the `IntensityMap`
 object `img`.
@@ -30,55 +55,23 @@ object `img`.
 Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
-@inline function intensitymap!(img::AbstractIntensityMap, s::M, executor=SequentialEx()) where {M}
-    return intensitymap!(imanalytic(M), img, s, executor)
+@inline function intensitymap!(img::IntensityMapTypes, s::M) where {M}
+    return intensitymap!(imanalytic(M), img, s)
 end
 
-function intensitymap(::IsAnalytic, s,
-                      fovx::Number, fovy::Number,
-                      nx::Int, ny::Int;
-                      pulse=ComradeBase.DeltaPulse(),
-                      executor=SequentialEx())
-    T = typeof(intensity_point(s, 0.0, 0.0))
-    img = IntensityMap(zeros(T, ny, nx), fovx, fovy, pulse)
-    intensitymap!(IsAnalytic(), img, s, executor)
-    return img
+intensitymap(s, dims::NamedTuple) = intensitymap(s, GriddedKeys(dims))
+
+function intensitymap(::IsAnalytic, s, dims::GriddedKeys)
+    dx = step(dims.X)
+    dy = step(dims.Y)
+    img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
+    return IntensityMap(AxisKeys.keyless_unname(img), dims)
 end
 
-function intensitymap!(::IsAnalytic, img::AbstractIntensityMap, s, executor=SequentialEx())
-    x,y = imagepixels(img)
+
+function intensitymap!(::IsAnalytic, img::IntensityMapTypes, s)
     dx, dy = pixelsizes(img)
-    @floop executor for I in CartesianIndices(img)
-        iy,ix = Tuple(I)
-        img[I] = intensity_point(s, x[ix], y[iy])*dx*dy
-    end
+    g = imagegrid(img)
+    img .= intensity_point.(Ref(s), g).*dx.*dy
     return img
 end
-
-
-# function intensitymap(::IsAnalytic, s, fovx::Number, fovy::Number, nx::Int, ny::Int; pulse=ComradeBase.DeltaPulse())
-#     x,y = imagepixels(fovx, fovy, nx, ny)
-#     pimg = map(CartesianIndices((1:ny,1:nx))) do I
-#         iy,ix = Tuple(I)
-#         @inbounds f = intensity_point(s, x[ix], y[iy])
-#         return f
-#     end
-#     return IntensityMap(pimg, fovx, fovy, pulse)
-# end
-
-
-
-# function intensitymap!(::IsAnalytic, im::AbstractIntensityMap, m)
-#     xitr, yitr = imagepixels(im)
-#     @inbounds for (i,x) in pairs(xitr), (j,y) in pairs(yitr)
-#         im[j, i] = intensity_point(m, x, y)
-#     end
-#     return im
-# end
-
-
-
-include("pulse.jl")
-include("polarizedtypes.jl")
-include("intensitymap.jl")
-#include("polarizedmap.jl")
