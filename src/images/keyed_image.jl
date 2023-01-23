@@ -40,17 +40,13 @@ Base.lastindex(d::AbstractDims) = length(d)
 Base.axes(d::AbstractDims) = axes(dims(d))
 Base.iterate(d::AbstractDims, i::Int = 1) = iterate(dims(d), i)
 Base.map(f, d::AbstractDims) = rebuild(typeof(d), map(f, dims(d)), header(d))
+#Make sure we actually get a tuple here
+Base.map(f, args, d::AbstractDims) = map(f, args, dims(d))
+Base.map(f, d::AbstractDims, args) = map(f, dims(d), args)
 Base.front(d::AbstractDims) = Base.front(dims(d))
 Base.eltype(d::AbstractDims) = Base.eltype(dims(d))
-AxisKeys.axiskeys(img::IntensityMap) = dims(getfield(img, :keys))
 
 
-"""
-    axisdims(img::IntensityMap)
-
-Returns the keys of the `IntensityMap` as the actual internal `AbstractDims` object.
-"""
-axisdims(img::IntensityMap) = getfield(img, :keys)
 
 AxisKeys.findindex(sel, axk::AbstractDims) = AxisKeys.findindex(sel, dims(axk))
 # AxisKeys.keys_getindex(keys::AbstractDims{N}, inds) where {N} = GriddedKeys{N}(AxisKeys.keys_getindex(dims(keys), inds))
@@ -143,6 +139,14 @@ const SpatialDataArr = NDA{(:X, :Y)}
 const IntensityMap{T,N,G} = KeyedArray{T,N,<:Any, G} where {T, N, G<:AbstractDims}
 const SpatialIntensityMap{T,G} = KeyedArray{T,2,<:Any, G} where {T,G<:AbstractDims}
 
+"""
+    axisdims(img::IntensityMap)
+
+Returns the keys of the `IntensityMap` as the actual internal `AbstractDims` object.
+"""
+axisdims(img::IntensityMap) = getfield(img, :keys)
+
+AxisKeys.axiskeys(img::IntensityMap) = getfield(img, :keys)
 
 function KeyedArray(data::AbstractArray{T, N}, g::AbstractDims{Na}) where {T, N, Na}
     narr = NamedDimsArray(data, Na)
@@ -166,14 +170,14 @@ for (get_or_view, key_get, maybe_copy) in [
             data = @inbounds $get_or_view(parent(A), inds...)
             inds isa Tuple{Vararg{Integer}} && return data # scalar output
 
-            raw_keys = $key_get(axiskeys(A), inds)
+            raw_keys = $key_get(axisdims(A), inds)
             raw_keys === () && return data # things like A[A .> 0]
 
             new_keys = ntuple(ndims(data)) do d
                 raw_keys === nothing && return axes(data, d)
                 raw_keys[d]
             end
-            KeyedArray(data, GriddedKeys{dimnames(data)}(new_keys, header(axiskeys(A))))
+            KeyedArray(data, GriddedKeys{dimnames(data)}(new_keys, header(axisdims(A))))
 
         end
 
