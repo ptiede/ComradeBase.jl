@@ -148,6 +148,9 @@ axisdims(img::IntensityMap) = getfield(img, :keys)
 
 AxisKeys.axiskeys(img::IntensityMap) = getfield(img, :keys)
 
+header(img::IntensityMap) = header(axiskeys(img))
+
+
 function KeyedArray(data::AbstractArray{T, N}, g::AbstractDims{Na}) where {T, N, Na}
     narr = NamedDimsArray(data, Na)
     KeyedArray{T, N, typeof(narr), typeof(g)}(narr, g)
