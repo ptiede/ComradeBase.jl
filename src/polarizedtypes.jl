@@ -38,6 +38,13 @@ The vertical or Y electric feed basis, i.e. the vertical linear feed.
 struct YPol <: ElectricFieldBasis end
 
 
+abstract type StokesBasis end
+struct IPol end
+struct QPol end
+struct UPol end
+struct VPol end
+
+
 """
     $(TYPEDEF)
 
@@ -336,6 +343,7 @@ end
 end
 
 
+
 """
     CoherencyMatrix(s::StokesParams, basis1::PolBasis)
     CoherencyMatrix(s::StokesParams, basis1::PolBasis, basis2::PolBasis)
@@ -416,6 +424,7 @@ end
     return StokesParams(I, Q, U, V)
 end
 
+
 # @inline function StokesParams(c::CoherencyMatrix{LinBasis, LinBasis})
 #     I = c.e11 + c.e22
 #     Q = c.e11 - c.e22
@@ -452,13 +461,15 @@ m̆(m::StokesParams{T}) where {T} = (m.Q + 1im*m.U)/(m.I + eps(T))
 m̆(m::StokesParams{Complex{T}}) where {T} = (m.Q + 1im*m.U)/(m.I + eps(T))
 m̆(m::CoherencyMatrix{CirBasis,CirBasis}) = 2*m.e12/(m.e11+m.e22)
 # m̆(m::CoherencyMatrix{CirBasis,CirBasis}) = 2*m.e12/(m.e11+m.e22)
+mbreve(m::Union{StokesParams, CoherencyMatrix}) = m̆(m)
 
 """
     $(SIGNATURES)
 Compute the evpa of a stokes vector or cohereny matrix.
 """
-evpa(m::StokesParams) = 1/2*atan(m.U,m.Q)
+evpa(m::StokesParams) = 1/2*atan(m.U, m.Q)
 evpa(m::StokesParams{<:Complex}) = 1/2*angle(m.U/m.Q)
+evpa(m::CoherencyMatrix{CirBasis, CirBasis}) = angle(m.e12)
 
 
 """
@@ -476,29 +487,3 @@ visanalytic(::Type{SingleStokes{M,S}}) where {M,S} = visanalytic(M)
 imanalytic(::Type{SingleStokes{M,S}})  where {M,S} = imanalytic(M)
 isprimitive(::Type{SingleStokes{M,S}}) where {M,S} = isprimitive(M)
 @inline intensity_point(s::SingleStokes{M,S}, x,y) where {M,S} = getproperty(intensity_point(s.model, x,y), S)
-
-
-
-
-
-# struct PolarizedMap{SI<:AbstractIntensityMap,
-#                     SQ<:AbstractIntensityMap,
-#                     SU<:AbstractIntensityMap,
-#                     SV<:AbstractIntensityMap} <: AbstractPolarizedMap{SI,SQ,SU,SV}
-#     I::SI
-#     Q::SQ
-#     U::SU
-#     V::SV
-#     function PolarizedMap(I::SI,Q::SQ,U::SU,V::SV) where {SI, SQ, SU, SV}
-#         @assert size(I) == size(Q) == size(U) == size(V) "Image sizes must be equal in polarized map"
-#         @assert fov(I) == fov(Q) == fov(U) == fov(V) "Image fov must be equal in polarized map"
-#         new{SI,SQ,SU,SV}(I,Q,U,V)
-#     end
-# end
-
-
-# Base.Base.@propagate_inbounds function Base.getindex(pimg::PolarizedMap, i...)
-# return StokesParams(pimg.I[i...], pimg.Q[i...], pimg.U[i...], pimg.V[i...])
-# end
-
-# @inline stokes_parameter(pimg::PolarizedMap, p::Symbol) = getproperty(pimg, p)
