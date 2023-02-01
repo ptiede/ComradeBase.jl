@@ -1,30 +1,30 @@
 export StokesIntensityMap, keyless_unname
 
-struct StokesIntensityMap{T, N, S<:IntensityMap{T, N}}
+struct StokesIntensityMap{T, N, SI, SQ, SU, SV}
     """
     Stokes I image
     """
-    I::S
+    I::SI
     """
     Stokes Q image
     """
-    Q::S
+    Q::SQ
     """
     Stokes U image
     """
-    U::S
+    U::SU
     """
     Stokes V image
     """
-    V::S
+    V::SV
     function StokesIntensityMap(
-        I::S,
-        Q::S,
-        U::S,
-        V::S) where {T<:Real, N, S<:IntensityMap{T,N}}
+        I::IntensityMap{T,N},
+        Q::IntensityMap{T,N},
+        U::IntensityMap{T,N},
+        V::IntensityMap{T,N}) where {T<:Real, N}
 
         check_grid(I, Q, U, V)
-        return new{T, N, S}(I, Q, U, V)
+        return new{T, N, typeof(I), typeof(Q), typeof(U), typeof(V)}(I, Q, U, V)
     end
 end
 
