@@ -68,12 +68,20 @@ function check_grid(I::IntensityMap, Q::IntensityMap,U::IntensityMap ,V::Intensi
     named_axiskeys(I) == named_axiskeys(Q) == named_axiskeys(U) == named_axiskeys(V)
 end
 
-function stokes(pimg::StokesIntensityMap, v::Symbol)
+@inline function stokes(pimg::StokesIntensityMap, v::Symbol)
     return getproperty(pimg, v)
 end
 
-function stokes(pimg::AbstractArray{<:StokesParams}, v::Symbol)
+@inline function stokes(pimg::AbstractArray{<:StokesParams}, v::Symbol)
     return getproperty.(pimg, v)
+end
+
+@inline function stokes(pimg::IntensityMap{<:StokesParams}, v::Symbol)
+    IntensityMap(stokes(baseimage(pimg), v), axiskeys(pimg))
+end
+
+@inline function stokes(pimg::StructArray{<:StokesParams}, v::Symbol)
+    return getproperty(pimg, v)
 end
 
 baseimage(x::IntensityMap) = AxisKeys.keyless_unname(x)
