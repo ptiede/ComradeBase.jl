@@ -53,7 +53,9 @@ Base.keys(::AbstractDims{N}) where {N} = N
 
 Base.getindex(d::AbstractDims, i::Int) = getindex(dims(d), i)
 Base.getindex(d::AbstractDims, i::Tuple) = getindex(dims(d), i)
-Base.length(d::AbstractDims) = length(dims(d))
+Base.ndims(d::AbstractDims) = length(dims(d))
+Base.size(d::AbstractDims) = map(length, dims(d))
+Base.length(d::AbstractDims) = prod(size(d))
 Base.firstindex(d::AbstractDims) = 1
 Base.lastindex(d::AbstractDims) = length(d)
 Base.axes(d::AbstractDims) = axes(dims(d))
@@ -65,7 +67,12 @@ Base.map(f, d::AbstractDims, args) = map(f, dims(d), args)
 Base.front(d::AbstractDims) = Base.front(dims(d))
 Base.eltype(d::AbstractDims) = Base.eltype(dims(d))
 
-
+function Base.show(io::IO, x::GriddedKeys{N}) where {N}
+    println(io, "GriddedKeys{$N}")
+    for n in propertynames(x)
+        println(io, "\t$n: $(getproperty(x, n))")
+    end
+end
 
 AxisKeys.findindex(sel, axk::AbstractDims) = AxisKeys.findindex(sel, dims(axk))
 # AxisKeys.keys_getindex(keys::AbstractDims{N}, inds) where {N} = GriddedKeys{N}(AxisKeys.keys_getindex(dims(keys), inds))
