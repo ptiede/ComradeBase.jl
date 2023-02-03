@@ -17,8 +17,8 @@ Computes the phase center of an intensity map. Note this is the pixels that is i
 the middle of the image.
 """
 function phasecenter(img::IntensityMapTypes)
-    x0 = -median(img.X)
-    y0 = -median(img.Y)
+    x0 = -(last(img.X) + first(img.X))/2
+    y0 = -(last(img.Y) + first(img.Y))/2
     return (X=x0, Y=y0)
 end
 
@@ -26,9 +26,9 @@ end
     imagepixels(img::IntensityMap)
     imagepixels(img::IntensityMapTypes)
 
-Returns a named tuple with the image pixels locations `X` and `Y`.
+Returns a abstract spatial dimension with the image pixels locations `X` and `Y`.
 """
-imagepixels(img::IntensityMapTypes) = (X=img.X, Y=img.Y)
+imagepixels(img::IntensityMapTypes) = GriddedKeys((X=img.X, Y=img.Y))
 
 
 function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0)
@@ -40,7 +40,7 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real 
     xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2 - x0, nx)
     yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2 - y0, ny)
 
-    return (X=xitr, Y=yitr)
+    return GriddedKeys((X=xitr, Y=yitr))
 end
 
 
