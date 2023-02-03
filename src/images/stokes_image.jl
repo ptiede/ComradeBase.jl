@@ -1,5 +1,29 @@
 export StokesIntensityMap, keyless_unname
 
+
+"""
+    $(TYPEDEF)
+
+General struct that holds intensity maps for each stokes parameter. Each image `I, Q, U, V`
+must share the same axis dimensions. This type also obeys much of the usual array interface
+in Julia. The following methods have been implemented:
+
+  - size
+  - eltype (returns StokesParams)
+  - ndims
+  - getindex
+  - setindex!
+  - pixelsizes
+  - fieldofview
+  - imagepixels
+  - imagegrid
+  - stokes
+
+
+!!! warning
+    This may eventually be phased out for `IntensityMaps` whose base types are `StokesParams`,
+    but currently we use this for speed reasons with Zygote.
+"""
 struct StokesIntensityMap{T, N, SI, SQ, SU, SV}
     """
     Stokes I image

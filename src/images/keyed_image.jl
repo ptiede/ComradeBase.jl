@@ -26,8 +26,25 @@ struct GriddedKeys{N, G, Hd, T} <: AbstractDims{N, T}
     header::Hd
 end
 
+"""
+    dims(g::AbstractDims)
+
+Returns a tuple containing the dimensions of `g`. For a named version see [`named_dims`](@ref)
+"""
 dims(g::AbstractDims) = getfield(g, :dims)
+
+"""
+    named_dims(g::AbstractDims)
+
+Returns a named tuple containing the dimensions of `g`. For a unnamed version see [`dims`](@ref)
+"""
 named_dims(g::AbstractDims{N}) where {N} = NamedTuple{N}(dims(g))
+
+"""
+    header(g::AbstractDims)
+
+Returns the headerinformation of the dimensions `g`
+"""
 header(g::AbstractDims) = getfield(g, :header)
 Base.keys(::AbstractDims{N}) where {N} = N
 
@@ -148,6 +165,11 @@ axisdims(img::IntensityMap) = getfield(img, :keys)
 
 AxisKeys.axiskeys(img::IntensityMap) = getfield(img, :keys)
 
+"""
+    header(img::IntensityMap)
+
+Retrieves the header of an IntensityMap
+"""
 header(img::IntensityMap) = header(axiskeys(img))
 
 
