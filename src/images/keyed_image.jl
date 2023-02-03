@@ -26,6 +26,8 @@ struct GriddedKeys{N, G, Hd, T} <: AbstractDims{N, T}
     header::Hd
 end
 
+@inline GriddedKeys(g::GriddedKeys) = g
+
 """
     dims(g::AbstractDims)
 
