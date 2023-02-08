@@ -59,6 +59,7 @@ end
 Base.size(im::StokesIntensityMap) = size(im.I)
 Base.eltype(::StokesIntensityMap{T}) where {T} = StokesParams{T}
 Base.ndims(::StokesIntensityMap{T,N}) where {T,N} = N
+Base.ndims(::Type{<:StokesIntensityMap{T,N}}) where {T,N} = N
 Base.@propagate_inbounds Base.getindex(im::StokesIntensityMap, i::Int) = StokesParams(getindex(im.I, i),getindex(im.Q, i),getindex(im.U, i),getindex(im.V, i))
 Base.@propagate_inbounds Base.getindex(im::StokesIntensityMap, I...) = StokesParams.(getindex(im.I, I...), getindex(im.Q, I...), getindex(im.U, I...), getindex(im.V, I...))
 

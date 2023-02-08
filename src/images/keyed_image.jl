@@ -246,6 +246,6 @@ end
 IntensityMap(data::AbstractArray, dims::NamedTuple, header=nothing) = IntensityMap(data, GriddedKeys(dims, header))
 
 function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0.0, y0::Real=0.0; header=nothing)
-    grid = imagepixels(fovx, fovy, size(data)..., x0, y0)
-    return IntensityMap(data, grid, header)
+    grid = imagepixels(fovx, fovy, size(data)..., x0, y0; header)
+    return IntensityMap(data, grid)
 end

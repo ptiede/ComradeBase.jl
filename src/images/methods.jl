@@ -31,7 +31,7 @@ Returns a abstract spatial dimension with the image pixels locations `X` and `Y`
 imagepixels(img::IntensityMapTypes) = GriddedKeys((X=img.X, Y=img.Y))
 
 
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0)
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0; header=nothing)
     @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
 
     psizex=fovx/nx
@@ -40,7 +40,7 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real 
     xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2 - x0, nx)
     yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2 - y0, ny)
 
-    return GriddedKeys((X=xitr, Y=yitr))
+    return GriddedKeys((X=xitr, Y=yitr), header)
 end
 
 
