@@ -442,7 +442,7 @@ end
 end
 
 
-
+export linearpol, mbreve, m̆, evpa
 """
     $(SIGNATURES)
 
