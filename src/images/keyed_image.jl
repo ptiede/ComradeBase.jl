@@ -66,6 +66,9 @@ Base.map(f, args, d::AbstractDims) = map(f, args, dims(d))
 Base.map(f, d::AbstractDims, args) = map(f, dims(d), args)
 Base.front(d::AbstractDims) = Base.front(dims(d))
 Base.eltype(d::AbstractDims) = Base.eltype(dims(d))
+@inline AxisKeys.unifiable_keys(d1::AbstractDims, d2::Tuple) = AxisKeys.unifiable_keys(dims(d1), d2)
+@inline AxisKeys.unifiable_keys(d1::Tuple, d2::AbstractDims) = AxisKeys.unifiable_keys(d1, dims(d2))
+@inline AxisKeys.unifiable_keys(d1::AbstractDims, d2::AbstractDims) = AxisKeys.unifiable_keys(dims(d1), dims(d2))
 
 function Base.show(io::IO, x::GriddedKeys{N}) where {N}
     println(io, "GriddedKeys{$N}")
