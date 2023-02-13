@@ -1,4 +1,4 @@
-export StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes, RPol, LPol, XPol, YPol, PolBasis, CirBasis, LinBasis,
+export StokesParams, CoherencyMatrix, evpa, m̆, mbreve, SingleStokes, RPol, LPol, XPol, YPol, PolBasis, CirBasis, LinBasis,
        basis_components, basis_transform, coherencymatrix, stokesparams
 
 
