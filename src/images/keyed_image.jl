@@ -31,7 +31,7 @@ end
 """
     dims(g::AbstractDims)
 
-Returns a tuple containing the dimensions of `g`. For a named version see [`named_dims`](@ref)
+Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
 """
 dims(g::AbstractDims) = getfield(g, :dims)
 

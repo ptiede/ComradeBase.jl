@@ -87,7 +87,12 @@ function flux(im::IntensityMapTypes{T,N}) where {T,N}
     return sum(im, dims=(:X, :Y))
 end
 
-flux(im::IntensityMapTypes{T,2}) where {T} = sum(im)
+flux(im::SpatialIntensityMap) = sum(im)
+flux(img::StokesIntensityMap{T}) where {T} = StokesParams(flux(stokes(img, :I)),
+                                             flux(stokes(img, :Q)),
+                                             flux(stokes(img, :U)),
+                                             flux(stokes(img, :V)),
+                                             )
 
 
 
