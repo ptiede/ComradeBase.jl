@@ -1,5 +1,5 @@
 """
-    flux(im::AbstractDimArray)
+    flux(im::IntensityMap)
 
 Computes the flux of a intensity map
 """
@@ -12,7 +12,7 @@ flux(im::IntensityMap{T,2}) where {T} = sum(im)
 
 
 """
-    centroid(im::AbstractIntensityMap)
+    centroid(im::IntensityMap)
 
 Computes the image centroid aka the center of light of the image.
 """
@@ -32,7 +32,7 @@ function centroid(im::IntensityMap{T,2})::Tuple{T,T} where {T}
 end
 
 """
-    centroid(im::AbstractIntensityMap)
+    centroid(im::IntensityMap)
 
 Computes the image centroid aka the center of light of the image.
 """
@@ -42,7 +42,7 @@ function second_moment(im::IntensityMap{T,N}) where {T,N}
 end
 
 """
-    second_moment(im::AbstractIntensityMap; center=true)
+    second_moment(im::IntensityMap; center=true)
 
 Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered
