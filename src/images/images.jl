@@ -32,6 +32,12 @@ the time direction and `:F` is the frequency direction.
     return intensitymap(imanalytic(M), s, dims)
 end
 
+@inline intensitymap(::IsAnalytic, m::AbstractModel, p) = intensitymap_analytic(m, p)
+@inline intensitymap(::NotAnalytic, m::AbstractModel, p) = intensitymap_numeric(m, p)
+
+@inline intensitymap!(::IsAnalytic, img, m::AbstractModel) = intensitymap_analytic!(img, m)
+@inline intensitymap!(::NotAnalytic, img, m::AbstractModel) = intensitymap_numeric!(img, m)
+
 
 """
     intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0)
@@ -40,7 +46,7 @@ Creates a *spatial only* IntensityMap intensity map whose pixels in the `x`, `y`
 such that the image has a field of view `fovx`, `fovy`, with the number of pixels `nx`, `ny`,
 and the origin or phase center of the image is at `x0`, `y0`.
 """
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0)
+function intensitymap(s::AbstractModel, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0)
     grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
     return intensitymap(s, grid)
 end
@@ -55,13 +61,13 @@ object `img`.
 Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
 done. By default we use the `SequentialEx` which uses a single-core to construct the image.
 """
-@inline function intensitymap!(img::IntensityMapTypes, s::M) where {M}
+@inline function intensitymap!(img::IntensityMapTypes, s::AbstractModel)
     return intensitymap!(imanalytic(M), img, s)
 end
 
 intensitymap(s, dims::NamedTuple) = intensitymap(s, GriddedKeys(dims))
 
-function intensitymap(::IsAnalytic, s, dims::GriddedKeys)
+function intensitymap_analytic(s, dims::GriddedKeys)
     dx = step(dims.X)
     dy = step(dims.Y)
     img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
@@ -69,7 +75,7 @@ function intensitymap(::IsAnalytic, s, dims::GriddedKeys)
 end
 
 
-function intensitymap!(::IsAnalytic, img::IntensityMapTypes, s)
+function intensitymap_analytic!(img::IntensityMapTypes, s)
     dx, dy = pixelsizes(img)
     g = imagegrid(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy

@@ -26,10 +26,15 @@ If not analytic then `imanalytic` should return `NotAnalytic()`.
   must be defined if `imanalytic(::Type{YourModel})==IsAnalytic()`.
 - [`visibility_point`](@ref): Defines how to compute model visibilties pointwise. Note this is
     must be defined if `visanalytic(::Type{YourModel})==IsAnalytic()`.
-- [`_visibilities`](@ref): Vectorized version of `visibility_point` if you can gain additional
-  speed
-- [`intensitymap`](@ref): Computes the whole image of the model
-- [`intensitymap!`](@ref): Inplace version of `intensitymap`
+- [`visibilitymap_analytic`](@ref): Vectorized version of `visibility_point` if you can gain additional
+- [`visibilitymap_numeric`](@ref): Vectorized version of `visibility_point` if you can gain additional
+- [`visibilitymap_analytic!`](@ref): Vectorized version of `visibility_point` if you can gain additional
+- [`visibilitymap_numeric!`](@ref): Vectorized version of `visibility_point` if you can gain additional
+                        speed
+- [`intensitymap_analytic`](@ref): Computes the whole image of the model
+- [`intensitymap_numeric`](@ref): Inplace version of `intensitymap`
+- [`intensitymap_analytic!`](@ref): Computes the whole image of the model
+- [`intensitymap_numeric!`](@ref): Inplace version of `intensitymap`
 
 
 """
@@ -209,6 +214,46 @@ function intensitymap! end
 Computes the intensity map of model. For the inplace version see [`intensitymap!`](@ref)
 """
 function intensitymap end
+
+function intensitymap_analytic end
+function intensitymap_numeric end
+
+function intensitymap_analytic! end
+function intensitymap_numeric! end
+
+function visibilitymap_analytic end
+function visibilitymap_numeric end
+
+function visibilitymap_analytic! end
+function visibilitymap_numeric! end
+
+
+
+"""
+    visibilitymap(m, p)
+
+Computes the visibilities of the model `m` at the coordinates specified by `p`
+"""
+@inline function visibilitymap(m::AbstractModel, p)
+    return visibilitymap(visanalytic(typeof(m)), m, p)
+end
+
+"""
+    visibilitymap!(vis, m, p)
+
+Computes the visibilities of the model `m` using the coordinates `p`.
+"""
+@inline function visibilitymap!(vis::AbstractArray, m::AbstractModel, p)
+    return visibilitymap!(visanalytic(typeof(m)), vis, m, p)
+end
+
+@inline visibilitymap(::IsAnalytic, m::AbstractModel, p)  = visibilitymap_analytic(m, p)
+@inline visibilitymap(::NotAnalytic, m::AbstractModel, p) = visibilitymap_numeric(m, p)
+
+@inline visibilitymap!(::IsAnalytic, vis::AbstractArray, m::AbstractModel, p)  = visibilitymap_analytic!(vis, m, p)
+@inline visibilitymap!(::NotAnalytic, vis::AbstractArray, m::AbstractModel, p) = visibilitymap_numeric!(vis, m, p)
+
+
 
 
 """

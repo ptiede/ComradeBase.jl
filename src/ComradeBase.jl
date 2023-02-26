@@ -9,7 +9,9 @@ using RectiGrids
 using Statistics
 using SnoopPrecompile
 
-export  visibility, intensitymap, intensitymap!,
+export  visibility,
+        intensitymap, intensitymap!,
+        visibilitymap, visibilitymap!,
         StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
         flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
         named_dims, IntensityMapTypes
