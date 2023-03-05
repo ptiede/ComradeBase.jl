@@ -14,10 +14,10 @@ are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 """
 @inline function visibilities(m::M, p::NamedTuple) where {M<:AbstractModel}
     U, V, T, F = extract_pos(p)
-    return _visibilties(visanalytic(M), m, U, V, T, F)
+    return _visibilities(visanalytic(M), m, U, V, T, F)
 end
-@inline _visibilities(::IsAnalytic, m, U, V, T, F)  = visibilities_analytic(m, U, V, T, F)
-@inline _visibilities(::NotAnalytic, m, U, V, T, F) = visibilities_numeric(m, U, V, T, F)
+@inline _visibilities(::IsAnalytic,  m::AbstractModel, U, V, T, F)  = visibilities_analytic(m, U, V, T, F)
+@inline _visibilities(::NotAnalytic, m::AbstractModel, U, V, T, F) = visibilities_numeric(m, U, V, T, F)
 
 function visibilities_analytic(m::AbstractModel, u, v, t, f)
     vis = visibility_point.(Ref(m), u, v, t, f)
@@ -33,10 +33,10 @@ are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 """
 @inline function visibilities!(vis::AbstractArray, m::M, p::NamedTuple) where {M<:AbstractModel}
     U, V, T, F = extract_pos(p)
-    return _visibilties!(visanalytic(M), vis, m, U, V, T, F)
+    return _visibilities!(visanalytic(M), vis, m, U, V, T, F)
 end
-@inline _visibilities!(::IsAnalytic , vis, m, U, V, T, F)  = visibilities_analytic!(vis, m, U, V, T, F)
-@inline _visibilities!(::NotAnalytic, vis, m, U, V, T, F)  = visibilities_numeric!(vis, m, U, V, T, F)
+@inline _visibilities!(::IsAnalytic , vis::AbstractArray, m::AbstractModel, U, V, T, F)  = visibilities_analytic!(vis, m, U, V, T, F)
+@inline _visibilities!(::NotAnalytic, vis::AbstractArray, m::AbstractModel, U, V, T, F)  = visibilities_numeric!(vis, m, U, V, T, F)
 
 function visibilities_analytic!(vis::AbstractArray, m::AbstractModel, u, v, t, f)
     vis .= visibility_point.(Ref(m), u, v, t, f)

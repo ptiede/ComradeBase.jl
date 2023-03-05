@@ -210,10 +210,39 @@ Computes the intensity map of model. For the inplace version see [`intensitymap!
 """
 function intensitymap end
 
+"""
+    intensitymap_numeric(m::AbstractModel, p::AbstractDims)
+
+Computes the `IntensityMap` of a model `m` at the image positions `p` using a numerical method.
+This has to be specified uniquely for every model `m` if `imanalytic(typeof(m)) === NotAnalytic()`.
+See `Comrade.jl` for example implementations.
+"""
 function intensitymap_numeric end
+
+"""
+    intensitymap_analytic(m::AbstractModel, p::AbstractDims)
+
+Computes the `IntensityMap` of a model `m` using the image dimensions `p`
+by broadcasting over the analytic [`intensity_point`](@ref) method.
+"""
 function intensitymap_analytic end
 
+"""
+intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
+intensitymap_numeric!(img::StokesIntensityMap, m::AbstractModel)
+
+Updates the `img` using the model `m`  using a numerical method.
+This has to be specified uniquely for every model `m` if `imanalytic(typeof(m)) === NotAnalytic()`.
+See `Comrade.jl` for example implementations.
+"""
 function intensitymap_numeric! end
+
+"""
+intensitymap_analytic!(img::IntensityMap, m::AbstractModel)
+intensitymap_analytic!(img::StokesIntensityMap, m::AbstractModel)
+
+Updates the `img` using the model `m`  by broadcasting over the analytic [`intensity_point`](@ref) method.
+"""
 function intensitymap_analytic! end
 
 
@@ -246,14 +275,56 @@ Computes the complex visibilities `vis` in place at the locations given by `args
 function visibilities! end
 
 
+"""
+    _visibilities(model::AbstractModel, args...)
 
+Internal method used for trait dispatch and unpacking of args arguments in `visibilities`
+
+!!! warn
+    Not part of the public API so it may change at any moment.
+"""
 function _visibilities end
+
+"""
+    _visibilities!(model::AbstractModel, args...)
+
+Internal method used for trait dispatch and unpacking of args arguments in `visibilities!`
+
+!!! warn
+    Not part of the public API so it may change at any moment.
+"""
 function _visibilities! end
 
+"""
+    visibilties_numeric(model, u, v, time, freq)
+
+Computes the visibilties of a `model` using a numerical fourier transform. Note that
+none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
+"""
 function visibilities_numeric end
+
+"""
+    visibilties_analytic(model, u, v, time, freq)
+
+Computes the visibilties of a `model` using using the analytic visibility expression given by
+`visibility_point`.
+"""
 function visibilities_analytic end
 
+"""
+    visibilties_numeric!(vis, model, u, v, time, freq)
+
+Computes the visibilties of a `model` in-place using a numerical fourier transform. Note that
+none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
+"""
 function visibilities_numeric! end
+
+"""
+    visibilties_analytic!(vis, model, u, v, time, freq)
+
+Computes the visibilties of a `model` in-place, using using the analytic visibility expression given by
+`visibility_point`.
+"""
 function visibilities_analytic! end
 
 
