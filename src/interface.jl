@@ -210,6 +210,17 @@ Computes the intensity map of model. For the inplace version see [`intensitymap!
 """
 function intensitymap end
 
+function intensitymap_numeric end
+function intensitymap_analytic end
+
+function intensitymap_numeric! end
+function intensitymap_analytic! end
+
+
+
+
+
+
 
 """
     radialextent(model::AbstractModel)
@@ -219,7 +230,33 @@ estimate image size when plotting and using `modelimage`
 """
 function radialextent end
 
-# """
+"""
+    visibilities(model::AbstractModel, args...)
+
+Computes the complex visibilities at the locations given by `args...`
+"""
+function visibilities end
+
+
+"""
+    visibilities!(vis::AbstractArray, model::AbstractModel, args...)
+
+Computes the complex visibilities `vis` in place at the locations given by `args...`
+"""
+function visibilities! end
+
+
+
+function _visibilities end
+function _visibilities! end
+
+function visibilities_numeric end
+function visibilities_analytic end
+
+function visibilities_numeric! end
+function visibilities_analytic! end
+
+
 #     ($SIGNATURES)
 # A threaded version of the intensitymap function.
 

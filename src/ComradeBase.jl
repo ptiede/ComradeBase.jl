@@ -17,6 +17,7 @@ export  visibility, intensitymap, intensitymap!,
 include("interface.jl")
 include("polarizedtypes.jl")
 include("images/images.jl")
+include("visibilities.jl")
 
 @precompile_setup begin
     fovx = 10.0

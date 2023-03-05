@@ -14,6 +14,7 @@ export flux, centroid, second_moment, named_axiskeys, axiskeys,
 include("methods.jl")
 
 
+
 """
     intensitymap(model::AbstractModel, dims)
 
@@ -31,19 +32,8 @@ the time direction and `:F` is the frequency direction.
                               ) where {M<:AbstractModel}
     return intensitymap(imanalytic(M), s, dims)
 end
-
-
-"""
-    intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0)
-
-Creates a *spatial only* IntensityMap intensity map whose pixels in the `x`, `y` direction are
-such that the image has a field of view `fovx`, `fovy`, with the number of pixels `nx`, `ny`,
-and the origin or phase center of the image is at `x0`, `y0`.
-"""
-function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0)
-    grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
-    return intensitymap(s, grid)
-end
+@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDims)  = intensitymap_analytic(m, dims)
+@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDims) = intensitymap_numeric(m, dims)
 
 
 """
@@ -58,20 +48,35 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
 @inline function intensitymap!(img::IntensityMapTypes, s::M) where {M}
     return intensitymap!(imanalytic(M), img, s)
 end
+@inline intensitymap!(::IsAnalytic, img::IntensityMapTypes, m::AbstractModel)  = intensitymap_analytic!(img, m)
+@inline intensitymap!(::NotAnalytic, img::IntensityMapTypes, m::AbstractModel) = intensitymap_numeric!(img, m)
 
-intensitymap(s, dims::NamedTuple) = intensitymap(s, GriddedKeys(dims))
 
-function intensitymap(::IsAnalytic, s, dims::GriddedKeys)
+@inline intensitymap(s::AbstractModel, dims::NamedTuple) = intensitymap(s, GriddedKeys(dims))
+
+function intensitymap_analytic(s::AbstractModel, dims::AbstractDims)
     dx = step(dims.X)
     dy = step(dims.Y)
     img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
     return IntensityMap(AxisKeys.keyless_unname(img), dims)
 end
 
-
-function intensitymap!(::IsAnalytic, img::IntensityMapTypes, s)
+function intensitymap_analytic!(img::IntensityMapTypes, s)
     dx, dy = pixelsizes(img)
     g = imagegrid(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy
     return img
+end
+
+
+"""
+    intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0)
+
+Creates a *spatial only* IntensityMap intensity map whose pixels in the `x`, `y` direction are
+such that the image has a field of view `fovx`, `fovy`, with the number of pixels `nx`, `ny`,
+and the origin or phase center of the image is at `x0`, `y0`.
+"""
+function intensitymap(s, fovx::Real, fovy::Real, nx::Int, ny::Int, x0::Real=0.0, y0::Real=0.0)
+    grid = imagepixels(fovx, fovy, nx, ny, x0, y0)
+    return intensitymap(s, grid)
 end
