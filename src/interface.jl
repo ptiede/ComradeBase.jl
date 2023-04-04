@@ -26,10 +26,12 @@ If not analytic then `imanalytic` should return `NotAnalytic()`.
   must be defined if `imanalytic(::Type{YourModel})==IsAnalytic()`.
 - [`visibility_point`](@ref): Defines how to compute model visibilties pointwise. Note this is
     must be defined if `visanalytic(::Type{YourModel})==IsAnalytic()`.
-- [`_visibilities`](@ref): Vectorized version of `visibility_point` if you can gain additional
-  speed
-- [`intensitymap`](@ref): Computes the whole image of the model
-- [`intensitymap!`](@ref): Inplace version of `intensitymap`
+- [`visibilities_analytic`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `IsAnalytic()`
+- [`visibilities_numeric`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `NotAnalytic()` typically these are numerical FT's
+- [`intensitymap_analytic`](@ref): Computes the entire image for models where `imanalytic` returns `IsAnalytic()`
+- [`intensitymap_numeric`](@ref): Computes the entire image for models where `imanalytic` returns `NotAnalytic()`
+- [`intensitymap_analytic!`](@ref): Inplace version of `intensitymap`
+- [`intensitymap_numeric!`](@ref): Inplace version of `intensitymap`
 
 
 """
