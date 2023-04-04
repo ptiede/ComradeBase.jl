@@ -19,13 +19,12 @@ If not analytic then `imanalytic` should return `NotAnalytic()`.
 - [`radialextent`](@ref): Provides a estimate of the radial extent of the model in the image domain.
    This is used for estimating the size of the image, and for plotting.
 - [`flux`](@ref): Returns the total flux of the model.
-
-**Optional Methods:**
-
 - [`intensity_point`](@ref): Defines how to compute model intensities pointwise. Note this is
   must be defined if `imanalytic(::Type{YourModel})==IsAnalytic()`.
 - [`visibility_point`](@ref): Defines how to compute model visibilties pointwise. Note this is
     must be defined if `visanalytic(::Type{YourModel})==IsAnalytic()`.
+**Optional Methods:**
+- [`ispolarized`](@ref): Specified whether a model is intrinsically polarized (returns `IsPolarized()`) or is not (returns `NotPolarized()`)
 - [`visibilities_analytic`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `IsAnalytic()`
 - [`visibilities_numeric`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `NotAnalytic()` typically these are numerical FT's
 - [`intensitymap_analytic`](@ref): Computes the entire image for models where `imanalytic` returns `IsAnalytic()`
