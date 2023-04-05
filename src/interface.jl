@@ -14,8 +14,8 @@ methods to satify the interface:
    then this should return `IsAnalytic()` and the user *must* to define `visibility_point`.
    If not analytic then `visanalytic` should return `NotAnalytic()`.
 - [`imanalytic`](@ref): defines whether the model intensities can be computed pointwise. If yes
-then this should return `IsAnalytic()` and the user *must* to define `intensity_point`.
-If not analytic then `imanalytic` should return `NotAnalytic()`.
+    then this should return `IsAnalytic()` and the user *must* to define `intensity_point`.
+    If not analytic then `imanalytic` should return `NotAnalytic()`.
 - [`radialextent`](@ref): Provides a estimate of the radial extent of the model in the image domain.
    This is used for estimating the size of the image, and for plotting.
 - [`flux`](@ref): Returns the total flux of the model.
@@ -229,8 +229,8 @@ by broadcasting over the analytic [`intensity_point`](@ref) method.
 function intensitymap_analytic end
 
 """
-intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
-intensitymap_numeric!(img::StokesIntensityMap, m::AbstractModel)
+    intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
+    intensitymap_numeric!(img::StokesIntensityMap, m::AbstractModel)
 
 Updates the `img` using the model `m`  using a numerical method.
 This has to be specified uniquely for every model `m` if `imanalytic(typeof(m)) === NotAnalytic()`.
@@ -239,8 +239,8 @@ See `Comrade.jl` for example implementations.
 function intensitymap_numeric! end
 
 """
-intensitymap_analytic!(img::IntensityMap, m::AbstractModel)
-intensitymap_analytic!(img::StokesIntensityMap, m::AbstractModel)
+    intensitymap_analytic!(img::IntensityMap, m::AbstractModel)
+    intensitymap_analytic!(img::StokesIntensityMap, m::AbstractModel)
 
 Updates the `img` using the model `m`  by broadcasting over the analytic [`intensity_point`](@ref) method.
 """
