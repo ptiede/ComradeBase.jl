@@ -7,7 +7,7 @@ using StaticArrays
 using StructArrays
 using RectiGrids
 using Statistics
-using SnoopPrecompile
+using PrecompileTools
 
 export  visibility, intensitymap, intensitymap!,
         StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
@@ -19,12 +19,12 @@ include("polarizedtypes.jl")
 include("images/images.jl")
 include("visibilities.jl")
 
-@precompile_setup begin
+@setup_workload begin
     fovx = 10.0
     fovy = 12.0
     nx = 10
     ny = 10
-    @precompile_all_calls begin
+    @compile_workload begin
         p = imagepixels(fovx, fovy, nx, ny)
         g = GriddedKeys(p)
         imgI = IntensityMap(rand(10, 10), g)
