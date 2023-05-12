@@ -6,6 +6,47 @@ export GriddedKeys, named_dims, dims, header, axisdims
 
 abstract type AbstractDims{N, T} <: AbstractVector{T} end
 
+abstract type AbstractHeader end
+
+"""
+    MinimalHeader{T}
+
+A minimal header type for ancillary image information.
+
+# Fields
+$(FIELDS)
+"""
+struct MinimalHeader{T}
+    """
+    Common source name
+    """
+    source::String
+    """
+    Right ascension of the image in degrees (J2000)
+    """
+    ra::T
+    """
+    Declination of the image in degrees (J2000)
+    """
+    dec::T
+    """
+    Modified Julian Date in days
+    """
+    mjd::Int
+    """
+    Frequency of the image in Hz
+    """
+    frequency::T
+end
+
+"""
+    NoHeader
+
+
+"""
+struct NoHeader end
+
+
 """
     $(TYPEDEF)
 This struct holds the dimensions that the EHT expect. The first type parameter `N`
@@ -227,6 +268,7 @@ end
 
 
 
+
 """
     IntensityMap(data::AbstractArray, dims::NamedTuple)
     IntensityMap(data::AbstractArray, grid::AbstractDims)
@@ -246,9 +288,10 @@ function IntensityMap(data::AbstractArray{T,N}, g::AbstractDims) where {T,N}
     return KeyedArray(data, g)
 end
 
-IntensityMap(data::AbstractArray, dims::NamedTuple, header=nothing) = IntensityMap(data, GriddedKeys(dims, header))
+IntensityMap(data::AbstractArray, dims::NamedTuple, header=NoHeader()) = IntensityMap(data, GriddedKeys(dims, header))
 
-function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0.0, y0::Real=0.0; header=nothing)
-    grid = imagepixels(fovx, fovy, size(data)..., x0, y0; header)
+function IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0, y0::Real=0; header=NoHeader())
+    T = typeof(fovx)
+    grid = imagepixels(fovx, fovy, size(data)..., T(x0), T(y0); header)
     return IntensityMap(data, grid)
 end

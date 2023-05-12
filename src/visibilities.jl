@@ -17,12 +17,21 @@ are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
     return _visibilities(visanalytic(M), m, U, V, T, F)
 end
 @inline _visibilities(::IsAnalytic,  m::AbstractModel, U, V, T, F)  = visibilities_analytic(m, U, V, T, F)
-@inline _visibilities(::NotAnalytic, m::AbstractModel, U, V, T, F) = visibilities_numeric(m, U, V, T, F)
+@inline _visibilities(::NotAnalytic, m::AbstractModel, U, V, T, F)  = visibilities_numeric(m, U, V, T, F)
 
 function visibilities_analytic(m::AbstractModel, u, v, t, f)
+    # println(typeof(m))
+    # vis = viszeros(ispolarized(typeof(m)), u)
     vis = visibility_point.(Ref(m), u, v, t, f)
     return vis
 end
+
+function viszeros(::IsPolarized,  u::AbstractVector)
+    T = Complex{eltype(u)}
+    n = size(u)
+    StructArray{StokesParams{Complex{eltype(u)}}}((I=zeros(T, n), Q=zeros(T, n), U=zeros(T, n), V=zeros(T, n)))
+end
+viszeros(::NotPolarized, u::AbstractVector) = zeros(Complex{eltype(u)}, size(u))
 
 
 """

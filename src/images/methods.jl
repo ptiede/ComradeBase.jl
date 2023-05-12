@@ -30,8 +30,10 @@ Returns a abstract spatial dimension with the image pixels locations `X` and `Y`
 """
 imagepixels(img::IntensityMapTypes) = GriddedKeys((X=img.X, Y=img.Y))
 
+ChainRulesCore.@non_differentiable imagepixels(img::IntensityMapTypes)
+ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMapTypes)
 
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0; header=nothing)
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0; header=NoHeader())
     @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
 
     psizex=fovx/nx
