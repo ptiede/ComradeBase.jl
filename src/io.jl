@@ -17,7 +17,7 @@ function _load_fits(fname, ::Type{IntensityMap})
     img = FITS(fname, "r") do f
         if length(f) > 1
             @warn "Currently only loading stokes I. To load polarized quantities\n"*
-                  "please call `Comrade.load(filename, StokesIntensityMap)`"
+                  "please call `ComradeBase.load(filename, StokesIntensityMap)`"
         end
         # assume that the first element is stokes I
         return _extract_fits_image(f[1])
