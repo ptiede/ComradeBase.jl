@@ -5,3 +5,4 @@
 /docs/build/
 .vscode/settings.json
 test/.CondaPkg
+test/Manifest.toml
