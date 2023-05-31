@@ -3,6 +3,7 @@ module ComradeBase
 using AxisKeys
 using ChainRulesCore
 using DocStringExtensions
+using FITSIO
 using StaticArrays
 using StructArrays
 using RectiGrids
