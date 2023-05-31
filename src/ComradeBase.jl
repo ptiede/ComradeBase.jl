@@ -18,6 +18,7 @@ include("interface.jl")
 include("polarizedtypes.jl")
 include("images/images.jl")
 include("visibilities.jl")
+include("io.jl")
 
 @setup_workload begin
     fovx = 10.0
