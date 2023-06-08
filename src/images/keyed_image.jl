@@ -91,6 +91,8 @@ Returns the headerinformation of the dimensions `g`
 header(g::AbstractDims) = getfield(g, :header)
 Base.keys(::AbstractDims{N}) where {N} = N
 
+ChainRulesCore.@non_differentiable header(AbstractDims)
+
 
 Base.getindex(d::AbstractDims, i::Int) = getindex(dims(d), i)
 Base.getindex(d::AbstractDims, i::Tuple) = getindex(dims(d), i)
