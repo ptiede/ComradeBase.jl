@@ -93,6 +93,8 @@ function check_grid(I::IntensityMap, Q::IntensityMap,U::IntensityMap ,V::Intensi
     named_axiskeys(I) == named_axiskeys(Q) == named_axiskeys(U) == named_axiskeys(V)
 end
 
+ChainRulesCore.@non_differentiable check_grid(IntensityMap...)
+
 @inline function stokes(pimg::StokesIntensityMap, v::Symbol)
     return getproperty(pimg, v)
 end
