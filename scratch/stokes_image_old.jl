@@ -14,6 +14,23 @@ function StokesIntensityMap(I::IntensityMap{T}, Q::IntensityMap{T}, U::Intensity
     return IntensityMap(polimg, named_axiskeys(I))
 end
 
+"""
+    $(TYPEDEF)
+Helper function that converts a model from something that compute polarized images
+to just a single stokes parameter. This is useful if you just want to fit a single
+stokes parameter.
+"""
+struct SingleStokes{M, S} <: ComradeBase.AbstractModel
+    model::M
+end
+SingleStokes(m::M, param::Symbol) where {M} = SingleStokes{M, param}(m)
+
+visanalytic(::Type{SingleStokes{M,S}}) where {M,S} = visanalytic(M)
+imanalytic(::Type{SingleStokes{M,S}})  where {M,S} = imanalytic(M)
+isprimitive(::Type{SingleStokes{M,S}}) where {M,S} = isprimitive(M)
+@inline intensity_point(s::SingleStokes{M,S}, x,y) where {M,S} = getproperty(intensity_point(s.model, x,y), S)
+
+
 # # not type piracy because I own StokesParams
 # function Base.getproperty(s::StokesIntensityMap{T,N,Na}, v::Symbol) where {T,N,Na<:DataArr}
 #     if v ∈ propertynames(s)

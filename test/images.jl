@@ -44,6 +44,23 @@
         @test cos.(img2[F=1,T=1]) isa IntensityMap
     end
 
+    @testset "polarized" begin
+        imgI = rand(64, 64, 3, 3)
+        imgQ = rand(64, 64, 3, 3)
+        imgU = rand(64, 64, 3, 3)
+        imgV = rand(64, 64, 3, 3)
+
+        imgP = StructArray{StokesParams}(I=imgI, Q=imgQ, U=imgU, V=imgV)
+        img1 = IntensityMap(imgP[:,:,1,1], (;X,Y))
+        img2 = IntensityMap(imgP, (;X, Y, T, F))
+        simg1 = StokesIntensityMap(img1)
+        simg2 = StokesIntensityMap(img2)
+
+        @test flux(img1) ≈ flux(simg1)
+        @test centroid(img1) == centroid(stokes(img1, :I))
+        @test second_moment(img1) == second_moment(stokes(img1, :I))
+    end
+
 
 
 

@@ -105,13 +105,16 @@ flux(img::StokesIntensityMap{T}) where {T} = StokesParams(flux(stokes(img, :I)),
     centroid(im::AbstractIntensityMap)
 
 Computes the image centroid aka the center of light of the image.
+
+For polarized maps we return the centroid for Stokes I only.
 """
-function centroid(im::IntensityMapTypes)
+function centroid(im::IntensityMapTypes{<:Number})
     (X, Y) = named_axiskeys(im)
     return mapslices(x->centroid(IntensityMap(x, (;X, Y))), im; dims=(:X, :Y))
 end
+centroid(im::IntensityMapTypes{<:StokesParams}) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T}
+function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T<:Real}
     x0 = y0 = zero(eltype(im))
     f = flux(im)
     @inbounds for (i,x) in pairs(axiskeys(im,:X)), (j,y) in pairs(axiskeys(im,:Y))
@@ -121,15 +124,24 @@ function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T}
     return x0./f, y0./f
 end
 
-"""
-    centroid(im::AbstractIntensityMap)
 
-Computes the image centroid aka the center of light of the image.
 """
-function second_moment(im::IntensityMapTypes{T,N}) where {T,N}
+    second_moment(im::AbstractIntensityMap; center=true)
+
+Computes the image second moment tensor of the image.
+By default we really return the second **cumulant** or centered
+second moment, which is specified by the `center` argument.
+
+For polarized maps we return the second moment for Stokes I only.
+"""
+function second_moment(im::IntensityMapTypes{T,N}; center=true) where {T<:Real,N}
     (X, Y) = named_axiskeys(im)
-    return mapslices(x->second_moment(IntensityMap(x, (;X, Y))), im; dims=(:X, :Y))
+    return mapslices(x->second_moment(IntensityMap(x, (;X, Y)); center), im; dims=(:X, :Y))
 end
+
+# Only return the second moment for Stokes I
+second_moment(im::IntensityMapTypes{<:StokesParams}; center=true) = second_moment(stokes(im, :I); center)
+
 
 """
     second_moment(im::AbstractIntensityMap; center=true)
@@ -138,7 +150,7 @@ Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered
 second moment, which is specified by the `center` argument.
 """
-function second_moment(im::IntensityMapTypes{T,2}; center=true) where {T}
+function second_moment(im::IntensityMapTypes{T,2}; center=true) where {T<:Real}
     xx = zero(T)
     xy = zero(T)
     yy = zero(T)

@@ -7,6 +7,8 @@ using StaticArrays
 using StructArrays
 using RectiGrids
 using Statistics
+using Reexport
+@reexport using PolarizedTypes
 using PrecompileTools
 
 export  visibility, intensitymap, intensitymap!,
@@ -15,7 +17,6 @@ export  visibility, intensitymap, intensitymap!,
         named_dims, IntensityMapTypes
 
 include("interface.jl")
-include("polarizedtypes.jl")
 include("images/images.jl")
 include("visibilities.jl")
 
@@ -31,18 +32,6 @@ include("visibilities.jl")
         imgI.^2
 
         pimg = StokesIntensityMap(imgI, imgI, imgI, imgI)
-
-        # Now polarization stuff
-        s = StokesParams(1.0, 0.5, 0.5, 0.5)
-        c1 = CoherencyMatrix(s, CirBasis(), CirBasis())
-        c2 = CoherencyMatrix(s, LinBasis(), LinBasis())
-        c3 = CoherencyMatrix(s, CirBasis(), LinBasis())
-        c4 = CoherencyMatrix(s, LinBasis(), CirBasis())
-
-        StokesParams(c1)
-        StokesParams(c2)
-        StokesParams(c3)
-        StokesParams(c4)
     end
 end
 
