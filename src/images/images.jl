@@ -12,7 +12,7 @@ const IntensityMapTypes{T,N} = Union{IntensityMap{T,N}, StokesIntensityMap{T,N}}
 export flux, centroid, second_moment, named_axiskeys, axiskeys,
        imagepixels, pixelsizes, imagegrid, phasecenter
 include("methods.jl")
-
+include("io.jl")
 
 
 """
