@@ -1,5 +1,6 @@
 using ComradeBase, StaticArrays, JET
 using StructArrays
+using Pyehtim
 using Test
 
 @testset "ComradeBase.jl" begin
