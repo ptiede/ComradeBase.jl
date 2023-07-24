@@ -1,3 +1,9 @@
+export visibilities, visibilities!,
+      logclosure_amplitude, logclosure_amplitudes,
+      amplitude, amplitudes,
+      closure_phase, closure_phases,
+      bispectrum, bispectra
+
 function extract_pos(p::NamedTuple)
     return p.U, p.V, p.T, p.F
 end
@@ -141,11 +147,6 @@ end
 @inline function _visibility_primitive(::IsAnalytic, mimg, u, v, time, freq)
     return visibility_point(mimg, u, v, time, freq)
 end
-
-@inline function _visibility_primitive(::NotAnalytic, mimg, u, v, time, freq)
-    return mimg.cache.sitp(u, v)
-end
-
 
 
 

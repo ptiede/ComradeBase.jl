@@ -20,7 +20,6 @@ export  visibility, intensitymap, intensitymap!,
 include("interface.jl")
 include("images/images.jl")
 include("visibilities.jl")
-include("io.jl")
 
 @setup_workload begin
     fovx = 10.0
