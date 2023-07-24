@@ -5,4 +5,6 @@ using Test
 
 @testset "ComradeBase.jl" begin
     include(joinpath(@__DIR__, "images.jl"))
+    include(joinpath(@__DIR__, "io.jl"))
+    include(joinpath(@__DIR__, "visibilities.jl"))
 end
