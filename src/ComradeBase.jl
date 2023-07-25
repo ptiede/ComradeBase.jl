@@ -13,7 +13,7 @@ using Reexport
 using PrecompileTools
 
 export  visibility, intensitymap, intensitymap!,
-        StokesParams, CoherencyMatrix, evpa, m̆, SingleStokes,
+        StokesParams, CoherencyMatrix,
         flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
         named_dims, IntensityMapTypes
 
