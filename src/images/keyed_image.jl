@@ -16,7 +16,7 @@ A minimal header type for ancillary image information.
 # Fields
 $(FIELDS)
 """
-struct MinimalHeader{T}
+struct MinimalHeader{T} <: AbstractHeader
     """
     Common source name
     """
@@ -32,7 +32,7 @@ struct MinimalHeader{T}
     """
     Modified Julian Date in days
     """
-    mjd::Int
+    mjd::T
     """
     Frequency of the image in Hz
     """
@@ -44,7 +44,7 @@ end
 
 
 """
-struct NoHeader end
+struct NoHeader <: AbstractHeader end
 
 
 """
@@ -62,7 +62,7 @@ $(FIELDS)
 Warning it is rare you need to access this constructor directly. Instead
 use the direct [`IntensityMap`](@ref) function.
 """
-struct GriddedKeys{N, G, Hd, T} <: AbstractDims{N, T}
+struct GriddedKeys{N, G, Hd<:AbstractHeader, T} <: AbstractDims{N, T}
     dims::G
     header::Hd
 end

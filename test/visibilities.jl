@@ -12,7 +12,7 @@ function ComradeBase.intensity_point(::GaussTest, p)
     return exp(-(X^2+Y^2)/2)/2π
 end
 
-function ComradeBase.visibility_point(::GaussTest, u, v, time, freq) where {T}
+function ComradeBase.visibility_point(::GaussTest, u, v, time, freq)
     return complex(exp(-2π^2*(u^2 + v^2)))
 end
 

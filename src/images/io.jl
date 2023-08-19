@@ -75,13 +75,13 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
     #Get frequency
     freq = zero(T)
     if haskey(header, "FREQ")
-        freq = parse(Float64, string(header["FREQ"]))
+        freq = parse(T, string(header["FREQ"]))
     elseif "CRVAL3" in keys(header)
         freq = float(header["CRVAL3"])
     end
-    mjd = zero(T)
+    mjd = 0
     if haskey(header, "MJD")
-        mjd = parse(Float64, string(header["MJD"]))
+        mjd = parse(T, string(header["MJD"]))
     end
     source = "NA"
     if haskey(header,"OBJECT")
@@ -102,7 +102,7 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
             image .= image.*(psizex*psizey/beamarea)
         end
     end
-    info = (source=source, RA=ra, DEC=dec, mjd=mjd, F=freq, stokes=stokes)
+    info = MinimalHeader(source, ra, dec, mjd, freq)
     imap = IntensityMap(image, psizex*nx, psizey*ny; header=info)
     return imap
 end
@@ -122,7 +122,7 @@ function make_header(img)
     if head isa ComradeBase.NoHeader
         return (source="Unknown", RA=180.0, DEC=0.0, mjd=0, F=230e9)
     else
-        return (source=head.source, RA=head.RA, DEC=head.DEC, mjd=head.mjd, F=head.F, stokes=head.stokes)
+        return (source=head.source, RA=head.ra, DEC=head.dec, mjd=head.mjd, F=head.frequency)
     end
 end
 
