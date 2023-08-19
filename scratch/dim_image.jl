@@ -8,39 +8,47 @@ DD.@dim Fr "frequency"
 
 export DimIntensityMap, dimintensitymap
 
-struct DimIntensityMap{T,N,D<:Tuple,R<:Tuple,A<:AbstractArray{T,N},Na,Me} <: AbstractDimArray{T,N,D,A}
+struct DimIntensityMap{T,N,D<:Tuple,R<:Tuple,A<:AbstractArray{T,N},G,Na,Me} <: AbstractDimArray{T,N,D,A}
     data::A
     dims::D
     refdims::R
+    gridding::G
     name::Na
     metadata::Me
 end
 
+Base.parent(img::DimIntensityMap) = img.data
 function DimIntensityMap(
-        data::AbstractArray{T,N}, dims::Union{<:NTuple{N, Dimension}, NamedTuple{Na, NTuple{N}}};
+        data::AbstractArray{T,N}, dims::Union{<:NTuple{N, Dimension}, NamedTuple{Na}};
         refdims=(), name=NoName(), metadata=NoMetadata()) where {T,N,Na}
 
-    return DimIntensityMap(data, dims, refdims, name, metadata)
+    return DimIntensityMap(data, dims, refdims, nothing, name, metadata)
 end
 
 function DimIntensityMap(; data, dims, refdims=(), name=NoName(), metadata=NoMetadata())
-    return DimIntensityMap(data, dims; refdims, name, metadata)
+    return DimIntensityMap(data, dims; refdims, nothing, name, metadata)
 end
 
 
 function DimIntensityMap(A::AbstractDimArray;
     data=data(A), dims=dims(A), refdims=refdims(A), name=name(A), metadata=metadata(A)
 )
-    return DimIntensityMap(data, dims; refdims, name, metadata)
+    return DimIntensityMap(data, dims; refdims, nothing, name, metadata)
 end
 
 @inline function DD.rebuild(
         ::DimIntensityMap, data::AbstractArray,
         dims::Tuple, refdims::Tuple, name, metadata)
-    return DimIntensityMap(data, format(dims,data), refdims, name, metadata)
+    return DimIntensityMap(data, format(dims,data), refdims, nothing, name, metadata)
 end
 
-const StokesDimIntensityMap{T,D,N,A} = DimIntensityMap{StokesParams{T},N,D,<:Tuple,<:Tuple,A}
+DimensionalData.dims(img::DimIntensityMap) = getfield(img, :dims)
+DimensionalData.name(img::DimIntensityMap) = getfield(img, :name)
+DimensionalData.metadata(img::DimIntensityMap) = getfield(img, :metadata)
+DimensionalData.refdims(img::DimIntensityMap) = getfield(img, :refdims)
+
+
+const StokesDimIntensityMap{T,D,N,A,G} = DimIntensityMap{StokesParams{T},N,D,<:Tuple,<:Tuple,A,G}
 
 function check_grid(I,Q,U,V)
     named_dims(I) == named_dims(Q) == named_dims(U) == named_dims(V)

@@ -127,7 +127,7 @@ Base.propertynames(::GriddedKeys{Na}) where {Na} = Na
 Base.getproperty(g::GriddedKeys{Na}, p::Symbol) where {Na} = dims(g)[findfirst(==(p), Na)]
 
 """
-    GriddedKeys{Na}(dims::Tuple, header=nothing) where {Na}
+    GriddedKeys{Na}(dims::Tuple, header=ComradeBase.NoHeader) where {Na}
 
 Builds the EHT image dimensions using the names `Na` and dimensions `dims`.
 You can also optionally has a header that stores additional information from e.g.,
@@ -145,13 +145,13 @@ Instead use the direct [`IntensityMap`](@ref) function.
 dims = GriddedKeys{(:X, :Y, :T, :F)}((-5.0:0.1:5.0, -4.0:0.1:4.0, [1.0, 1.5, 1.75], [230, 345]))
 ```
 """
-@inline function GriddedKeys{Na}(dims::Tuple, header=nothing) where {Na}
+@inline function GriddedKeys{Na}(dims::Tuple, header=NoHeader()) where {Na}
     @assert length(Na) == length(dims) "The length of names has to equal the number of dims"
     return GriddedKeys{Na, typeof(dims), typeof(header), eltype(first(dims))}(dims, header)
 end
 
 """
-    GriddedKeys(dims::NamedTuple{Na}, header=nothing)
+    GriddedKeys(dims::NamedTuple{Na}, header=ComradeBase.NoHeader())
 
 Builds the EHT image dimensions using the names `Na` and dimensions are the values of `dims`.
 You can also optionally has a header that stores additional information from e.g.,
@@ -169,12 +169,12 @@ Instead use the direct [`IntensityMap`](@ref) function.
 dims = GriddedKeys((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, T=[1.0, 1.5, 1.75], F=[230, 345]))
 ```
 """
-@inline function GriddedKeys(nt::NamedTuple{N}, header=nothing) where {N}
+@inline function GriddedKeys(nt::NamedTuple{N}, header=ComradeBase.NoHeader()) where {N}
     dims = values(nt)
     return GriddedKeys{N}(dims, header)
 end
 
-function rebuild(::Type{<:GriddedKeys{N}}, g, header=nothing) where {N}
+function rebuild(::Type{<:GriddedKeys{N}}, g, header=ComradeBase.NoHeader()) where {N}
     GriddedKeys{N}(g, header)
 end
 
