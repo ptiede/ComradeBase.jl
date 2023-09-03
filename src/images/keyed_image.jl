@@ -208,8 +208,8 @@ const SpatialDataArr = NDA{(:X, :Y)}
 
 
 # # Our image will be some KeyedArray but where we require specific keys names
-const IntensityMap{T,N,G} = KeyedArray{T,N,<:Any, G} where {T, N, G<:AbstractDims}
-const SpatialIntensityMap{T,G} = KeyedArray{T,2,<:Any, G} where {T,G<:AbstractDims}
+const IntensityMap{T,N,A,G} = KeyedArray{T,N, <:NamedDimsArray{<:Any, T, N, A}, G} where {T,N,A, G<:AbstractDims}
+const SpatialIntensityMap{T,A,G} = KeyedArray{T,2, <:NamedDimsArray{<:Any, T, 2, A}, G} where {T,A,G<:AbstractDims}
 
 """
     axisdims(img::IntensityMap)
