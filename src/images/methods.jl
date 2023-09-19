@@ -7,7 +7,36 @@ This is useful for broadcasting a model across an abritrary grid.
 """
 imagegrid(img::IntensityMapTypes) = imagegrid(axiskeys(img))
 
-imagegrid(d::AbstractDims) = grid(named_dims(d))
+
+struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
+    slice::A
+    dir::Int
+    dims::Dims{N}
+    function LazySlice(slice::AbstractVector{T}, dim::Int, dims::Dims{N}) where {T, N}
+        @assert 1 ≤ dim ≤ N "Slice dimension is not valid. Must be ≤ $N and ≥ 1 and got $dim"
+        return new{T, N, typeof(slice)}(slice, dim, dims)
+    end
+end
+
+
+@inline Base.size(A::LazySlice) = A.dims
+Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T, N}, I::Vararg{Int, N}) where {T, N}
+    i = I[A.dir]
+    @boundscheck checkbounds(A.slice, i)
+    return A.slice[i]
+end
+
+function _build_slices(g, sz::Dims{M}) where {M}
+    gs = ntuple(i->LazySlice(g[i], i, sz), Val(M))
+    return gs
+end
+
+function imagegrid(d::GriddedKeys{N, <:NTuple{M}, Hd, T}) where {N, M, Hd, T}
+    g = dims(d)
+    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
+end
+
+
 
 """
     phasecenter(img::IntensityMap)
