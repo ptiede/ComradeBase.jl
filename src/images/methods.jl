@@ -164,10 +164,14 @@ function second_moment(im::IntensityMapTypes{T,2}; center=true) where {T<:Real}
 
     if center
         x0, y0 = centroid(im)
-        xx = xx - x0.^2
-        yy = yy - y0.^2
-        xy = xy - x0.*y0
+        xx = xx./f - x0.^2
+        yy = yy./f - y0.^2
+        xy = xy./f - x0.*y0
+    else
+        xx = xx./f
+        yy = yy./f
+        xy = xy./f
     end
 
-    return @SMatrix [xx./f xy./f; xy./f yy./f]
+    return @SMatrix [xx xy; xy yy]
 end
