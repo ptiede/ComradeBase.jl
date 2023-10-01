@@ -43,6 +43,10 @@ function grid(; kwargs...)
     return KeyedArray(g; kwargs...)
 end
 
+function grid(g::NamedTuple)
+    return grid(;g...)
+end
+
 
 
 """
