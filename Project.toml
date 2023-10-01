@@ -1,7 +1,7 @@
 name = "ComradeBase"
 uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.5.3"
+version = "0.5.4"
 
 [deps]
 AxisKeys = "94b1ba4f-4ee9-5380-92f1-94cde586c3c5"
