@@ -64,7 +64,7 @@ end
 function intensitymap_analytic!(img::IntensityMapTypes, s)
     dx, dy = pixelsizes(img)
     g = imagegrid(img)
-    baseimage(img) .= intensity_point.(Ref(s), g).*dx.*dy
+    img .= intensity_point.(Ref(s), g).*dx.*dy
     return img
 end
 

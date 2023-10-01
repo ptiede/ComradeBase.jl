@@ -33,7 +33,14 @@ end
 
 function imagegrid(d::GriddedKeys{N, <:NTuple{M}, Hd, T}) where {N, M, Hd, T}
     g = dims(d)
-    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
+    return KeyedArray(StructArray(NamedTuple{N}(_build_slices(g, size(d)))), d)
+end
+
+function grid(; kwargs...)
+    vals = values(values(kwargs))
+    N = keys(kwargs)
+    g = StructArray(NamedTuple{N}(_build_slices(vals, map(length, vals))))
+    return KeyedArray(g; kwargs...)
 end
 
 
