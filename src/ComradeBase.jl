@@ -6,7 +6,6 @@ using DocStringExtensions
 using FITSIO
 using StaticArrays
 using StructArrays
-using RectiGrids
 using Statistics
 using Reexport
 @reexport using PolarizedTypes
@@ -29,6 +28,7 @@ include("visibilities.jl")
     @compile_workload begin
         p = imagepixels(fovx, fovy, nx, ny)
         g = GriddedKeys(p)
+        gs = imagegrid(p)
         imgI = IntensityMap(rand(10, 10), g)
         imgI.^2
 
