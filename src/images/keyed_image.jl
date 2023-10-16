@@ -39,6 +39,11 @@ struct MinimalHeader{T} <: AbstractHeader
     frequency::T
 end
 
+function MinimalHeader(source, ra, dec, mjd, freq)
+    raT, decT, mjdT, freqT = promote(ra, dec, mjd, freq)
+    return MinimalHeader(source, raT, decT, mjdT, freqT)
+end
+
 """
     NoHeader
 
