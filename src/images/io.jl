@@ -30,7 +30,7 @@ function try_loading(f, stokes, imgI)
         return _extract_fits_image(f[stokes])
     catch
         @warn "No stokes $(stokes) found creating a zero array"
-        imgQ = zeros(imgI)
+        imgQ = zero(imgI)
         return imgQ
 
     end

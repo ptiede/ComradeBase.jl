@@ -56,11 +56,14 @@ end
 Computes the phase center of an intensity map. Note this is the pixels that is in
 the middle of the image.
 """
-function phasecenter(img::IntensityMapTypes)
-    x0 = -(last(img.X) + first(img.X))/2
-    y0 = -(last(img.Y) + first(img.Y))/2
+function phasecenter(dims::AbstractDims)
+    (;X, Y) = dims
+    x0 = -(last(X) + first(X))/2
+    y0 = -(last(Y) + first(Y))/2
     return (X=x0, Y=y0)
 end
+phasecenter(img::IntensityMapTypes) = axiskeys(img)
+
 
 """
     imagepixels(img::IntensityMap)
@@ -106,16 +109,16 @@ end
 
 """
     pixelsizes(img::IntensityMap)
-    pixelsizes(img::IntensityMapTypes)
+    pixelsizes(img::AbstractDims)
 
 Returns a named tuple with the spatial pixel sizes of the image.
 """
-function pixelsizes(img::IntensityMapTypes)
-    keys = imagepixels(img)
+function pixelsizes(keys::AbstractDims)
     x = keys.X
     y = keys.Y
     return (X=step(x), Y=step(y))
 end
+pixelsizes(img::IntensityMapTypes) = pixelsizes(axiskeys(img))
 
 
 
