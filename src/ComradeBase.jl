@@ -1,7 +1,8 @@
 module ComradeBase
 
-using AxisKeys
 using ChainRulesCore
+using DimensionalData
+const DD = DimensionalData
 using DocStringExtensions
 using FITSIO
 using StaticArrays
@@ -27,7 +28,7 @@ include("visibilities.jl")
     ny = 10
     @compile_workload begin
         p = imagepixels(fovx, fovy, nx, ny)
-        g = GriddedKeys(p)
+        g = RectiGrid(p)
         gs = imagegrid(p)
         imgI = IntensityMap(rand(10, 10), g)
         imgI.^2

@@ -1,4 +1,4 @@
-export StokesIntensityMap, keyless_unname
+export StokesIntensityMap
 
 
 """
@@ -90,7 +90,7 @@ end
 
 # simple check to ensure that the four grids are equal across stokes parameters
 function check_grid(I::IntensityMap, Q::IntensityMap,U::IntensityMap ,V::IntensityMap)
-    named_axiskeys(I) == named_axiskeys(Q) == named_axiskeys(U) == named_axiskeys(V)
+    axisdims(I) == axisdims(Q) == axisdims(U) == axisdims(V)
 end
 
 ChainRulesCore.@non_differentiable check_grid(IntensityMap...)
@@ -111,7 +111,6 @@ end
     return getproperty(pimg, v)
 end
 
-baseimage(x::IntensityMap) = AxisKeys.keyless_unname(x)
 
 
 
