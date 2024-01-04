@@ -9,14 +9,14 @@ DD.@dim F "frequency"
 
 export IntensityMap, Fr
 
-struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{T,D},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
+struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{D},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
     data::A
     grid::G
     refdims::R
     name::Na
     function IntensityMap(
         data::A, grid::G, refdims::R, name::Na
-        ) where {A<:AbstractArray{T,N}, G<:AbstractGrid{T,D}, R<:Tuple, Na} where {T,N,D}
+        ) where {A<:AbstractArray{T,N}, G<:AbstractGrid{D}, R<:Tuple, Na} where {T,N,D}
 
         d = dims(grid)
         DD.checkdims(data, d)
@@ -42,7 +42,8 @@ function Base.getproperty(img::IntensityMap, p::Symbol)
     end
 end
 
-const SpatialIntensityMap{T, A, G} = IntensityMap{T,2,A,G} where {T,A,G<:RectiGrid{(:X,:Y)}}
+const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
+const SpatialIntensityMap{T, A, G} = IntensityMap{T,2,<:SpatialDims, A, G} where {T,A,G}
 
 
 function IntensityMap(data::AbstractArray, g::AbstractGrid)
@@ -71,6 +72,9 @@ end
 Returns the keys of the `IntensityMap` as the actual internal `AbstractGrid` object.
 """
 axisdims(img::IntensityMap) = getfield(img, :grid)
+axisdims(img::IntensityMap, p::Symbol) = getproperty(axisdims(img), p)
+
+named_dims(img::IntensityMap) = named_dims(axisdims(img))
 
 
 """

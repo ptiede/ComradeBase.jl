@@ -1,7 +1,7 @@
 # In this file we will define our base image class. This is entirely based on
 export RectiGrid, named_dims, dims, header, axisdims
 
-abstract type AbstractGrid{T,D} end
+abstract type AbstractGrid{D} end
 
 
 abstract type AbstractHeader end
@@ -65,7 +65,7 @@ $(FIELDS)
 Warning it is rare you need to access this constructor directly. Instead
 use the direct [`IntensityMap`](@ref) function.
 """
-struct RectiGrid{T, D, Hd<:AbstractHeader} <: AbstractGrid{T,D}
+struct RectiGrid{D, Hd<:AbstractHeader} <: AbstractGrid{D}
     dims::D
     header::Hd
 end
@@ -115,8 +115,8 @@ Base.map(f, d::AbstractGrid, args) = map(f, dims(d), args)
 Base.front(d::AbstractGrid) = Base.front(dims(d))
 Base.eltype(d::AbstractGrid) = Base.eltype(dims(d))
 
-function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{T}) where {T}
-    println(io, "RectiGrid{$T}")
+function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid)
+    println(io, "RectiGrid:")
     for n in propertynames(x)
         print(io, "\t")
         show(io, mime, getproperty(x, n))
@@ -125,8 +125,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{T}) where {T}
 end
 
 
-Base.propertynames(d::RectiGrid{T,D}) where {T,D} = keys(d)
-Base.getproperty(g::RectiGrid{T,D}, p::Symbol) where {T,D} = dims(g)[findfirst(==(p), keys(g))]
+Base.propertynames(d::RectiGrid) = keys(d)
+Base.getproperty(g::RectiGrid, p::Symbol) = dims(g)[findfirst(==(p), keys(g))]
 
 """
     RectiGrid{Na}(dims::Tuple, header=ComradeBase.NoHeader) where {Na}
@@ -136,19 +136,19 @@ You can also optionally has a header that stores additional information from e.g
 a FITS header.
 The type parameter `Na` defines the names of each dimension.
 These names are usually one of
-    - (:X, :Y, :T, :F)
-    - (:X, :Y, :F, :T)
+    - (:X, :Y, :Ti, :F)
+    - (:X, :Y, :F,  :Ti)
     - (:X, :Y) # spatial only
 where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
 the time direction and `:F` is the frequency direction.
 # Notes
 Instead use the direct [`IntensityMap`](@ref) function.
 ```julia
-dims = RectiGrid{(:X, :Y, :T, :F)}((-5.0:0.1:5.0, -4.0:0.1:4.0, [1.0, 1.5, 1.75], [230, 345]))
+dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], F=[230, 345]))
 ```
 """
-@inline function RectiGrid(dims::Tuple, header=NoHeader())
-    return RectiGrid{eltype(first(dims)), typeof(dims), typeof(header)}(dims, header)
+@inline function RectiGrid(dims::Tuple, header::AbstractHeader=NoHeader())
+    return RectiGrid{typeof(dims), typeof(header)}(dims, header)
 end
 
 """
@@ -159,22 +159,22 @@ You can also optionally has a header that stores additional information from e.g
 a FITS header.
 The type parameter `Na` defines the names of each dimension.
 These names are usually one of
-    - (:X, :Y, :T, :F)
-    - (:X, :Y, :F, :T)
+    - (:X, :Y, :Ti, :F)
+    - (:X, :Y, :F, :Ti)
     - (:X, :Y) # spatial only
-where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
+where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:Ti` is the
 the time direction and `:F` is the frequency direction.
 # Notes
 Instead use the direct [`IntensityMap`](@ref) function.
 ```julia
-dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, T=[1.0, 1.5, 1.75], F=[230, 345]))
+dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], Fr=[230, 345]))
 ```
 """
-@inline function RectiGrid(nt::NamedTuple, header=ComradeBase.NoHeader())
+@inline function RectiGrid(nt::NamedTuple, header::AbstractHeader=ComradeBase.NoHeader())
     dims = map(keys(nt), values(nt)) do k,v
         DD.rebuild(DD.key2dim(k), v)
     end
-    return RectiGrid(dims, header)
+    return RectiGrid(format(dims, map(eachindex, dims)), header)
 end
 
 function DD.rebuild(::Type{<:RectiGrid}, g, header=ComradeBase.NoHeader())

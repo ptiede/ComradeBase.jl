@@ -18,9 +18,6 @@ struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
     end
 end
 
-LazySlice(slice::Dimension, dim, dims::Dims{N}) where {N} = LazySlice(parent(slice), dim, dims)
-
-
 @inline Base.size(A::LazySlice) = A.dims
 Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T, N}, I::Vararg{Int, N}) where {T, N}
     i = I[A.dir]
@@ -28,26 +25,20 @@ Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T, N}, I::V
     return A.slice[i]
 end
 
-function _build_slices(g, sz::Dims{M}) where {M}
+@inline function _build_slices(g, sz::Dims{M}) where {M}
     gs = ntuple(i->LazySlice(g[i], i, sz), Val(M))
     return gs
 end
 
-function imagegrid(d::RectiGrid{T, M, Hd}) where {M, Hd, T}
-    g = dims(d)
+# I need this because LazySlice is allocating unless I strip the dimension information
+@inline basedim(x::DD.Dimension) = basedim(parent(x))
+@inline basedim(x::DD.LookupArrays.LookupArray) = basedim(parent(x))
+@inline basedim(x) = x
+
+function imagegrid(d::RectiGrid{D, Hd}) where {D, Hd}
+    g = map(basedim, dims(d))
     N = keys(d)
-    return DimArray(StructArray(NamedTuple{N}(_build_slices(g, size(d)))), g)
-end
-
-function grid(; kwargs...)
-    vals = values(values(kwargs))
-    N = keys(kwargs)
-    g = StructArray(NamedTuple{N}(_build_slices(vals, map(length, vals))))
-    return KeyedArray(g; kwargs...)
-end
-
-function grid(g::NamedTuple)
-    return grid(;g...)
+    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
 end
 
 
@@ -65,7 +56,7 @@ function phasecenter(dims::AbstractGrid)
     y0 = -(last(Y) + first(Y))/2
     return (X=x0, Y=y0)
 end
-phasecenter(img::IntensityMapTypes) = axisdims(img)
+phasecenter(img::IntensityMapTypes) = phasecenter(axisdims(img))
 
 
 """
@@ -74,7 +65,7 @@ phasecenter(img::IntensityMapTypes) = axisdims(img)
 
 Returns a abstract spatial dimension with the image pixels locations `X` and `Y`.
 """
-imagepixels(img::IntensityMapTypes) = RectiGrid((X=img.X, Y=img.Y))
+imagepixels(img::IntensityMapTypes) = RectiGrid((img.X, img.Y))
 
 ChainRulesCore.@non_differentiable imagepixels(img::IntensityMapTypes)
 ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMapTypes)
@@ -163,9 +154,9 @@ centroid(im::IntensityMapTypes{<:StokesParams}) = centroid(stokes(im, :I))
 function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T<:Real}
     x0 = y0 = zero(eltype(im))
     f = flux(im)
-    @inbounds for (i,x) in pairs(axisdims(im,:X)), (j,y) in pairs(axisdims(im,:Y))
-        x0 += x.*im[X=i, Y=j]
-        y0 += y.*im[X=i, Y=j]
+    @inbounds for (I, (x,y)) in pairs(DimPoints(im))
+        x0 += x.*im[I]
+        y0 += y.*im[I]
     end
     return x0./f, y0./f
 end
@@ -201,11 +192,10 @@ function second_moment(im::IntensityMapTypes{T,2}; center=true) where {T<:Real}
     xy = zero(T)
     yy = zero(T)
     f = flux(im)
-    (;X,Y) = named_axisdims(im)
-    for (i,y) in pairs(Y), (j,x) in pairs(X)
-        xx += x.^2*im[j,i]
-        yy += y.^2*im[j,i]
-        xy += x.*y.*im[j,i]
+    for (I, (x,y)) in pairs(DimPoints(im))
+        xx += x.^2*im[I]
+        yy += y.^2*im[I]
+        xy += x.*y.*im[I]
     end
 
     if center

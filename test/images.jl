@@ -24,12 +24,12 @@
 
 
         subimg1 = img1[X=5:10, Y=1:20]
-        nk = named_axiskeys(subimg1)
-        nnk = axiskeys(subimg1)
+        nk = named_dims(subimg1)
+        nnk = axisdims(subimg1)
         @test nnk.X == nk.X
         @test nnk.Y == nk.Y
-        @test nk.X == X[5:10]
-        @test nk.Y == Y[1:20]
+        @test ComradeBase.basedim(nk.X) == X[5:10]
+        @test ComradeBase.basedim(nk.Y) == Y[1:20]
     end
 
     @testset "keys" begin

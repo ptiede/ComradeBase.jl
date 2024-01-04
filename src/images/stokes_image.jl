@@ -104,7 +104,7 @@ end
 end
 
 @inline function stokes(pimg::IntensityMap{<:StokesParams}, v::Symbol)
-    IntensityMap(stokes(baseimage(pimg), v), axiskeys(pimg))
+    IntensityMap(stokes(baseimage(pimg), v), axisdims(pimg), refdims(pimg), name(pimg))
 end
 
 @inline function stokes(pimg::StructArray{<:StokesParams}, v::Symbol)

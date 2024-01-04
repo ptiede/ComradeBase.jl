@@ -59,7 +59,7 @@ function intensitymap_analytic(s::AbstractModel, dims::AbstractGrid)
     dx = step(dims.X)
     dy = step(dims.Y)
     img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
-    return IntensityMap(parent(img), dims)
+    return IntensityMap(img, dims)
 end
 
 function intensitymap_analytic!(img::IntensityMapTypes, s)
