@@ -9,6 +9,38 @@ DD.@dim F "frequency"
 
 export IntensityMap, Fr
 
+"""
+    $(TYPEDEF)
+    IntensityMap(data::AbstractArray, g::AbstractGrid)
+
+This type is the basic array type for all images and models that obey the `ComradeBase`
+interface. The type is a subtype of `DimensionalData.AbstractDimArray` however, we make
+a few changes to support the Comrade API.
+
+  1. The dimensions should be specified by an `AbstractGrid` interface. Usually users just
+     need the [RectiGrid](@ref) grid, for rectilinear grids.
+  2. There are two ways to access the dimensions of the array. `dims(img)` will
+     return the usual `DimArray` dimensions, i.e. a `Tuple{DimensionalData.Dim, ...}`.
+     The other way to access the array dimensions is using the `getproperty`, e.g.,
+     `img.X` will return the RA/X grid locations but stripped of the usual `DimensionalData.Dimension`
+     material.
+  3. Metadata is stored in the `AbstractGrid` type through the `header` property and can be
+     accessed through `metadata` or `header`
+
+The most common way to create a `IntensityMap` is to use the function definitons
+```julia-repl
+julia> g = imagepixels(10.0, 10.0, 128, 128; header=NoHeader())
+julia> X = g.X; Y = g.Y
+julia> data = rand(128, 128)
+julia> img1 = IntensityMap(data, g)
+julia> img2 = IntensityMap(data, (;X, Y); header=header(g))
+julia> img1 == img2
+true
+julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
+```
+
+Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
+"""
 struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{D},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
     data::A
     grid::G
@@ -36,7 +68,7 @@ end
 
 function Base.getproperty(img::IntensityMap, p::Symbol)
     if p ∈ propertynames(img)
-        return getproperty(axisdims(img), p)
+        return basedim(getproperty(axisdims(img), p))
     else
         throw(ArgumentError("$p not a valid dimension of `IntensityMap`"))
     end
@@ -99,6 +131,16 @@ baseimage(x::IntensityMap) = parent(x)
     grid = rebuild(typeof(axisdims(img)), dims, metadata)
     return IntensityMap(data, grid, refdims, n)
 end
+
+@inline function DD.rebuild(
+    img::IntensityMap; data=DD.data(img), dims::Tuple = dims(img),
+    refdims = refdims(img),
+    name = name(img),
+    metadata = metadata(img),
+    )
+    rebuild(img, data, dims, refdims, name, metadata)
+end
+
 
 
 function check_grid(I,Q,U,V)

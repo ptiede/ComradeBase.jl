@@ -65,7 +65,7 @@ phasecenter(img::IntensityMapTypes) = phasecenter(axisdims(img))
 
 Returns a abstract spatial dimension with the image pixels locations `X` and `Y`.
 """
-imagepixels(img::IntensityMapTypes) = RectiGrid((img.X, img.Y))
+imagepixels(img::IntensityMapTypes) = (X=img.X, Y=img.Y)
 
 ChainRulesCore.@non_differentiable imagepixels(img::IntensityMapTypes)
 ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMapTypes)

@@ -126,7 +126,7 @@ end
 
 
 Base.propertynames(d::RectiGrid) = keys(d)
-Base.getproperty(g::RectiGrid, p::Symbol) = dims(g)[findfirst(==(p), keys(g))]
+Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
 
 """
     RectiGrid{Na}(dims::Tuple, header=ComradeBase.NoHeader) where {Na}
@@ -149,6 +149,12 @@ dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], F=[230, 3
 """
 @inline function RectiGrid(dims::Tuple, header::AbstractHeader=NoHeader())
     return RectiGrid{typeof(dims), typeof(header)}(dims, header)
+end
+
+
+# This is needed to prevent doubling up on the dimension
+@inline function RectiGrid(dims::NamedTuple{Na, T}, header::AbstractHeader=NoHeader()) where {Na, N, T<:NTuple{N, DD.Dimension}}
+    return RectiGrid(values(dims), header)
 end
 
 """
