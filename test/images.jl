@@ -26,8 +26,8 @@
         subimg1 = img1[X=5:10, Y=1:20]
         nk = named_dims(subimg1)
         nnk = axisdims(subimg1)
-        @test nnk.X == nk.X
-        @test nnk.Y == nk.Y
+        @test nnk.X == ComradeBase.basedim(nk.X)
+        @test nnk.Y == ComradeBase.basedim(nk.Y)
         @test ComradeBase.basedim(nk.X) == X[5:10]
         @test ComradeBase.basedim(nk.Y) == Y[1:20]
     end
