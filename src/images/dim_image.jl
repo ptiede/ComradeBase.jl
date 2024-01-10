@@ -79,10 +79,10 @@ const SpatialIntensityMap{T, A, G} = IntensityMap{T,2,<:SpatialDims, A, G} where
 
 
 function IntensityMap(data::AbstractArray, g::AbstractGrid)
-    return IntensityMap(data, g, (), DD.NoName())
+    return IntensityMap(data, g, (), Symbol(""))
 end
 
-function IntensityMap(data::AbstractArray, dims::NamedTuple; header=NoHeader(), refdims=(), name=NoName())
+function IntensityMap(data::AbstractArray, dims::NamedTuple; header=NoHeader(), refdims=(), name=Symbol(""))
     return IntensityMap(data, RectiGrid(dims, header), refdims, name)
 end
 
@@ -116,6 +116,7 @@ Retrieves the header of an IntensityMap
 """
 header(img::IntensityMap) = header(axisdims(img))
 
+DD._noname(::IntensityMap) = Symbol("")
 
 
 Base.parent(img::IntensityMap) = DD.data(img)
@@ -128,7 +129,12 @@ baseimage(x::IntensityMap) = parent(x)
     n = name(img),
     metadata = metadata(img),
     )
+    # @info (typeof(img))
+    # TODO find why Name is changing type
+    # n2 = n == Symbol("") ? NoName : n
+    # @info which(name, (typeof(img),))
     grid = rebuild(typeof(axisdims(img)), dims, metadata)
+    # return name(img)
     return IntensityMap(data, grid, refdims, n)
 end
 

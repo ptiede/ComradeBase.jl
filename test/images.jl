@@ -38,9 +38,9 @@
     end
 
     @testset "broadcast and map" begin
-        @test img1.^2 isa IntensityMap
-        @test cos.(img1) isa IntensityMap
-        @test img1 .+ img1 isa IntensityMap
+        @test img1.^2 isa typeof(img)
+        @test cos.(img1) isa typeof(img)
+        @test img1 .+ img1 isa typeof(img)
         @test cos.(img2[F=1,T=1]) isa IntensityMap
     end
 
