@@ -23,11 +23,12 @@ a few changes to support the Comrade API.
      return the usual `DimArray` dimensions, i.e. a `Tuple{DimensionalData.Dim, ...}`.
      The other way to access the array dimensions is using the `getproperty`, e.g.,
      `img.X` will return the RA/X grid locations but stripped of the usual `DimensionalData.Dimension`
-     material.
+     material. This `getproperty` behavior is *NOT CONSIDERED** part of the stable API and
+     may be changed in the future.
   3. Metadata is stored in the `AbstractGrid` type through the `header` property and can be
      accessed through `metadata` or `header`
 
-The most common way to create a `IntensityMap` is to use the function definitons
+The most common way to create a `IntensityMap` is to use the function definitions
 ```julia-repl
 julia> g = imagepixels(10.0, 10.0, 128, 128; header=NoHeader())
 julia> X = g.X; Y = g.Y
@@ -77,15 +78,39 @@ end
 const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
 const SpatialIntensityMap{T, A, G} = IntensityMap{T,2,<:SpatialDims, A, G} where {T,A,G}
 
+"""
+    IntensityMap(data::AbstractArray, g::AbstractGrid; refdims=(), name=Symbol(""))
 
-function IntensityMap(data::AbstractArray, g::AbstractGrid)
+Creates a IntensityMap with the pixel fluxes `data` on the grid `g`. Optionally, you can specify
+a set of reference dimensions `refdims` as a tuple and a name for array `name`.
+"""
+function IntensityMap(data::AbstractArray, g::AbstractGrid; refdims=(), name=Symbol(""))
     return IntensityMap(data, g, (), Symbol(""))
 end
 
+"""
+    IntensityMap(data::AbstractArray, dims::NamedTuple; header=NoHeader() refdims=(), name=Symbol(""))
+
+Creates a IntensityMap with the pixel fluxes `data` with dimensions `dims`. Note that `dims`
+must be a named tuple with names either
+     - (:X, :Y) for spatial intensity maps
+     - (:X, :Y, :Ti) for spatial-temporal intensity maps
+     - (:X, :Y, :F) for spatial-frequency intensity maps
+     - (:X, :Y, :Ti, :F) for spatial-temporal frequency intensity maps
+     - (:X, :Y, :F, :Ti) for spatial-frequency-temporal intensity maps
+additionally this method assumes that `dims` is specified in a recti-linear grid.
+"""
 function IntensityMap(data::AbstractArray, dims::NamedTuple; header=NoHeader(), refdims=(), name=Symbol(""))
     return IntensityMap(data, RectiGrid(dims, header), refdims, name)
 end
 
+
+"""
+    IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0, y0::Real=0; header=NoHeader())
+
+Creates a IntensityMap with the pixel fluxes `data` and a spatial grid with field of view
+(`fovx`, `fovy`) and center pixel offset (`x0`, `y0`) and header `header`.
+"""
 function IntensityMap(data::AbstractArray{T}, fovx::Real, fovy::Real, x0::Real=0, y0::Real=0; header=NoHeader()) where {T}
     grid = imagepixels(fovx, fovy, size(data)..., T(x0), T(y0); header)
     return IntensityMap(data, grid)
@@ -100,8 +125,10 @@ end
 
 """
     axisdims(img::IntensityMap)
+    axisdims(img::IntensityMap, p::Symbol)
 
 Returns the keys of the `IntensityMap` as the actual internal `AbstractGrid` object.
+Optionall the user can ask for a specific dimension with `p`
 """
 axisdims(img::IntensityMap) = getfield(img, :grid)
 axisdims(img::IntensityMap, p::Symbol) = getproperty(axisdims(img), p)
