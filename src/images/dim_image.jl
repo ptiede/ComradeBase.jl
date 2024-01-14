@@ -18,7 +18,7 @@ interface. The type is a subtype of `DimensionalData.AbstractDimArray` however, 
 a few changes to support the Comrade API.
 
   1. The dimensions should be specified by an `AbstractGrid` interface. Usually users just
-     need the [`ComradeBase.RectiGrid`](@ref) grid, for rectilinear grids.
+     need the [`RectiGrid`](@ref) grid, for rectilinear grids.
   2. There are two ways to access the dimensions of the array. `dims(img)` will
      return the usual `DimArray` dimensions, i.e. a `Tuple{DimensionalData.Dim, ...}`.
      The other way to access the array dimensions is using the `getproperty`, e.g.,

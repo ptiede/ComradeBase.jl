@@ -17,16 +17,10 @@ include("io.jl")
 
 
 """
-    intensitymap(model::AbstractModel, dims)
+    intensitymap(model::AbstractModel, dims::AbstractGrid)
 
 Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap` which
-is a `KeyedArray` with [`ImageDimensions`](@ref) as keys. The dimensions are a `NamedTuple`
-and must have one of the following names:
-    - (:X, :Y, :T, :F)
-    - (:X, :Y, :F, :T)
-    - (:X, :Y) # spatial only
-where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
-the time direction and `:F` is the frequency direction.
+is a `IntensityMap` with `dims` an [`AbstractGrid`](@ref) as dimensions.
 """
 @inline function intensitymap(s::M,
                               dims::AbstractGrid
