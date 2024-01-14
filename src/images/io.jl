@@ -46,7 +46,7 @@ function _load_fits(fname, ::Type{StokesIntensityMap})
         imgV = try_loading(f, "V", imgI)
         return IntensityMap(
             StructArray{StokesParams{eltype(imgI)}}((I=baseimage(imgI), Q=baseimage(imgQ), U=baseimage(imgU), V=baseimage(imgV))),
-            axiskeys(imgI)
+            axisdims(imgI)
             )
         # return StokesIntensityMap(imgI, imgQ, imgU, imgV)
     end
@@ -203,7 +203,7 @@ end
 function write_stokes(f, image, stokes="I", innername="")
     headerkeys, values, comments = _prepare_header(image, stokes)
     hdeheader = FITSHeader(headerkeys, values, comments)
-    img = ComradeBase.AxisKeys.keyless_unname(image[end:-1:1, :])
+    img = parent(image[end:-1:1, :])
     FITSIO.write(f, img; header=hdeheader, name=innername)
 end
 

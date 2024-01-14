@@ -1,15 +1,16 @@
  export IntensityMap, SpatialIntensityMap,
         DataArr, SpatialDataArr, DataNames,
-        named_axiskeys, imagepixels, pixelsizes, imagegrid,
+        named_axisdims, imagepixels, pixelsizes, imagegrid,
         phasecenter, baseimage
- include("keyed_image.jl")
+include("grid.jl")
+include("dim_image.jl")
 
 export StokesIntensityMap, stokes
 include("stokes_image.jl")
 
 const IntensityMapTypes{T,N} = Union{IntensityMap{T,N}, StokesIntensityMap{T,N}}
 
-export flux, centroid, second_moment, named_axiskeys, axiskeys,
+export flux, centroid, second_moment, named_axisdims, axisdims,
        imagepixels, pixelsizes, imagegrid, phasecenter
 include("methods.jl")
 include("io.jl")
@@ -28,12 +29,12 @@ where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
 the time direction and `:F` is the frequency direction.
 """
 @inline function intensitymap(s::M,
-                              dims::AbstractDims
+                              dims::AbstractGrid
                               ) where {M<:AbstractModel}
     return intensitymap(imanalytic(M), s, dims)
 end
-@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDims)  = intensitymap_analytic(m, dims)
-@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDims) = intensitymap_numeric(m, dims)
+@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractGrid)  = intensitymap_analytic(m, dims)
+@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractGrid) = intensitymap_numeric(m, dims)
 
 
 """
@@ -52,13 +53,13 @@ end
 @inline intensitymap!(::NotAnalytic, img::IntensityMapTypes, m::AbstractModel) = intensitymap_numeric!(img, m)
 
 
-@inline intensitymap(s::AbstractModel, dims::NamedTuple) = intensitymap(s, GriddedKeys(dims))
+@inline intensitymap(s::AbstractModel, dims::NamedTuple) = intensitymap(s, RectiGrid(dims))
 
-function intensitymap_analytic(s::AbstractModel, dims::AbstractDims)
+function intensitymap_analytic(s::AbstractModel, dims::AbstractGrid)
     dx = step(dims.X)
     dy = step(dims.Y)
     img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
-    return IntensityMap(AxisKeys.keyless_unname(img), dims)
+    return IntensityMap(img, dims)
 end
 
 function intensitymap_analytic!(img::IntensityMapTypes, s)

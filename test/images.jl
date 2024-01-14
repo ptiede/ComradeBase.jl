@@ -24,12 +24,12 @@
 
 
         subimg1 = img1[X=5:10, Y=1:20]
-        nk = named_axiskeys(subimg1)
-        nnk = axiskeys(subimg1)
-        @test nnk.X == nk.X
-        @test nnk.Y == nk.Y
-        @test nk.X == X[5:10]
-        @test nk.Y == Y[1:20]
+        nk = named_dims(subimg1)
+        nnk = axisdims(subimg1)
+        @test nnk.X == ComradeBase.basedim(nk.X)
+        @test nnk.Y == ComradeBase.basedim(nk.Y)
+        @test ComradeBase.basedim(nk.X) == X[5:10]
+        @test ComradeBase.basedim(nk.Y) == Y[1:20]
     end
 
     @testset "keys" begin
@@ -38,9 +38,9 @@
     end
 
     @testset "broadcast and map" begin
-        @test img1.^2 isa IntensityMap
-        @test cos.(img1) isa IntensityMap
-        @test img1 .+ img1 isa IntensityMap
+        @test img1.^2 isa typeof(img1)
+        @test cos.(img1) isa typeof(img1)
+        @test img1 .+ img1 isa typeof(img1)
         @test cos.(img2[F=1,T=1]) isa IntensityMap
     end
 

@@ -2,10 +2,10 @@
     imagegrid(k::IntensityMap)
 
 Returns the grid the `IntensityMap` is defined as. Note that this is unallocating
-since it lazily computes the grid. The grid is an example of a KeyedArray and works similarly.
+since it lazily computes the grid. The grid is an example of a DimArray and works similarly.
 This is useful for broadcasting a model across an abritrary grid.
 """
-imagegrid(img::IntensityMapTypes) = imagegrid(axiskeys(img))
+imagegrid(img::IntensityMapTypes) = imagegrid(axisdims(img))
 
 
 struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
@@ -18,7 +18,6 @@ struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
     end
 end
 
-
 @inline Base.size(A::LazySlice) = A.dims
 Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T, N}, I::Vararg{Int, N}) where {T, N}
     i = I[A.dir]
@@ -26,25 +25,20 @@ Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T, N}, I::V
     return A.slice[i]
 end
 
-function _build_slices(g, sz::Dims{M}) where {M}
+@inline function _build_slices(g, sz::Dims{M}) where {M}
     gs = ntuple(i->LazySlice(g[i], i, sz), Val(M))
     return gs
 end
 
-function imagegrid(d::GriddedKeys{N, <:NTuple{M}, Hd, T}) where {N, M, Hd, T}
-    g = dims(d)
-    return KeyedArray(StructArray(NamedTuple{N}(_build_slices(g, size(d)))), d)
-end
+# I need this because LazySlice is allocating unless I strip the dimension information
+@inline basedim(x::DD.Dimension) = basedim(parent(x))
+@inline basedim(x::DD.LookupArrays.LookupArray) = basedim(parent(x))
+@inline basedim(x) = x
 
-function grid(; kwargs...)
-    vals = values(values(kwargs))
-    N = keys(kwargs)
-    g = StructArray(NamedTuple{N}(_build_slices(vals, map(length, vals))))
-    return KeyedArray(g; kwargs...)
-end
-
-function grid(g::NamedTuple)
-    return grid(;g...)
+function imagegrid(d::RectiGrid{D, Hd}) where {D, Hd}
+    g = map(basedim, dims(d))
+    N = keys(d)
+    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
 end
 
 
@@ -56,13 +50,13 @@ end
 Computes the phase center of an intensity map. Note this is the pixels that is in
 the middle of the image.
 """
-function phasecenter(dims::AbstractDims)
+function phasecenter(dims::AbstractGrid)
     (;X, Y) = dims
     x0 = -(last(X) + first(X))/2
     y0 = -(last(Y) + first(Y))/2
     return (X=x0, Y=y0)
 end
-phasecenter(img::IntensityMapTypes) = axiskeys(img)
+phasecenter(img::IntensityMapTypes) = phasecenter(axisdims(img))
 
 
 """
@@ -71,7 +65,7 @@ phasecenter(img::IntensityMapTypes) = axiskeys(img)
 
 Returns a abstract spatial dimension with the image pixels locations `X` and `Y`.
 """
-imagepixels(img::IntensityMapTypes) = GriddedKeys((X=img.X, Y=img.Y))
+imagepixels(img::IntensityMapTypes) = (X=img.X, Y=img.Y)
 
 ChainRulesCore.@non_differentiable imagepixels(img::IntensityMapTypes)
 ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMapTypes)
@@ -85,7 +79,7 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real 
     xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2 - x0, nx)
     yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2 - y0, ny)
 
-    return GriddedKeys((X=xitr, Y=yitr), header)
+    return RectiGrid((X=xitr, Y=yitr), header)
 end
 
 
@@ -96,10 +90,10 @@ end
 Returns a named tuple with the field of view of the image.
 """
 function fieldofview(img::IntensityMapTypes)
-    return fieldofview(axiskeys(img))
+    return fieldofview(axisdims(img))
 end
 
-function fieldofview(dims::GriddedKeys)
+function fieldofview(dims::RectiGrid)
     (;X,Y) = dims
     dx = step(X)
     dy = step(Y)
@@ -109,16 +103,16 @@ end
 
 """
     pixelsizes(img::IntensityMap)
-    pixelsizes(img::AbstractDims)
+    pixelsizes(img::AbstractGrid)
 
 Returns a named tuple with the spatial pixel sizes of the image.
 """
-function pixelsizes(keys::AbstractDims)
+function pixelsizes(keys::AbstractGrid)
     x = keys.X
     y = keys.Y
     return (X=step(x), Y=step(y))
 end
-pixelsizes(img::IntensityMapTypes) = pixelsizes(axiskeys(img))
+pixelsizes(img::IntensityMapTypes) = pixelsizes(axisdims(img))
 
 
 
@@ -152,7 +146,7 @@ Computes the image centroid aka the center of light of the image.
 For polarized maps we return the centroid for Stokes I only.
 """
 function centroid(im::IntensityMapTypes{<:Number})
-    (X, Y) = named_axiskeys(im)
+    (;X, Y) = named_axisdims(im)
     return mapslices(x->centroid(IntensityMap(x, (;X, Y))), im; dims=(:X, :Y))
 end
 centroid(im::IntensityMapTypes{<:StokesParams}) = centroid(stokes(im, :I))
@@ -160,9 +154,9 @@ centroid(im::IntensityMapTypes{<:StokesParams}) = centroid(stokes(im, :I))
 function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T<:Real}
     x0 = y0 = zero(eltype(im))
     f = flux(im)
-    @inbounds for (i,x) in pairs(axiskeys(im,:X)), (j,y) in pairs(axiskeys(im,:Y))
-        x0 += x.*im[X=i, Y=j]
-        y0 += y.*im[X=i, Y=j]
+    @inbounds for (I, (x,y)) in pairs(DimPoints(im))
+        x0 += x.*im[I]
+        y0 += y.*im[I]
     end
     return x0./f, y0./f
 end
@@ -178,7 +172,7 @@ second moment, which is specified by the `center` argument.
 For polarized maps we return the second moment for Stokes I only.
 """
 function second_moment(im::IntensityMapTypes{T,N}; center=true) where {T<:Real,N}
-    (X, Y) = named_axiskeys(im)
+    (;X, Y) = named_axisdims(im)
     return mapslices(x->second_moment(IntensityMap(x, (;X, Y)); center), im; dims=(:X, :Y))
 end
 
@@ -198,11 +192,10 @@ function second_moment(im::IntensityMapTypes{T,2}; center=true) where {T<:Real}
     xy = zero(T)
     yy = zero(T)
     f = flux(im)
-    (;X,Y) = named_axiskeys(im)
-    for (i,y) in pairs(Y), (j,x) in pairs(X)
-        xx += x.^2*im[j,i]
-        yy += y.^2*im[j,i]
-        xy += x.*y.*im[j,i]
+    for (I, (x,y)) in pairs(DimPoints(im))
+        xx += x.^2*im[I]
+        yy += y.^2*im[I]
+        xy += x.*y.*im[I]
     end
 
     if center
