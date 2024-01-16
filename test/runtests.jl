@@ -3,6 +3,12 @@ using StructArrays
 using Pyehtim
 using Test
 
+using FiniteDifferences
+using ChainRulesCore
+using ChainRulesTestUtils
+import DimensionalData as DD
+
+
 @testset "ComradeBase.jl" begin
     include(joinpath(@__DIR__, "images.jl"))
     include(joinpath(@__DIR__, "io.jl"))

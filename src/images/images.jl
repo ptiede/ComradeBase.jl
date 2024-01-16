@@ -14,6 +14,7 @@ export flux, centroid, second_moment, named_axisdims, axisdims,
        imagepixels, pixelsizes, imagegrid, phasecenter
 include("methods.jl")
 include("io.jl")
+include("rrules.jl")
 
 
 """

@@ -77,5 +77,41 @@ end
 
 
 
+function FiniteDifferences.to_vec(k::IntensityMap)
+    v, b = to_vec(DD.data(k))
+    back(x) = DD.rebuild(k, b(x))
+    return v, back
+end
+
+@testset "ProjectTo" begin
+
+    data = rand(32, 32)
+    g = imagepixels(10.0, 10.0, 32, 32)
+    img = IntensityMap(data, g)
+
+    pr = ProjectTo(img)
+    @test pr(data) == img
+    @test pr(NoTangent()) == NoTangent()
+
+    imgs = img[X=1, Y=:]
+    prs = ProjectTo(imgs)
+    @test prs(data[1,:]) == imgs
+    @test prs(NoTangent()) == NoTangent()
+end
+
+@testset "rrule IntensityMap" begin
+    data = rand(32, 32)
+    g = imagepixels(10.0, 10.0, 32, 32)
+    test_rrule(IntensityMap, data, g⊢NoTangent())
+end
+
+@testset "rrule baseimage" begin
+    data = rand(32, 24)
+    g = imagepixels(5.0, 10.0, 32, 24)
+    img = IntensityMap(data, g)
+
+    test_rrule(ComradeBase.baseimage, img)
+end
+
 
 end
