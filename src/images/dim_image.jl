@@ -93,11 +93,11 @@ end
 
 Creates a IntensityMap with the pixel fluxes `data` with dimensions `dims`. Note that `dims`
 must be a named tuple with names either
-     - (:X, :Y) for spatial intensity maps
-     - (:X, :Y, :Ti) for spatial-temporal intensity maps
-     - (:X, :Y, :F) for spatial-frequency intensity maps
-     - (:X, :Y, :Ti, :F) for spatial-temporal frequency intensity maps
-     - (:X, :Y, :F, :Ti) for spatial-frequency-temporal intensity maps
+  - (:X, :Y) for spatial intensity maps
+  - (:X, :Y, :Ti) for spatial-temporal intensity maps
+  - (:X, :Y, :F) for spatial-frequency intensity maps
+  - (:X, :Y, :Ti, :F) for spatial-temporal frequency intensity maps
+  - (:X, :Y, :F, :Ti) for spatial-frequency-temporal intensity maps
 additionally this method assumes that `dims` is specified in a recti-linear grid.
 """
 function IntensityMap(data::AbstractArray, dims::NamedTuple; header=NoHeader(), refdims=(), name=Symbol(""))

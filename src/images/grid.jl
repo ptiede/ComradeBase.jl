@@ -51,23 +51,40 @@ struct NoHeader <: AbstractHeader end
 
 
 """
-    $(TYPEDEF)
-This struct holds the dimensions that the EHT expect. The first type parameter `N`
-defines the names of each dimension. These names are usually one of
-    - (:X, :Y, :T, :F)
-    - (:X, :Y, :F, :T)
-    - (:X, :Y) # spatial only
+    RectiGrid(dims::Tuple, header=ComradeBase.NoHeader)
+
+Builds the EHT image dimensions using the names `Na` and dimensions `dims`.
+You can also optionally has a header that stores additional information from e.g.,
+a FITS header.
+The type parameter `Na` defines the names of each dimension.
+These names are usually one of
+  - (:X, :Y, :Ti, :F)
+  - (:X, :Y, :F,  :Ti)
+  - (:X, :Y) # spatial only
 where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
 the time direction and `:F` is the frequency direction.
-# Fieldnames
-$(FIELDS)
 # Notes
-Warning it is rare you need to access this constructor directly. Instead
-use the direct [`IntensityMap`](@ref) function.
+Instead use the direct [`IntensityMap`](@ref) function.
+```julia
+dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], F=[230, 345]))
+```
+
+# Notes
+Warning it is rare you need to access this constructor directly. For spatial intensitymaps
+just use the [`imagepixels`](@ref) function.
 """
 struct RectiGrid{D, Hd<:AbstractHeader} <: AbstractGrid{D}
     dims::D
     header::Hd
+    @inline function RectiGrid(dims::Tuple, header::AbstractHeader=NoHeader())
+        df = _format_dims(dims)
+        return new{typeof(df), typeof(header)}(df, header)
+    end
+
+end
+
+function _format_dims(dg::Tuple)
+    return DD.format(dg, map(eachindex, dg))
 end
 
 Base.keys(g::RectiGrid) = map(name, dims(g))
@@ -128,34 +145,20 @@ end
 Base.propertynames(d::RectiGrid) = keys(d)
 Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
 
-"""
-    RectiGrid{Na}(dims::Tuple, header=ComradeBase.NoHeader) where {Na}
-
-Builds the EHT image dimensions using the names `Na` and dimensions `dims`.
-You can also optionally has a header that stores additional information from e.g.,
-a FITS header.
-The type parameter `Na` defines the names of each dimension.
-These names are usually one of
-    - (:X, :Y, :Ti, :F)
-    - (:X, :Y, :F,  :Ti)
-    - (:X, :Y) # spatial only
-where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
-the time direction and `:F` is the frequency direction.
-# Notes
-Instead use the direct [`IntensityMap`](@ref) function.
-```julia
-dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], F=[230, 345]))
-```
-"""
-@inline function RectiGrid(dims::Tuple, header::AbstractHeader=NoHeader())
-    return RectiGrid{typeof(dims), typeof(header)}(dims, header)
-end
 
 
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(dims::NamedTuple{Na, T}, header::AbstractHeader=NoHeader()) where {Na, N, T<:NTuple{N, DD.Dimension}}
     return RectiGrid(values(dims), header)
 end
+
+@noinline function _make_dims(ks, vs)
+    ds = DD.key2dim(ks)
+    return map(ds, vs) do d,v
+        DD.rebuild(d, v)
+    end
+end
+
 
 """
     RectiGrid(dims::NamedTuple{Na}, header=ComradeBase.NoHeader())
@@ -165,10 +168,12 @@ You can also optionally has a header that stores additional information from e.g
 a FITS header.
 The type parameter `Na` defines the names of each dimension.
 These names are usually one of
-    - (:X, :Y, :Ti, :F)
-    - (:X, :Y, :F, :Ti)
-    - (:X, :Y) # spatial only
-where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:Ti` is the
+
+  - (:X, :Y, :Ti, :F)
+  - (:X, :Y, :F, :Ti)
+  - (:X, :Y) # spatial only
+
+    where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:Ti` is the
 the time direction and `:F` is the frequency direction.
 # Notes
 Instead use the direct [`IntensityMap`](@ref) function.
@@ -177,10 +182,8 @@ dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], Fr=[230, 
 ```
 """
 @inline function RectiGrid(nt::NamedTuple, header::AbstractHeader=ComradeBase.NoHeader())
-    dims = map(keys(nt), values(nt)) do k,v
-        DD.rebuild(DD.key2dim(k), v)
-    end
-    return RectiGrid(format(dims, map(eachindex, dims)), header)
+    dims = _make_dims(keys(nt), values(nt))
+    return RectiGrid(dims, header)
 end
 
 function DD.rebuild(::Type{<:RectiGrid}, g, header=ComradeBase.NoHeader())

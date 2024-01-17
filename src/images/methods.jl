@@ -76,10 +76,9 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real 
     psizex=fovx/nx
     psizey=fovy/ny
 
-    xitr = LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2 - x0, nx)
-    yitr = LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2 - y0, ny)
-
-    return RectiGrid((X=xitr, Y=yitr), header)
+    xitr = X(LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2 - x0, nx))
+    yitr = Y(LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2 - y0, ny))
+    return RectiGrid((xitr, yitr), header)
 end
 
 
