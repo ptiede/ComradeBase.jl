@@ -10,10 +10,13 @@
     img2 = IntensityMap(imp, (;X, Y, T, F))
     img3 = IntensityMap(imp, (;X, Y, F, T))
 
+
     @testset "Slicing" begin
         @test img1[X=1:1, Y=1:10] isa IntensityMap
         @test img1[X=5:10, Y=1:end-10] isa IntensityMap
         @test img2[X=1, Y=1] isa IntensityMap
+
+
 
 
         @test img1[X=1, Y=1] ≈ imp[1,1,1,1]
@@ -88,6 +91,9 @@ end
     data = rand(32, 32)
     g = imagepixels(10.0, 10.0, 32, 32)
     img = IntensityMap(data, g)
+
+    test_rrule(centroid, img)
+
 
     pr = ProjectTo(img)
     @test pr(data) == img

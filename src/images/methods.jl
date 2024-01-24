@@ -151,13 +151,26 @@ end
 centroid(im::IntensityMapTypes{<:StokesParams}) = centroid(stokes(im, :I))
 
 function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T<:Real}
-    x0 = y0 = zero(eltype(im))
     f = flux(im)
-    @inbounds for (I, (x,y)) in pairs(DimPoints(im))
-        x0 += x.*im[I]
-        y0 += y.*im[I]
+    cent = sum(pairs(DimPoints(im)); init=SVector(zero(f), zero(f))) do (I, (x, y))
+        x0 = x.*im[I]
+        y0 = y.*im[I]
+        return SVector(x0, y0)
     end
-    return x0./f, y0./f
+    return cent[1]./f, cent[2]./f
+end
+
+function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMapTypes{T,2}) where {T<:Real}
+    out = centroid(img)
+    x0, y0 = out
+    pr = ProjectTo(img)
+    function _centroid_pullback(Δ)
+        f = flux(img)
+        Δf = NoTangent()
+        Δimg = Δ[1].*(img.X./f .- x0/f) .+ Δ[2].*(img.Y'./f .- y0/f)
+        return Δf, pr(Δimg)
+    end
+    return out, _centroid_pullback
 end
 
 
