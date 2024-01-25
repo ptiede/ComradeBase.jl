@@ -56,6 +56,12 @@ stokes(m::AbstractPolarizedModel, v::Symbol) = getproperty(m, v)
 struct IsPolarized end
 struct NotPolarized end
 
+Base.@constprop  :aggressive Base.:*(::IsPolarized, ::IsPolarized) = IsPolarized()
+Base.@constprop  :aggressive Base.:*(::IsPolarized, ::NotPolarized) = IsPolarized()
+Base.@constprop  :aggressive Base.:*(::NotPolarized, ::IsPolarized) = IsPolarized()
+Base.@constprop  :aggressive Base.:*(::NotPolarized, ::NotPolarized) = NotPolarized()
+
+
 
 """
     ispolarized(::Type)
