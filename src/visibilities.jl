@@ -63,8 +63,8 @@ consider using the [`visibilities`](@ref visibilities).
 """
 @inline function visibility(mimg::M, p) where {M}
     #first we split based on whether the model is primitive
-    T = typeof(p.U)
-    _visibility(isprimitive(M), mimg, p.U, p.V, zero(T), zero(T))
+    U, V, T, F = extract_pos(p)
+    _visibility(isprimitive(M), mimg, U, V, T, F)
 end
 
 
