@@ -1,7 +1,7 @@
 name = "ComradeBase"
 uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.6.5"
+version = "0.6.6"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
@@ -19,7 +19,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [compat]
 ChainRulesCore = "1"
-DimensionalData = "0.25"
+DimensionalData = "0.25, 0.26"
 DocStringExtensions = "0.8, 0.9"
 FITSIO = "0.16, 0.17"
 FillArrays = "0.12, 0.13, 1"
