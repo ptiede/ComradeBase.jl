@@ -1,4 +1,6 @@
- export IntensityMap, SpatialIntensityMap,
+using OhMyThreads
+
+export IntensityMap, SpatialIntensityMap,
         DataArr, SpatialDataArr, DataNames,
         named_axisdims, imagepixels, pixelsizes, imagegrid,
         phasecenter, baseimage
@@ -56,6 +58,20 @@ function intensitymap_analytic(s::AbstractModel, dims::AbstractGrid)
     img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
     return IntensityMap(img, dims)
 end
+
+using FastBroadcast
+function intensitymap_analytic(s::AbstractModel, dims::AbstractGrid{D, <:OhMyThreads.Scheduler}) where {D}
+    dx = step(dims.X)
+    dy = step(dims.Y)
+    g = imagegrid(dims)
+    rs = Ref(s)
+    img = @.. thread=true intensity_point.(rs, g).*dx.*dy
+    # img = tmap(imagegrid(dims)) do p
+    #     intensity_point(s, p)*dx*dy
+    # end
+    return IntensityMap(img, dims)
+end
+
 
 function intensitymap_analytic!(img::IntensityMapTypes, s)
     dx, dy = pixelsizes(img)

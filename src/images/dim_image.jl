@@ -52,7 +52,7 @@ struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{D},R<:Tuple,Na} 
         ) where {A<:AbstractArray{T,N}, G<:AbstractGrid{D}, R<:Tuple, Na} where {T,N,D}
 
         d = dims(grid)
-        DD.checkdims(data, d)
+        # DD.checkdims(data, d)
         new{T,N,D,A,G,R,Na}(data, grid, refdims, name)
     end
 end

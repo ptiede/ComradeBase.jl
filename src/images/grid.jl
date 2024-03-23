@@ -1,7 +1,7 @@
 # In this file we will define our base image class. This is entirely based on
 export RectiGrid, named_dims, dims, header, axisdims
 
-abstract type AbstractGrid{D} end
+abstract type AbstractGrid{D, E} end
 
 
 abstract type AbstractHeader end
@@ -50,6 +50,11 @@ end
 struct NoHeader <: AbstractHeader end
 
 
+abstract type AbstractRectiGrid{D, E} <: AbstractGrid{D, E} end
+
+struct Serial end
+
+
 """
     RectiGrid(dims::Tuple, header=ComradeBase.NoHeader)
 
@@ -73,15 +78,17 @@ dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], F=[230, 3
 Warning it is rare you need to access this constructor directly. For spatial intensitymaps
 just use the [`imagepixels`](@ref) function.
 """
-struct RectiGrid{D, Hd<:AbstractHeader} <: AbstractGrid{D}
+struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
     dims::D
+    executor::E
     header::Hd
-    @inline function RectiGrid(dims::Tuple, header::AbstractHeader=NoHeader())
+    @inline function RectiGrid(dims::Tuple; executor=Serial(), header::AbstractHeader=NoHeader())
         df = _format_dims(dims)
-        return new{typeof(df), typeof(header)}(df, header)
+        return new{typeof(df), typeof(executor), typeof(header)}(df, executor, header)
     end
 
 end
+
 
 function _format_dims(dg::Tuple)
     return DD.format(dg, map(eachindex, dg))
@@ -111,7 +118,7 @@ named_dims(g::AbstractGrid) = NamedTuple{keys(g)}(dims(g))
 Returns the headerinformation of the dimensions `g`
 """
 header(g::AbstractGrid) = getfield(g, :header)
-Base.keys(g::AbstractGrid) = MethodError("You must implement `Base.keys($(typeof(g)))`")
+Base.keys(g::AbstractGrid) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
 
 ChainRulesCore.@non_differentiable header(AbstractGrid)
 
@@ -148,8 +155,8 @@ Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), key
 
 
 # This is needed to prevent doubling up on the dimension
-@inline function RectiGrid(dims::NamedTuple{Na, T}, header::AbstractHeader=NoHeader()) where {Na, N, T<:NTuple{N, DD.Dimension}}
-    return RectiGrid(values(dims), header)
+@inline function RectiGrid(dims::NamedTuple{Na, T}; executor=Serial(), header::AbstractHeader=NoHeader()) where {Na, N, T<:NTuple{N, DD.Dimension}}
+    return RectiGrid(values(dims), executor, header)
 end
 
 @noinline function _make_dims(ks, vs)
@@ -181,13 +188,13 @@ Instead use the direct [`IntensityMap`](@ref) function.
 dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], Fr=[230, 345]))
 ```
 """
-@inline function RectiGrid(nt::NamedTuple, header::AbstractHeader=ComradeBase.NoHeader())
+@inline function RectiGrid(nt::NamedTuple, executor=Serial(), header::AbstractHeader=ComradeBase.NoHeader())
     dims = _make_dims(keys(nt), values(nt))
-    return RectiGrid(dims, header)
+    return RectiGrid(dims; executor, header)
 end
 
-function DD.rebuild(::Type{<:RectiGrid}, g, header=ComradeBase.NoHeader())
-    RectiGrid(g, header)
+function DD.rebuild(::Type{<:RectiGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
+    RectiGrid(g; executor, header)
 end
 
 
@@ -198,4 +205,29 @@ const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F
 # const DataArr = Union{NDA{(:X, :Y, :T, :F)}, NDA{(:X, :Y, :F, :T)}, NDA{(:X, :Y)}}
 
 
-# # Our image will be some KeyedArray but where we require specific keys names
+
+# Now we have a completely unstructured grid or really a vector of points
+struct UnstructuredGrid{D, E, H<:AbstractHeader} <: AbstractGrid{D,E}
+    dims::D
+    executor::E
+    header::H
+end
+
+function UnstructuredGrid(nt::NamedTuple; executor=Serial(), header=NoHeader())
+    return UnstructuredGrid(StructArray(nt), header)
+end
+
+Base.ndims(d::UnstructuredGrid) = ndims(dims(d))
+Base.size(d::UnstructuredGrid) = size(dims(d))
+Base.firstindex(d::UnstructuredGrid) = firstindex(dims(d))
+Base.lastindex(d::UnstructuredGrid) = lastindex(dims(d))
+#Make sure we actually get a tuple here
+Base.front(d::UnstructuredGrid) = Base.front(dims(d))
+Base.eltype(d::UnstructuredGrid) = Base.eltype(dims(d))
+
+function DD.rebuild(::Type{<:UnstructuredGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
+    UnstructuredGrid(g, executor, header)
+end
+
+Base.propertynames(g::UnstructuredGrid) = propertynames(dims(g))
+Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(dims(g), p)
