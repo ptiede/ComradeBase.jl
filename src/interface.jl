@@ -184,8 +184,15 @@ Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::IsAnalytic) = NotAnalytic(
 Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
 
 
+# Traits are not differentiable
+ChainRulesCore.@non_differentiable visanalytic(::Type)
+ChainRulesCore.@non_differentiable imanalytic(::Type)
+ChainRulesCore.@non_differentiable isprimitive(::Type)
+ChainRulesCore.@non_differentiable ispolarized(::Type)
+
 """
     visibility_point(model::AbstractModel, p)
+
 
 Function that computes the pointwise visibility. This must be implemented
 in the model interface if `visanalytic(::Type{MyModel}) == IsAnalytic()`
