@@ -64,11 +64,9 @@ function intensitymap_analytic(s::AbstractModel, dims::AbstractGrid{D, <:OhMyThr
     dx = step(dims.X)
     dy = step(dims.Y)
     g = imagegrid(dims)
-    rs = Ref(s)
-    img = @.. thread=true intensity_point.(rs, g).*dx.*dy
-    # img = tmap(imagegrid(dims)) do p
-    #     intensity_point(s, p)*dx*dy
-    # end
+    img = tmap(g) do p
+        intensity_point(s, p)*dx*dy
+    end
     return IntensityMap(img, dims)
 end
 
