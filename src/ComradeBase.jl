@@ -37,5 +37,16 @@ include("visibilities.jl")
     end
 end
 
+if !isdefined(Base, :get_extension)
+    using Requires
+end
+
+@static if !isdefined(Base, :get_extension)
+    function __init__()
+        @require OhMyThreads = "67456a42-1dca-4109-a031-0a68de7e3ad5" include(joinpath(@__DIR__, "..", "ext", "ComradeBaseOhMyThreadsExt.jl"))
+    end
+end
+
+
 
 end

@@ -1,5 +1,5 @@
 # In this file we will define our base image class. This is entirely based on
-export RectiGrid, named_dims, dims, header, axisdims
+export RectiGrid, named_dims, dims, header, axisdims, executor
 
 abstract type AbstractGrid{D, E} end
 
@@ -53,6 +53,8 @@ struct NoHeader <: AbstractHeader end
 abstract type AbstractRectiGrid{D, E} <: AbstractGrid{D, E} end
 
 struct Serial end
+
+executor(g::AbstractGrid) = getfield(g, :executor)
 
 
 """
