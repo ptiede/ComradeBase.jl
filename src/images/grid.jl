@@ -141,13 +141,17 @@ Base.map(f, d::AbstractGrid, args) = map(f, dims(d), args)
 Base.front(d::AbstractGrid) = Base.front(dims(d))
 Base.eltype(d::AbstractGrid) = Base.eltype(dims(d))
 
-function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid)
-    println(io, "RectiGrid:")
+function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D, E}) where {D, E}
+    println(io, "RectiGrid(")
+    println(io, "executor: $(executor(x))")
+    println(io, "Dimensions: ")
     for n in propertynames(x)
         print(io, "\t")
+        print(io, n, ": ")
         show(io, mime, getproperty(x, n))
         println(io)
     end
+    print(io, ")")
 end
 
 
@@ -216,7 +220,7 @@ struct UnstructuredGrid{D, E, H<:AbstractHeader} <: AbstractGrid{D,E}
 end
 
 function UnstructuredGrid(nt::NamedTuple; executor=Serial(), header=NoHeader())
-    return UnstructuredGrid(StructArray(nt), header)
+    return UnstructuredGrid(StructArray(nt), executor, header)
 end
 
 Base.ndims(d::UnstructuredGrid) = ndims(dims(d))
