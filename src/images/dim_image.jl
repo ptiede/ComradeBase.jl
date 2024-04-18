@@ -202,27 +202,14 @@ function intensitymap_analytic!(
     return img
 end
 
-#TODO can this be made nicer?
-function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:dynamic})
-    dx, dy = pixelsizes(img)
-    Threads.@threads :dynamic for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I])*dx*dy
-    end
-end
 
-function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:static})
-    dx, dy = pixelsizes(img)
-    Threads.@threads :static for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I])*dx*dy
+for s in schedulers
+    @eval begin
+        function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{$s})
+            dx, dy = pixelsizes(img)
+            Threads.@threads $s for I in CartesianIndices(g)
+                img[I] = intensity_point(s, g[I])*dx*dy
+            end
+        end
     end
-end
-
-#Future proof new schedulers in 1.11
-@static if VERSION ≥ v"1.11"
-function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:greedy})
-    dx, dy = pixelsizes(img)
-    Threads.@threads :greedy for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I])*dx*dy
-    end
-end
 end

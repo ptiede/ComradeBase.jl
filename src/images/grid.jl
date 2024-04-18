@@ -70,6 +70,14 @@ struct ThreadsEx{S} end
 ThreadsEx() = ThreadsEx(:dynamic)
 ThreadsEx(s) = ThreadsEx{s}()
 
+#TODO can this be made nicer?
+@static if VERSION ≥ v"1.11"
+    const schedulers = (:(:dynamic), :(:static), :(:greedy))
+else
+    const schedulers = (:(:dynamic), :(:static))
+end
+
+
 
 Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
 Base.getindex(d::AbstractGrid, i::Tuple) = getindex(dims(d), i)

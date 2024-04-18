@@ -67,34 +67,19 @@ function intensitymap_analytic(s::AbstractModel, dims::UnstructuredGrid{D, <:Thr
 end
 
 function intensitymap_analytic!(
-    img::UnstructuredMap{T,<:AbstractVector,<:ComradeBase.UnstructuredGrid{D, <:ThreadsEx{S}}},
+    img::UnstructuredMap{T,<:AbstractVector,<:UnstructuredGrid{D, <:ThreadsEx{S}}},
     s::AbstractModel) where {T,D,S}
     g = imagegrid(img)
     _threads_intensitymap!(img, s, g, Val(S))
     return img
 end
 
-#TODO can this be made nicer?
-function _threads_intensitymap!(img::UnstructuredMap, s::AbstractModel, g, ::Val{:dynamic})
-    dx, dy = pixelsizes(img)
-    Threads.@threads :dynamic for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I])*dx*dy
+for s in schedulers
+    @eval begin
+        function _threads_intensitymap!(img::UnstructuredMap, s::AbstractModel, g, ::Val{$s})
+            Threads.@threads $s for I in CartesianIndices(g)
+                img[I] = intensity_point(s, g[I])
+            end
+        end
     end
-end
-
-function _threads_intensitymap!(img::UnstructuredMap, s::AbstractModel, g, ::Val{:static})
-    dx, dy = pixelsizes(img)
-    Threads.@threads :static for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I])*dx*dy
-    end
-end
-
-#Future proof new schedulers in 1.11
-@static if VERSION ≥ v"1.11"
-function _threads_intensitymap!(img::UnstructuredMap, s::AbstractModel, g, ::Val{:greedy})
-    dx, dy = pixelsizes(img)
-    Threads.@threads :greedy for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I])*dx*dy
-    end
-end
 end

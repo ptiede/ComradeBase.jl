@@ -50,6 +50,29 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
     return nothing
 end
 
+function visibilitymap_analytic(m::AbstractModel, p::AbstractGrid{D, <:ThreadsEx}) where {D}
+    vis = allocate_map(p)
+    visibilitymap_analytic!(vis, m)
+    return vis
+end
+
+function visibilitymap_analytic!(vis::UnstructuredMap{T, <:AbstractVector, <:UnstructuredGrid{D, <:ThreadsEx{S}}}, m::AbstractModel) where {T,D,S}
+    d = axisdims(vis)
+    g = imagegrid(d)
+    _threads_visibilitymap!(vis, m, g, Val(S))
+    return nothing
+end
+
+function visibilitymap_analytic!(
+    vis::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
+    m::AbstractModel) where {T,N,D,S}
+    d = axisdims(vis)
+    g = imagegrid(d)
+    _threads_visibilitymap!(vis, m, g, Val(S))
+    return nothing
+end
+
+
 
 
 
