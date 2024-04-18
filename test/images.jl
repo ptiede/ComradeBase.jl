@@ -1,8 +1,12 @@
 @testset "images" begin
-    X = range(-10.0, 10.0, length=64)
-    Y = range(-10.0, 10.0, length=64)
-    T = [0.0, 0.5, 0.8]
-    F = [86e9, 230e9, 345e9]
+    X(range(-10.0, 10.0, length=64))
+    Y(range(-10.0, 10.0, length=64))
+    Ti([0.0, 0.5, 0.8])
+    Fr([86e9, 230e9, 345e9])
+
+    gsp = RectiGrid((X,Y,))
+    g1 = RectiGrid((X,Y,Fr, Ti))
+    g1 = RectiGrid((X,Y,Ti, Fr))
 
     imp = rand(64, 64, 3, 3)
 

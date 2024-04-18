@@ -78,9 +78,6 @@ stokes(m::AbstractPolarizedModel, v::Symbol) = getfield(m, v)
 
 
 
-ispolarized(::Type{<:AbstractPolarizedModel}) = IsPolarized()
-
-
 
 """
     $(TYPEDEF)
@@ -283,7 +280,7 @@ estimate image size when plotting and using `modelimage`
 function radialextent end
 
 """
-    visibilities(model::AbstractModel, args...)
+    visibilitymap(model::AbstractModel, args...)
 
 Computes the complex visibilities at the locations given by `args...`
 """
@@ -291,7 +288,7 @@ function visibilitymap end
 
 
 """
-    visibilities!(vis::AbstractArray, model::AbstractModel, args...)
+    visibilitymap!(vis::AbstractArray, model::AbstractModel, args...)
 
 Computes the complex visibilities `vis` in place at the locations given by `args...`
 """
@@ -299,7 +296,7 @@ function visibilitymap! end
 
 
 """
-    _visibilities(model::AbstractModel, args...)
+    _visibilitymap(model::AbstractModel, args...)
 
 Internal method used for trait dispatch and unpacking of args arguments in `visibilities`
 
@@ -309,7 +306,7 @@ Internal method used for trait dispatch and unpacking of args arguments in `visi
 function _visibilitymap end
 
 """
-    _visibilities!(model::AbstractModel, args...)
+    _visibilitymap!(model::AbstractModel, args...)
 
 Internal method used for trait dispatch and unpacking of args arguments in `visibilities!`
 

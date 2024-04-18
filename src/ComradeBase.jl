@@ -12,7 +12,9 @@ using Reexport
 @reexport using PolarizedTypes
 using PrecompileTools
 
-export  visibility, intensitymap, intensitymap!,
+export  visibility,
+        intensitymap, intensitymap!,
+        visibilitymap, visibilitymap!,
         StokesParams, CoherencyMatrix,
         flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
         named_dims, IntensityMapTypes

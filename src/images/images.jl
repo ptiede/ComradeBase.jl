@@ -65,6 +65,47 @@ function intensitymap_analytic!(img::IntensityMapTypes, s)
     return img
 end
 
+function intensitymap_analytic(s::AbstractModel, dims::AbstractGrid{D, <:ThreadsEx}) where {D}
+    img = IntensityMap(zeros(eltype(dims), size(dims)), dims)
+    intensitymap_analytic!(img, s)
+    return img
+end
+
+function intensitymap_analytic!(
+    img::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractGrid{D, <:ThreadsEx{S}}},
+    s::AbstractModel) where {T,N,D,S}
+    g = imagegrid(img)
+    _threads_intensitymap!(img, s, g, Val(S))
+    return img
+end
+
+#TODO can this be made nicer?
+function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:dynamic})
+    dx, dy = pixelsizes(img)
+    Threads.@threads :dynamic for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I])*dx*dy
+    end
+end
+
+function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:static})
+    dx, dy = pixelsizes(img)
+    Threads.@threads :static for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I])*dx*dy
+    end
+end
+
+#Future proof new schedulers in 1.11
+@static if VERSION ≥ v"1.11"
+function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:greedy})
+    dx, dy = pixelsizes(img)
+    Threads.@threads :greedy for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I])*dx*dy
+    end
+end
+end
+
+
+
 
 """
     intensitymap(s, fovx, fovy, nx, ny, x0=0.0, y0=0.0)

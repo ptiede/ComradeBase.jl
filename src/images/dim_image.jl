@@ -1,13 +1,12 @@
 using DimensionalData
 const DD = DimensionalData
 using DimensionalData: AbstractDimArray, NoName, NoMetadata, format, DimTuple,
-                       Dimension
+                       Dimension, ZDim, X, Y, Ti
 
 
-DD.@dim F "frequency"
-# DD.@dim T "time"
+DD.@dim Fr ZDim "frequency"
 
-export IntensityMap, Fr
+export IntensityMap, Fr, X, Y, Ti
 
 """
     $(TYPEDEF)
@@ -62,6 +61,8 @@ DD.refdims(img::IntensityMap) = getfield(img, :refdims)
 DD.data(img::IntensityMap)    = getfield(img, :data)
 DD.name(img::IntensityMap)    = getfield(img, :name)
 DD.metadata(img::IntensityMap)= header(axisdims(img))
+
+executor(img::IntensityMap)   = executor(axisdims(img))
 
 function Base.propertynames(img::IntensityMap)
     return keys(axisdims(img))

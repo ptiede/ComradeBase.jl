@@ -35,11 +35,6 @@ end
 @inline basedim(x::DD.LookupArrays.LookupArray) = basedim(parent(x))
 @inline basedim(x) = x
 
-function imagegrid(d::RectiGrid{D, Hd}) where {D, Hd}
-    g = map(basedim, dims(d))
-    N = keys(d)
-    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
-end
 
 
 
