@@ -6,6 +6,22 @@ export RectiGrid, UnstructuredGrid,
 abstract type AbstractGrid{D, E} end
 
 """
+    create_map(array, g::AbstractGrid)
+
+Create a map of values specialized by the grid `g`.
+"""
+function create_map end
+
+"""
+    allocate_map([array=Array{Float64}], g::AbstractGrid)
+
+Allocate the default map specialized by the grid `g`
+"""
+function allocate_map end
+allocate_map(g::AbstractGrid) = allocate_map(Array{Float64}, g)
+
+
+"""
     executor(g::AbstractGrid)
 
 Returns the executor used to compute the intensitymap or visibilitymap
@@ -120,7 +136,8 @@ struct NoHeader <: AbstractHeader end
 
 
 abstract type AbstractRectiGrid{D, E} <: AbstractGrid{D, E} end
-
+create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
+allocate_map(M::Type{<:Array}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
 
 
 
@@ -263,10 +280,7 @@ does not. This is becuase the grid is unstructured the points are a cloud in a s
 """
 function UnstructuredGrid(nt::NamedTuple; executor=Serial(), header=NoHeader())
     p = StructArray(nt)
-    pnt = (position=p,)
-    dims = _make_dims(keys(pnt), values(pnt))
-    # df = _format_dims(dims)
-    return UnstructuredGrid(dims, executor, header)
+    return UnstructuredGrid(p, executor, header)
 end
 
 Base.ndims(d::UnstructuredGrid) = ndims(dims(d))
@@ -285,7 +299,7 @@ Base.propertynames(g::UnstructuredGrid) = propertynames(imagegrid(g))
 Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(imagegrid(g), p)
 
 function imagegrid(d::UnstructuredGrid)
-    return basedim(dims(d)[1])
+    return getfield(d, :dims)
 end
 
 
@@ -293,5 +307,7 @@ function Base.summary(io::IO, g::UnstructuredGrid)
     n = propertynames(imagegrid(g))
     printstyled(io, "│ "; color=:light_black)
     print(io, "UnstructuredGrid with dims: $n")
-
 end
+
+create_map(array, g::UnstructuredGrid) = UnstructuredMap(array, g)
+allocate_map(M::Type{<:Array}, g::UnstructuredGrid) = IntensityMap(similar(M, T, size(g)), g)

@@ -19,16 +19,12 @@ Computes the visibilities of the model `m` using the coordinates `p`. The coordi
 are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 """
 @inline function visibilitymap(m::M, p) where {M<:AbstractModel}
-    return _visibilitymap(visanalytic(M), m, p)
+    return create_map(_visibilitymap(visanalytic(M), m, p), p)
 end
 @inline _visibilitymap(::IsAnalytic,  m::AbstractModel, p)  = visibilitymap_analytic(m, p)
 @inline _visibilitymap(::NotAnalytic, m::AbstractModel, p)  = visibilitymap_numeric(m, p)
 
-function visibilitymap_analytic(m::AbstractModel, p::NamedTuple{N}) where {N}
-    u, v, t, f = extract_pos(p)
-    vis = visibility_point.(Ref(m), NamedTuple{(:U, :V, :T, :F)}.(tuple.(u, v, t, f)))
-    return vis
-end
+
 
 """
     visibilitymap!(vis, m, p)
@@ -36,27 +32,25 @@ end
 Computes the visibilities `vis` in place of the model `m` using the coordinates `p`. The coordinates `p`
 are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 """
-@inline function visibilitymap!(vis::AbstractArray, m::M, p) where {M<:AbstractModel}
-    return _visibilitymap!(visanalytic(M), vis, m, p)
+@inline function visibilitymap!(vis, m::M) where {M<:AbstractModel}
+    return _visibilitymap!(visanalytic(M), vis, m)
 end
-@inline _visibilitymap!(::IsAnalytic , vis::AbstractArray, m::AbstractModel, p)  = visibilitymap_analytic!(vis, m, p)
-@inline _visibilitymap!(::NotAnalytic, vis::AbstractArray, m::AbstractModel, p)  = visibilitymap_numeric!(vis, m, p)
-
-function visibilitymap_analytic!(vis::AbstractArray, m::AbstractModel, p::NamedTuple{N}) where {N}
-    u, v, t, f = extract_pos(p)
-    vis .= visibility_point.(Ref(m), NamedTuple{(:U, :V, :T, :F)}.(tuple.(u, v, t, f)))
-    return nothing
-end
+@inline _visibilitymap!(::IsAnalytic , vis, m::AbstractModel)  = visibilitymap_analytic!(vis, m)
+@inline _visibilitymap!(::NotAnalytic, vis, m::AbstractModel)  = visibilitymap_numeric!(vis, m)
 
 function visibilitymap_analytic(m::AbstractModel, p::AbstractGrid)
     g = imagegrid(p)
     return  visibility_point.(Ref(m), g)
 end
 
-function visibilitymap_analytic!(vis::AbstractArray, m::AbstractModel, p::AbstractGrid)
-    g = imagegrid(p)
+function visibilitymap_analytic!(vis, m::AbstractModel)
+    d = axisdims(vis)
+    g = imagegrid(d)
     vis .= visibility_point.(Ref(m), g)
+    return nothing
 end
+
+
 
 
 """

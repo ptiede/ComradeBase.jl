@@ -12,7 +12,6 @@ export IntensityMap, Fr, X, Y, Ti
 
 """
     $(TYPEDEF)
-    IntensityMap(data::AbstractArray, g::AbstractGrid)
 
 This type is the basic array type for all images and models that obey the `ComradeBase`
 interface. The type is a subtype of `DimensionalData.AbstractDimArray` however, we make
@@ -43,8 +42,6 @@ julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
 
 Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
 """
-
-
 struct IntensityMap{T,N,D,G<:AbstractGrid{D},A<:AbstractArray{T,N},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
     data::A
     grid::G
@@ -177,20 +174,55 @@ end
     rebuild(img, data, dims, refdims, name, metadata)
 end
 
-
-
-function check_grid(I,Q,U,V)
-    named_dims(I) == named_dims(Q) == named_dims(U) == named_dims(V)
+function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid)
+    dx = step(dims.X)
+    dy = step(dims.Y)
+    img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
+    return IntensityMap(img, dims)
 end
 
+function intensitymap_analytic!(img::IntensityMap, s)
+    dx, dy = pixelsizes(img)
+    g = imagegrid(img)
+    img .= intensity_point.(Ref(s), g).*dx.*dy
+    return img
+end
 
-function Base.show(io::IO, mime::MIME"text/plain", A::IntensityMap{T, N, D, <:UnstructuredGrid}) where {T, N, D}
-    lines, blockwidth = DimensionalData.show_main(io, mime, A)
-    ds = displaysize(io)
-    ctx = IOContext(io, :blockwidth => blockwidth, :displaysize => (ds[1] - lines, ds[2]))
+function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid{D, <:ThreadsEx}) where {D}
+    img = IntensityMap(zeros(eltype(dims), size(dims)), dims)
+    intensitymap_analytic!(img, s)
+    return img
+end
 
-    blockwidth = get(ctx, :blockwidth, 0)
-    DD.print_block_close(ctx, blockwidth)
-    show(io, mime, parent(A))
+function intensitymap_analytic!(
+    img::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
+    s::AbstractModel) where {T,N,D,S}
+    g = imagegrid(img)
+    _threads_intensitymap!(img, s, g, Val(S))
+    return img
+end
 
+#TODO can this be made nicer?
+function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:dynamic})
+    dx, dy = pixelsizes(img)
+    Threads.@threads :dynamic for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I])*dx*dy
+    end
+end
+
+function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:static})
+    dx, dy = pixelsizes(img)
+    Threads.@threads :static for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I])*dx*dy
+    end
+end
+
+#Future proof new schedulers in 1.11
+@static if VERSION ≥ v"1.11"
+function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{:greedy})
+    dx, dy = pixelsizes(img)
+    Threads.@threads :greedy for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I])*dx*dy
+    end
+end
 end
