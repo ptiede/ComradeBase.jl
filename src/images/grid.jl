@@ -244,8 +244,8 @@ const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F
 
 
 
-# Now we have a completely unstructured grid or really a vector of points
-struct UnstructuredGrid{D, E, H<:AbstractHeader} <: AbstractGrid{D,E}
+# TODO make this play nice with dimensional data
+struct UnstructuredGrid{D,E, H<:AbstractHeader} <: AbstractGrid{D,E}
     dims::D
     executor::E
     header::H
@@ -262,7 +262,11 @@ Note that unlike `RectiGrid` which assigns dimensions to the grid points, `Unstr
 does not. This is becuase the grid is unstructured the points are a cloud in a space
 """
 function UnstructuredGrid(nt::NamedTuple; executor=Serial(), header=NoHeader())
-    return UnstructuredGrid(StructArray(nt), executor, header)
+    p = StructArray(nt)
+    pnt = (position=p,)
+    dims = _make_dims(keys(pnt), values(pnt))
+    # df = _format_dims(dims)
+    return UnstructuredGrid(dims, executor, header)
 end
 
 Base.ndims(d::UnstructuredGrid) = ndims(dims(d))
@@ -273,13 +277,21 @@ Base.lastindex(d::UnstructuredGrid) = lastindex(dims(d))
 Base.front(d::UnstructuredGrid) = Base.front(dims(d))
 Base.eltype(d::UnstructuredGrid) = Base.eltype(dims(d))
 
-function DD.rebuild(::Type{<:UnstructuredGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
+function DD.rebuild(::Type{<:UnstructuredGrid}, g::Tuple, executor=Serial(), header=ComradeBase.NoHeader())
     UnstructuredGrid(g, executor, header)
 end
 
-Base.propertynames(g::UnstructuredGrid) = propertynames(dims(g))
-Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(dims(g), p)
+Base.propertynames(g::UnstructuredGrid) = propertynames(imagegrid(g))
+Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(imagegrid(g), p)
 
 function imagegrid(d::UnstructuredGrid)
-    return dims(d)
+    return basedim(dims(d)[1])
+end
+
+
+function Base.summary(io::IO, g::UnstructuredGrid)
+    n = propertynames(imagegrid(g))
+    printstyled(io, "│ "; color=:light_black)
+    print(io, "UnstructuredGrid with dims: $n")
+
 end

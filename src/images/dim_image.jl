@@ -1,10 +1,12 @@
 using DimensionalData
 const DD = DimensionalData
 using DimensionalData: AbstractDimArray, NoName, NoMetadata, format, DimTuple,
-                       Dimension, ZDim, X, Y, Ti
+                       Dimension, XDim, YDim, ZDim, X, Y, Ti
 
 
 DD.@dim Fr ZDim "frequency"
+DD.@dim U  XDim "U"
+DD.@dim V  YDim "V"
 
 export IntensityMap, Fr, X, Y, Ti
 
@@ -41,7 +43,9 @@ julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
 
 Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
 """
-struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{D},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
+
+
+struct IntensityMap{T,N,D,G<:AbstractGrid{D},A<:AbstractArray{T,N},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
     data::A
     grid::G
     refdims::R
@@ -50,9 +54,7 @@ struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{D},R<:Tuple,Na} 
         data::A, grid::G, refdims::R, name::Na
         ) where {A<:AbstractArray{T,N}, G<:AbstractGrid{D}, R<:Tuple, Na} where {T,N,D}
 
-        d = dims(grid)
-        # DD.checkdims(data, d)
-        new{T,N,D,A,G,R,Na}(data, grid, refdims, name)
+        new{T,N,D,G,A,R,Na}(data, grid, refdims, name)
     end
 end
 
@@ -179,4 +181,16 @@ end
 
 function check_grid(I,Q,U,V)
     named_dims(I) == named_dims(Q) == named_dims(U) == named_dims(V)
+end
+
+
+function Base.show(io::IO, mime::MIME"text/plain", A::IntensityMap{T, N, D, <:UnstructuredGrid}) where {T, N, D}
+    lines, blockwidth = DimensionalData.show_main(io, mime, A)
+    ds = displaysize(io)
+    ctx = IOContext(io, :blockwidth => blockwidth, :displaysize => (ds[1] - lines, ds[2]))
+
+    blockwidth = get(ctx, :blockwidth, 0)
+    DD.print_block_close(ctx, blockwidth)
+    show(io, mime, parent(A))
+
 end

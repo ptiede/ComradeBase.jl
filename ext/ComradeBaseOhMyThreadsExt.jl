@@ -18,7 +18,7 @@ function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::C
     return IntensityMap(img, dims)
 end
 
-function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractGrid{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N,D}
+function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBase.AbstractGrid{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N,D}
     dims = axisdims(img)
     dx = step(dims.X)
     dy = step(dims.Y)
