@@ -20,6 +20,11 @@ Allocate the default map specialized by the grid `g`
 function allocate_map end
 allocate_map(g::AbstractGrid) = allocate_map(Array{Float64}, g)
 
+# We enforce that all grids are static for performance reasons
+# If this is not true please create a custom subtype
+ChainRulesCore.@non_differentiable imagegrid(d::AbstractGrid)
+
+
 
 """
     executor(g::AbstractGrid)
@@ -27,12 +32,15 @@ allocate_map(g::AbstractGrid) = allocate_map(Array{Float64}, g)
 Returns the executor used to compute the intensitymap or visibilitymap
 """
 executor(g::AbstractGrid) = getfield(g, :executor)
+ChainRulesCore.@non_differentiable executor(::AbstractGrid)
+
 """
     dims(g::AbstractGrid)
 
 Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
 """
 DD.dims(g::AbstractGrid) = getfield(g, :dims)
+ChainRulesCore.@non_differentiable DD.dims(::AbstractGrid)
 
 """
     named_dims(g::AbstractGrid)
@@ -40,6 +48,8 @@ DD.dims(g::AbstractGrid) = getfield(g, :dims)
 Returns a named tuple containing the dimensions of `g`. For a unnamed version see [`dims`](@ref)
 """
 named_dims(g::AbstractGrid) = NamedTuple{keys(g)}(dims(g))
+ChainRulesCore.@non_differentiable named_dims(::AbstractGrid)
+
 
 """
     header(g::AbstractGrid)
@@ -47,9 +57,8 @@ named_dims(g::AbstractGrid) = NamedTuple{keys(g)}(dims(g))
 Returns the headerinformation of the dimensions `g`
 """
 header(g::AbstractGrid) = getfield(g, :header)
+ChainRulesCore.@non_differentiable header(::AbstractGrid)
 Base.keys(g::AbstractGrid) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
-
-ChainRulesCore.@non_differentiable header(AbstractGrid)
 
 """
     Serial()

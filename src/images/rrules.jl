@@ -22,7 +22,8 @@ function ChainRulesCore.rrule(::Type{IntensityMap}, data::AbstractArray, keys...
     return img, _IntensityMap_pullback
 end
 
-
+ChainRulesCore.@non_differentiable axisdims(img::IntensityMap)
+ChainRulesCore.@non_differentiable axisdims(img::UnstructuredMap)
 
 _baseim_pb(Δ, pr) = (NoTangent(), pr(Δ))
 _baseim_pb(Δ::Tangent, pr) = _baseim_pb(Δ.data, pr)

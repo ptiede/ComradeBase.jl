@@ -8,7 +8,7 @@ DD.@dim Fr ZDim "frequency"
 DD.@dim U  XDim "U"
 DD.@dim V  YDim "V"
 
-export IntensityMap, Fr, X, Y, Ti
+export IntensityMap, Fr, X, Y, Ti, U, V
 
 """
     $(TYPEDEF)
