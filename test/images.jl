@@ -6,7 +6,7 @@
 
     gsp = RectiGrid((x,y))
     g1 = RectiGrid((x, y, f, t))
-    g1 = RectiGrid((x, y, t, f))
+    g2 = RectiGrid((x, y, t, f))
 
     imp = rand(64, 64, 3, 3)
 
