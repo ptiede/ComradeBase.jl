@@ -15,7 +15,7 @@ Base.IndexStyle(::Type{<:UnstructuredMap{T, A}}) where {T, A} = IndexStyle(A)
 Base.getindex(a::UnstructuredMap, i::Int) = getindex(parent(a), i)
 Base.setindex!(a::UnstructuredMap, v, i::Int) = setindex!(parent(a), v, i)
 
-UnstructuredMap(data::UnstructuredMap, dims) = data
+UnstructuredMap(data::UnstructuredMap, dims::AbstractGrid) = UnstructuredMap(parent(data), dims)
 
 function Base.similar(m::UnstructuredMap, ::Type{S}) where {S}
     return UnstructuredMap(similar(parent(m), S), axisdims(m))
