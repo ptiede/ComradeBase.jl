@@ -116,7 +116,7 @@ end
 end
 
 @testset "rrule UnstructuredMap" begin
-    data = rand(32, 32)
+    data = rand(64)
     g = UnstructuredGrid((X=randn(64), Y=randn(64)))
     test_rrule(UnstructuredMap, data, g⊢NoTangent())
 end
