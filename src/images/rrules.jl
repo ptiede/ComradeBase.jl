@@ -33,7 +33,7 @@ function ChainRulesCore.rrule(::typeof(baseimage), img)
 end
 
 function ChainRulesCore.ProjectTo(img::UnstructuredMap)
-    return ProjectTo{UnstructuredGrid}(;data=ProjectTo(parent(img)),
+    return ProjectTo{UnstructuredMap}(;data=ProjectTo(parent(img)),
                                        dims=axisdims(img),
                                        )
 end
