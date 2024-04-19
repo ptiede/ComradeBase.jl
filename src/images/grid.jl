@@ -20,10 +20,18 @@ Allocate the default map specialized by the grid `g`
 function allocate_map end
 allocate_map(g::AbstractGrid) = allocate_map(Array{Float64}, g)
 
+
+"""
+    imagegrid(g::AbstractGrid)
+
+Create a grid iterator that can be used to iterate through different points.
+All grid methods must implement this method.
+"""
+function imagegrid end
+
 # We enforce that all grids are static for performance reasons
 # If this is not true please create a custom subtype
 ChainRulesCore.@non_differentiable imagegrid(d::AbstractGrid)
-
 
 
 """
