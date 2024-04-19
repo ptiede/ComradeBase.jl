@@ -11,6 +11,7 @@ end
 __getdata(img::IntensityMap) = DimensionalData.data(img)
 __getdata(img::Tangent) = img.data
 __getdata(img::ChainRulesCore.Thunk) = img
+__getdata(img::UnstructuredMap) = baseimage(img)
 
 function ChainRulesCore.rrule(::Type{IntensityMap}, data::AbstractArray, keys...)
     img = IntensityMap(data, keys...)
@@ -44,8 +45,8 @@ end
 function ChainRulesCore.rrule(::Type{UnstructuredMap}, data::AbstractArray, dims)
     img = UnstructuredMap(data, dims)
     pd = ProjectTo(data)
-    function _IntensityMap_pullback(Δ)
-        return (NoTangent(), @thunk(pd(__getdata(Δ))), map(i->NoTangent(), keys)...)
+    function _UnstructuredMap_pullback(Δ)
+        return (NoTangent(), @thunk(pd(__getdata(Δ))), NoTangent())
     end
-    return img, _IntensityMap_pullback
+    return img, _UnstructuredMap_pullback
 end
