@@ -1,18 +1,18 @@
 @testset "images" begin
-    X(range(-10.0, 10.0, length=64))
-    Y(range(-10.0, 10.0, length=64))
-    Ti([0.0, 0.5, 0.8])
-    Fr([86e9, 230e9, 345e9])
+    x = X(range(-10.0, 10.0, length=64))
+    y = Y(range(-10.0, 10.0, length=64))
+    t = Ti([0.0, 0.5, 0.8])
+    f = Fr([86e9, 230e9, 345e9])
 
-    gsp = RectiGrid((X,Y,))
-    g1 = RectiGrid((X,Y,Fr, Ti))
-    g1 = RectiGrid((X,Y,Ti, Fr))
+    gsp = RectiGrid((x,y,t,f))
+    g1 = RectiGrid((x, y, f, t))
+    g1 = RectiGrid((x, y, t, f))
 
     imp = rand(64, 64, 3, 3)
 
-    img1 = IntensityMap(imp[:,:,1,1], (;X,Y))
-    img2 = IntensityMap(imp, (;X, Y, T, F))
-    img3 = IntensityMap(imp, (;X, Y, F, T))
+    img1 = IntensityMap(imp[:,:,1,1], (;x,y))
+    img2 = IntensityMap(imp, (;x, y, t, f))
+    img3 = IntensityMap(imp, (;x, y, f, t))
 
 
     @testset "Slicing" begin
@@ -35,8 +35,8 @@
         nnk = axisdims(subimg1)
         @test nnk.X == ComradeBase.basedim(nk.X)
         @test nnk.Y == ComradeBase.basedim(nk.Y)
-        @test ComradeBase.basedim(nk.X) == X[5:10]
-        @test ComradeBase.basedim(nk.Y) == Y[1:20]
+        @test ComradeBase.basedim(nk.X) == x[5:10]
+        @test ComradeBase.basedim(nk.Y) == y[1:20]
     end
 
     @testset "keys" begin
@@ -58,8 +58,8 @@
         imgV = rand(64, 64, 3, 3)
 
         imgP = StructArray{StokesParams}(I=imgI, Q=imgQ, U=imgU, V=imgV)
-        img1 = IntensityMap(imgP[:,:,1,1], (;X,Y))
-        img2 = IntensityMap(imgP, (;X, Y, T, F))
+        img1 = IntensityMap(imgP[:,:,1,1], (;x,y))
+        img2 = IntensityMap(imgP, (;x, y, t, f))
         simg1 = StokesIntensityMap(img1)
         simg2 = StokesIntensityMap(img2)
 
@@ -114,6 +114,13 @@ end
     g = imagepixels(10.0, 10.0, 32, 32)
     test_rrule(IntensityMap, data, g⊢NoTangent())
 end
+
+@testset "rrule UnstructuredMap" begin
+    data = rand(32, 32)
+    g = UnstructuredGrid((X=randn(64), Y=randn(64)))
+    test_rrule(UnstructuredMap, data, g⊢NoTangent())
+end
+
 
 @testset "rrule baseimage" begin
     data = rand(32, 24)

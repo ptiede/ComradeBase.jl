@@ -31,3 +31,21 @@ function ChainRulesCore.rrule(::typeof(baseimage), img)
     pb(Δ) = _baseim_pb(Δ, ProjectTo(img))
     return baseimage(img), pb
 end
+
+function ChainRulesCore.ProjectTo(img::UnstructuredMap)
+    return ProjectTo{UnstructuredGrid}(;data=ProjectTo(parent(img)),
+                                       dims=axisdims(img),
+                                       )
+end
+(project::ProjectTo{UnstructuredMap})(dx) = UnStructuredMap(dx, project.dims)
+(project::ProjectTo{UnstructuredMap})(dx::AbstractZero) = dx
+
+
+function ChainRulesCore.rrule(::Type{UnstructuredMap}, data::AbstractArray, dims)
+    img = UnStructuredMap(data, dims)
+    pd = ProjectTo(data)
+    function _IntensityMap_pullback(Δ)
+        return (NoTangent(), @thunk(pd(__getdata(Δ))), map(i->NoTangent(), keys)...)
+    end
+    return img, _IntensityMap_pullback
+end
