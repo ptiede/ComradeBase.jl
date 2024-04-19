@@ -1,3 +1,43 @@
+function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
+    @test typeof(executor(grid)) == E
+    arr = rand(size(grid))
+    @inferred create_map(arr, grid)
+    map = create_map(arr, grid)
+    @test typeof(map) == typeof(allocate_map(g))
+    @inferred domaingrid(grid)
+    @test typeof(DD.dims(grid)) == D
+
+    @test header(grid) isa ComradeBase.AbstractHeader
+    @test keys(grid) isa NamedTuple
+    @test keys(grid) == propertynames(grid)
+
+    @test keys(grid) == keys(named_dims(grid))
+    @test firstindex(grid) == 1
+    @test lastindex(grid) == length(grid)
+    @test Base.front(g) == DD.dims(g)[1:end-1]
+
+
+end
+
+@testset "AbstractGrid" begin
+    ex = Serial()
+    prect = (;X=range(-10.0, 10.0, length=128),
+                        Y=range(-10.0, 10.0, length=128),
+                        Fr = [230.0, 345.0],
+                        Ti = sort(rand(24)))
+    pustr = (;X=range(-10.0, 10.0, length=128),
+                    Y=range(-10.0, 10.0, length=128),
+                    Fr = fill(230e9, 128),
+                    Ti = sort(rand(128)))
+    grect = RectiGrid(prect)
+    gustr = UnstructuredGrid(pustr)
+
+    @test executor(grect) == Serial()
+    @test executor(gustr) == Serial()
+
+
+end
+
 @testset "images" begin
     x = X(range(-10.0, 10.0, length=64))
     y = Y(range(-10.0, 10.0, length=64))

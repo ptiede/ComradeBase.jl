@@ -4,13 +4,6 @@ export visibilities, visibilities!,
       closure_phase, closure_phasemap,
       bispectrum, bispectrummap
 
-function extract_pos(p::NamedTuple)
-    return p.U, p.V, p.T, p.F
-end
-
-function extract_pos(p::NamedTuple{(:U,:V)})
-    return p.U, p.V, zero(eltype(p.U)), zero(eltype(p.V))
-end
 
 """
     visibilitymap(m, p)

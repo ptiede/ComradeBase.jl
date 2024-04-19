@@ -95,9 +95,10 @@ else
 end
 
 
-
+# We index the dimensions not the grid itself
 Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
-Base.getindex(d::AbstractGrid, i::Tuple) = getindex(dims(d), i)
+
+
 Base.ndims(d::AbstractGrid) = length(dims(d))
 Base.size(d::AbstractGrid) = map(length, dims(d))
 Base.length(d::AbstractGrid) = prod(size(d))
@@ -105,13 +106,14 @@ Base.firstindex(d::AbstractGrid) = 1
 Base.lastindex(d::AbstractGrid) = length(d)
 Base.axes(d::AbstractGrid) = axes(dims(d))
 Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
-Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
-#Make sure we actually get a tuple here
-Base.map(f, args, d::AbstractGrid) = map(f, args, dims(d))
-Base.map(f, d::AbstractGrid, args) = map(f, dims(d), args)
 Base.front(d::AbstractGrid) = Base.front(dims(d))
-Base.eltype(d::AbstractGrid) = Base.eltype(Base.eltype(dims(d)))
+# We return the eltype of the dimensions. Should we change this?
+Base.eltype(d::AbstractGrid) = promote_type(map(eltype, dims(d))...)
 
+# These aren't needed and I am not sure if the semantics are what we actually want
+# Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
+# Base.map(f, args, d::AbstractGrid) = map(f, args, dims(d))
+# Base.map(f, d::AbstractGrid, args) = rebuild(typeof(d), map(f, dims(d), args))
 
 
 abstract type AbstractHeader end

@@ -30,7 +30,7 @@ function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBas
     return nothing
 end
 
-function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,D<:AbstractVector,<:ComradeBase.UnstructuredGrid{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N,D}
+function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,D,<:UnstructuredGrid{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,D}
     dims = axisdims(img)
     g = domaingrid(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
@@ -40,14 +40,14 @@ function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,D<:AbstractVe
     return nothing
 end
 
-function ComradeBase.visibilitymap_analytic(m::AbstractModel, dims::AbstractGrid{D, <:OhMyThreads.Scheduler}) where {D}
+function ComradeBase.visibilitymap_analytic(m::ComradeBase.AbstractModel, dims::ComradeBase.AbstractGrid{D, <:OhMyThreads.Scheduler}) where {D}
     g = domaingrid(dims)
     f = Base.Fix1(ComradeBase.visibility_point, m)
     img = tmap(f, g; scheduler=executor(dims))
     return img
 end
 
-function ComradeBase.visibilitymap_analytic!(vis, s::ComradeBase.AbstractModel)
+function ComradeBase.visibilitymap_analytic!(vis::Union{IntensityMap{T,N,D,<:ComradeBase.AbstractGrid{D, <: OhMyThreads.Scheduler}, UnstructuredMap{T, <:AbstractVector, <:OhMyThreads.Scheduler}}}, s::ComradeBase.AbstractModel) where {T,N,D}
     dims = axisdims(vis)
     g = domaingrid(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)

@@ -195,7 +195,7 @@ function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid{D, <:Th
 end
 
 function intensitymap_analytic!(
-    img::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
+    img::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
     s::AbstractModel) where {T,N,D,S}
     g = domaingrid(img)
     _threads_intensitymap!(img, s, g, Val(S))
