@@ -90,7 +90,7 @@ function FiniteDifferences.to_vec(k::IntensityMap)
     return v, back
 end
 
-function FiniteDifferences.to_vec(k::UnstructuredGrid)
+function FiniteDifferences.to_vec(k::UnstructuredMap)
     v, b = to_vec(baseimage(k))
     d = axisdims(k)
     back(x) = UnstructuredMap(b(x), d)
