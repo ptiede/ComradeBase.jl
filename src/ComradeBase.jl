@@ -31,7 +31,7 @@ include("visibilities.jl")
     @compile_workload begin
         p = imagepixels(fovx, fovy, nx, ny)
         g = RectiGrid(p)
-        gs = imagegrid(p)
+        gs = domaingrid(p)
         imgI = IntensityMap(rand(10, 10), g)
         imgI.^2
 

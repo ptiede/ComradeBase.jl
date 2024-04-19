@@ -1,6 +1,6 @@
 export IntensityMap, SpatialIntensityMap,
         DataArr, SpatialDataArr, DataNames,
-        named_axisdims, imagepixels, pixelsizes, imagegrid,
+        named_axisdims, imagepixels, pixelsizes, domaingrid,
         phasecenter, baseimage
 include("grid.jl")
 
@@ -12,7 +12,7 @@ include("unstructured_image.jl")
 
 
 export flux, centroid, second_moment, named_axisdims, axisdims,
-       imagepixels, pixelsizes, imagegrid, phasecenter
+       imagepixels, pixelsizes, domaingrid, phasecenter
 include("methods.jl")
 include("io.jl")
 include("rrules.jl")

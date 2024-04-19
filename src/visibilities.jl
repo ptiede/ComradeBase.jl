@@ -39,13 +39,13 @@ end
 @inline _visibilitymap!(::NotAnalytic, vis, m::AbstractModel)  = visibilitymap_numeric!(vis, m)
 
 function visibilitymap_analytic(m::AbstractModel, p::AbstractGrid)
-    g = imagegrid(p)
+    g = domaingrid(p)
     return  visibility_point.(Ref(m), g)
 end
 
 function visibilitymap_analytic!(vis, m::AbstractModel)
     d = axisdims(vis)
-    g = imagegrid(d)
+    g = domaingrid(d)
     vis .= visibility_point.(Ref(m), g)
     return nothing
 end
@@ -58,7 +58,7 @@ end
 
 function visibilitymap_analytic!(vis::UnstructuredMap{T, <:AbstractVector, <:UnstructuredGrid{D, <:ThreadsEx{S}}}, m::AbstractModel) where {T,D,S}
     d = axisdims(vis)
-    g = imagegrid(d)
+    g = domaingrid(d)
     _threads_visibilitymap!(vis, m, g, Val(S))
     return nothing
 end
@@ -67,11 +67,21 @@ function visibilitymap_analytic!(
     vis::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
     m::AbstractModel) where {T,N,D,S}
     d = axisdims(vis)
-    g = imagegrid(d)
-    _threads_visibilitymap!(vis, m, g, Val(S))
+    g = domaingrid(d)
+    _threads_visibilitymap!(parent(vis), m, g, Val(S))
     return nothing
 end
 
+for s in schedulers
+    @eval begin
+        function _threads_visibilitymap!(vis, s::AbstractModel, g, ::Val{$s})
+            Threads.@threads $s for I in CartesianIndices(g)
+                vis[I] = visibility_point(s, g[I])
+            end
+        end
+        return nothing
+    end
+end
 
 
 
@@ -193,12 +203,12 @@ function _amplitudemap(m::S, p) where {S}
 end
 
 function _amplitudemap(::IsAnalytic, m, p::AbstractGrid)
-    g = imagegrid(p)
+    g = domaingrid(p)
     abs.(visibility_point.(Ref(m), g))
 end
 
 function _amplitudemap(::NotAnalytic, m, p::AbstractGrid)
-    g = imagegrid(p)
+    g = domaingrid(p)
     abs.(visibilitymap_numeric(m, g))
 end
 
@@ -233,9 +243,9 @@ function _bispectrummap(::IsAnalytic, m,
                     p2::T,
                     p3::T,
                    ) where {T<:AbstractGrid}
-    g1 = imagegrid(p1)
-    g2 = imagegrid(p2)
-    g3 = imagegrid(p3)
+    g1 = domaingrid(p1)
+    g2 = domaingrid(p2)
+    g3 = domaingrid(p3)
     return bispectrum.(Ref(m), g1, g2, g3)
 end
 
@@ -262,7 +272,7 @@ triangles p1, p2, p3, where `pi` are coordinates.
 @inline function closure_phasemap(m::AbstractModel,
                         p1::T,p2::T,p3::T
                         ) where {T<:UnstructuredGrid}
-    create_map(_closure_phasemap(m, p1, p2, p3), UnstructuredGrid((;p1=imagegrid(p1), p2=imagegrid(p2), p3=imagegrid(p3))))
+    create_map(_closure_phasemap(m, p1, p2, p3), UnstructuredGrid((;p1=domaingrid(p1), p2=domaingrid(p2), p3=domaingrid(p3))))
 end
 
 # internal method used for trait dispatch
@@ -276,9 +286,9 @@ end
                         p2::UnstructuredGrid,
                         p3::UnstructuredGrid
                        )
-    g1 = imagegrid(p1)
-    g2 = imagegrid(p2)
-    g3 = imagegrid(p3)
+    g1 = domaingrid(p1)
+    g2 = domaingrid(p2)
+    g3 = domaingrid(p3)
     return closure_phase.(Ref(m), g1, g2, g3)
 end
 
@@ -304,7 +314,7 @@ function logclosure_amplitudemap(m::AbstractModel,
                                p3::T,
                                p4::T
                               ) where {T<:AbstractGrid}
-    glc = UnstructuredGrid((;p1 = imagegrid(p1), p2 = imagegrid(p2), p3 = imagegrid(p3), p4 = imagegrid(p4)))
+    glc = UnstructuredGrid((;p1 = domaingrid(p1), p2 = domaingrid(p2), p3 = domaingrid(p3), p4 = domaingrid(p4)))
     create_map(_logclosure_amplitudemap(m, p1, p2, p3, p4), glc)
 end
 
@@ -321,10 +331,10 @@ end
 
 # internal method used for trait dispatch for analytic visibilities
 @inline function _logclosure_amplitudemap(::IsAnalytic, m, p1, p2, p3, p4)
-    g1 = imagegrid(p1)
-    g2 = imagegrid(p2)
-    g3 = imagegrid(p3)
-    g4 = imagegrid(p4)
+    g1 = domaingrid(p1)
+    g2 = domaingrid(p2)
+    g3 = domaingrid(p3)
+    g4 = domaingrid(p4)
     return logclosure_amplitude.(Ref(m), g1, g2, g3, g4)
 end
 

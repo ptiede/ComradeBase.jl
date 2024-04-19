@@ -17,6 +17,7 @@ Base.setindex!(a::UnstructuredMap, v, i::Int) = setindex!(parent(a), v, i)
 
 UnstructuredMap(data::UnstructuredMap, dims::UnstructuredGrid) = UnstructuredMap(parent(data), dims)
 
+
 function Base.similar(m::UnstructuredMap, ::Type{S}) where {S}
     return UnstructuredMap(similar(parent(m), S), axisdims(m))
 end
@@ -35,35 +36,37 @@ find_ustr(::Tuple{}) = nothing
 find_ustr(x::UnstructuredMap, rest) = x
 find_ustr(::Any, rest) = find_ustr(rest)
 
+domaingrid(x::UnstructuredMap) = domaingrid(axisdims(x))
 
 function Base.view(x::UnstructuredMap, I)
     dims = axisdims(x)
-    g = imagegrid(dims)
+    g = domaingrid(dims)
     newdims = ucturedGrid(@view(g[I]), executor(dims), header(dims))
     UnstructuredMap(view(parent(x), I), newdims)
 end
 
 function Base.getindex(x::UnstructuredMap, I)
     dims = axisdims(x)
-    g = imagegrid(dims)
+    g = domaingrid(dims)
     newdims = UnstructuredGrid((g[I]), executor(dims), header(dims))
     UnstructuredMap(parent(x)[I], newdims)
 end
 
 function intensitymap_analytic(m::AbstractModel, dims::UnstructuredGrid)
-    g = imagegrid(dims)
+    g = domaingrid(dims)
     img = intensity_point.(Ref(m), g)
-    return UnstructuredMap(img, dims)
+    return img
 end
 
-function intensitymap_analytic!(img::UnstructuredMap, s)
-    g = imagegrid(img)
+function intensitymap_analytic!(img::UnstructuredMap, s::UnstructuredGrid)
+    g = domaingrid(img)
     img .= intensity_point.(Ref(s), g)
+    return nothing
 end
 
 
 function intensitymap_analytic(s::AbstractModel, dims::UnstructuredGrid{D, <:ThreadsEx}) where {D}
-    img = UnstructuredMap(zeros(eltype(dims), size(dims)), dims)
+    img = UnstructuredMap(zeros(eltype(dims.X), size(dims)), dims)
     intensitymap_analytic!(img, s)
     return img
 end
@@ -71,9 +74,9 @@ end
 function intensitymap_analytic!(
     img::UnstructuredMap{T,<:AbstractVector,<:UnstructuredGrid{D, <:ThreadsEx{S}}},
     s::AbstractModel) where {T,D,S}
-    g = imagegrid(img)
+    g = domaingrid(img)
     _threads_intensitymap!(img, s, g, Val(S))
-    return img
+    return nothing
 end
 
 for s in schedulers
@@ -82,6 +85,7 @@ for s in schedulers
             Threads.@threads $s for I in CartesianIndices(g)
                 img[I] = intensity_point(s, g[I])
             end
+            return nothing
         end
     end
 end

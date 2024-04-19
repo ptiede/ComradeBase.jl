@@ -177,15 +177,15 @@ end
 function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid)
     dx = step(dims.X)
     dy = step(dims.Y)
-    img = intensity_point.(Ref(s), imagegrid(dims)).*dx.*dy
+    img = intensity_point.(Ref(s), domaingrid(dims)).*dx.*dy
     return IntensityMap(img, dims)
 end
 
-function intensitymap_analytic!(img::IntensityMap, s)
+function intensitymap_analytic!(img::IntensityMap, s::AbstractRectiGrid)
     dx, dy = pixelsizes(img)
-    g = imagegrid(img)
+    g = domaingrid(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy
-    return img
+    return nothing
 end
 
 function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid{D, <:ThreadsEx}) where {D}
@@ -197,9 +197,9 @@ end
 function intensitymap_analytic!(
     img::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
     s::AbstractModel) where {T,N,D,S}
-    g = imagegrid(img)
+    g = domaingrid(img)
     _threads_intensitymap!(img, s, g, Val(S))
-    return img
+    return nothing
 end
 
 

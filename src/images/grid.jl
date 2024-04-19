@@ -22,16 +22,16 @@ allocate_map(g::AbstractGrid) = allocate_map(Array{Float64}, g)
 
 
 """
-    imagegrid(g::AbstractGrid)
+    domaingrid(g::AbstractGrid)
 
 Create a grid iterator that can be used to iterate through different points.
 All grid methods must implement this method.
 """
-function imagegrid end
+function domaingrid end
 
 # We enforce that all grids are static for performance reasons
 # If this is not true please create a custom subtype
-ChainRulesCore.@non_differentiable imagegrid(d::AbstractGrid)
+ChainRulesCore.@non_differentiable domaingrid(d::AbstractGrid)
 
 
 """
@@ -204,7 +204,7 @@ struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
 
 end
 
-function imagegrid(d::RectiGrid{D, Hd}) where {D, Hd}
+function domaingrid(d::RectiGrid{D, Hd}) where {D, Hd}
     g = map(basedim, dims(d))
     N = keys(d)
     return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
@@ -320,19 +320,19 @@ function DD.rebuild(::Type{<:UnstructuredGrid}, g::Tuple, executor=Serial(), hea
     UnstructuredGrid(g, executor, header)
 end
 
-Base.propertynames(g::UnstructuredGrid) = propertynames(imagegrid(g))
-Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(imagegrid(g), p)
+Base.propertynames(g::UnstructuredGrid) = propertynames(domaingrid(g))
+Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(domaingrid(g), p)
 
-function imagegrid(d::UnstructuredGrid)
+function domaingrid(d::UnstructuredGrid)
     return getfield(d, :dims)
 end
 
 
 function Base.summary(io::IO, g::UnstructuredGrid)
-    n = propertynames(imagegrid(g))
+    n = propertynames(domaingrid(g))
     printstyled(io, "│ "; color=:light_black)
     print(io, "UnstructuredGrid with dims: $n")
 end
 
 create_map(array, g::UnstructuredGrid) = UnstructuredMap(array, g)
-allocate_map(M::Type{<:Array}, g::UnstructuredGrid) = IntensityMap(similar(M, T, size(g)), g)
+allocate_map(M::Type{<:Array}, g::UnstructuredGrid) = UnstructuredMap(similar(M, size(g)), g)
