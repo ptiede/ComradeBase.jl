@@ -161,50 +161,44 @@ end
     Welcome to the trait jungle. Below is
     how we specify how to evaluate the model
 =#
-@inline function _visibility(::NotPrimitive, m, u, v, time, freq)
-    return visibility_point(m, u, v, time, freq)
+@inline function _visibility(::NotPrimitive, m, p)
+    return visibility_point(m, p)
 end
 
-@inline function _visibility(::IsPrimitive, m::M, u, v, time, freq) where {M}
-    _visibility_primitive(visanalytic(M), m, u, v, time, freq)
+@inline function _visibility(::IsPrimitive, m::M, p) where {M}
+    _visibility_primitive(visanalytic(M), m, p)
 end
 
 
-@inline function _visibility_primitive(::IsAnalytic, mimg, u, v, time, freq)
-    return visibility_point(mimg, u, v, time, freq)
+@inline function _visibility_primitive(::IsAnalytic, mimg, p)
+    return visibility_point(mimg, p)
 end
 
 
 
 
 """
-    amplitudemap(m::AbstractModel, u::AbstractArray, v::AbstractArray)
+    amplitudemap(m::AbstractModel, p)
 
 Computes the visibility amplitudemap of the model `m` at the coordinates `p`.
 The coordinates `p` are expected to have the properties `U`, `V`,
 and sometimes `Ti` and `Fr`.
 """
-function amplitudemap(m, p::NamedTuple{(:U, :V, :T, :F)})
-    _amplitudemap(m, p.U, p.V, p.T, p.F)
-end
-
-function amplitudemap(m, p::NamedTuple{(:U, :V)})
-    T = eltype(p.U)
-    _amplitudemap(m, p.U, p.V, zero(T), zero(T))
+function amplitudemap(m, p)
+    _amplitudemap(m, p)
 end
 
 
-
-function _amplitudemap(m::S, u, v, time, freq) where {S}
-    _amplitudemap(visanalytic(S), m, u, v, time, freq)
+function _amplitudemap(m::S, p) where {S}
+    _amplitudemap(visanalytic(S), m, p)
 end
 
-function _amplitudemap(::IsAnalytic, m, u, v, time, freq)
-    abs.(visibility_point.(Ref(m), u, v, time, freq))
+function _amplitudemap(::IsAnalytic, m, p)
+    abs.(visibility_point.(Ref(m), p))
 end
 
-function _amplitudemap(::NotAnalytic, m, u, v, time, freq)
-    abs.(visibilitymap_numeric(m, u, v, time, freq))
+function _amplitudemap(::NotAnalytic, m, p)
+    abs.(visibilitymap_numeric(m, p))
 end
 
 

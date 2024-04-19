@@ -280,23 +280,23 @@ estimate image size when plotting and using `modelimage`
 function radialextent end
 
 """
-    visibilitymap(model::AbstractModel, args...)
+    visibilitymap(model::AbstractModel, p)
 
-Computes the complex visibilities at the locations given by `args...`
+Computes the complex visibilities at the locations p.
 """
 function visibilitymap end
 
 
 """
-    visibilitymap!(vis::AbstractArray, model::AbstractModel, args...)
+    visibilitymap!(vis::AbstractArray, model::AbstractModel, p)
 
-Computes the complex visibilities `vis` in place at the locations given by `args...`
+Computes the complex visibilities `vis` in place at the locations p
 """
 function visibilitymap! end
 
 
 """
-    _visibilitymap(model::AbstractModel, args...)
+    _visibilitymap(model::AbstractModel, p)
 
 Internal method used for trait dispatch and unpacking of args arguments in `visibilities`
 
@@ -306,7 +306,7 @@ Internal method used for trait dispatch and unpacking of args arguments in `visi
 function _visibilitymap end
 
 """
-    _visibilitymap!(model::AbstractModel, args...)
+    _visibilitymap!(model::AbstractModel, p)
 
 Internal method used for trait dispatch and unpacking of args arguments in `visibilities!`
 
@@ -316,7 +316,7 @@ Internal method used for trait dispatch and unpacking of args arguments in `visi
 function _visibilitymap! end
 
 """
-    visibilties_numeric(model, u, v, time, freq)
+    visibilties_numeric(model, p)
 
 Computes the visibilties of a `model` using a numerical fourier transform. Note that
 none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
@@ -324,7 +324,7 @@ none of these are implemented in `ComradeBase`. For implementations please see `
 function visibilitymap_numeric end
 
 """
-    visibilties_analytic(model, u, v, time, freq)
+    visibilties_analytic(model, p)
 
 Computes the visibilties of a `model` using using the analytic visibility expression given by
 `visibility_point`.
@@ -332,7 +332,7 @@ Computes the visibilties of a `model` using using the analytic visibility expres
 function visibilitymap_analytic end
 
 """
-    visibilties_numeric!(vis, model, u, v, time, freq)
+    visibilties_numeric!(vis, model)
 
 Computes the visibilties of a `model` in-place using a numerical fourier transform. Note that
 none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
@@ -340,7 +340,7 @@ none of these are implemented in `ComradeBase`. For implementations please see `
 function visibilitymap_numeric! end
 
 """
-    visibilties_analytic!(vis, model, u, v, time, freq)
+    visibilties_analytic!(vis, model)
 
 Computes the visibilties of a `model` in-place, using using the analytic visibility expression given by
 `visibility_point`.

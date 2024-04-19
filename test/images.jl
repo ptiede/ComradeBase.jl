@@ -4,15 +4,15 @@
     t = Ti([0.0, 0.5, 0.8])
     f = Fr([86e9, 230e9, 345e9])
 
-    gsp = RectiGrid((x,y,t,f))
+    gsp = RectiGrid((x,y))
     g1 = RectiGrid((x, y, f, t))
     g1 = RectiGrid((x, y, t, f))
 
     imp = rand(64, 64, 3, 3)
 
-    img1 = IntensityMap(imp[:,:,1,1], (;x,y))
-    img2 = IntensityMap(imp, (;x, y, t, f))
-    img3 = IntensityMap(imp, (;x, y, f, t))
+    img1 = IntensityMap(imp[:,:,1,1], gsp)
+    img2 = IntensityMap(imp, g1)
+    img3 = IntensityMap(imp, g2)
 
 
     @testset "Slicing" begin
