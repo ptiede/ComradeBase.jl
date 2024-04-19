@@ -39,7 +39,7 @@ find_ustr(::Any, rest) = find_ustr(rest)
 function Base.view(x::UnstructuredMap, I)
     dims = axisdims(x)
     g = imagegrid(dims)
-    newdims = UnStructuredGrid(@view(g[I]), executor(dims), header(dims))
+    newdims = ucturedGrid(@view(g[I]), executor(dims), header(dims))
     UnstructuredMap(view(parent(x), I), newdims)
 end
 

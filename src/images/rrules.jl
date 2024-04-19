@@ -37,12 +37,12 @@ function ChainRulesCore.ProjectTo(img::UnstructuredMap)
                                        dims=axisdims(img),
                                        )
 end
-(project::ProjectTo{UnstructuredMap})(dx) = UnStructuredMap(dx, project.dims)
+(project::ProjectTo{UnstructuredMap})(dx) = UnstructuredMap(dx, project.dims)
 (project::ProjectTo{UnstructuredMap})(dx::AbstractZero) = dx
 
 
 function ChainRulesCore.rrule(::Type{UnstructuredMap}, data::AbstractArray, dims)
-    img = UnStructuredMap(data, dims)
+    img = UnstructuredMap(data, dims)
     pd = ProjectTo(data)
     function _IntensityMap_pullback(Δ)
         return (NoTangent(), @thunk(pd(__getdata(Δ))), map(i->NoTangent(), keys)...)
