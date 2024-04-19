@@ -35,8 +35,8 @@
         nnk = axisdims(subimg1)
         @test nnk.X == ComradeBase.basedim(nk.X)
         @test nnk.Y == ComradeBase.basedim(nk.Y)
-        @test ComradeBase.basedim(nk.X) == basedim(x[5:10])
-        @test ComradeBase.basedim(nk.Y) == basedim(y[1:20])
+        @test ComradeBase.basedim(nk.X) == ComradeBase.basedim(x[5:10])
+        @test ComradeBase.basedim(nk.Y) == ComradeBase.basedim(y[1:20])
     end
 
     @testset "keys" begin
@@ -48,7 +48,7 @@
         @test img1.^2 isa typeof(img1)
         @test cos.(img1) isa typeof(img1)
         @test img1 .+ img1 isa typeof(img1)
-        @test cos.(img2[F=1,T=1]) isa IntensityMap
+        @test cos.(img2[Fr=1,Ti=1]) isa IntensityMap
     end
 
     @testset "polarized" begin
@@ -59,7 +59,7 @@
 
         imgP = StructArray{StokesParams}(I=imgI, Q=imgQ, U=imgU, V=imgV)
         img1 = IntensityMap(imgP[:,:,1,1], RectiGrid((;X=x,Y=y)))
-        img2 = IntensityMap(imgP, (;x, y, t, f))
+        img2 = IntensityMap(imgP, RectiGrid((x, y, t, f)))
         simg1 = StokesIntensityMap(img1)
         simg2 = StokesIntensityMap(img2)
 
