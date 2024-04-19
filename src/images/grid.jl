@@ -88,7 +88,7 @@ Base.firstindex(d::AbstractGrid) = 1
 Base.lastindex(d::AbstractGrid) = length(d)
 Base.axes(d::AbstractGrid) = axes(dims(d))
 Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
-Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), header(d))
+Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
 #Make sure we actually get a tuple here
 Base.map(f, args, d::AbstractGrid) = map(f, args, dims(d))
 Base.map(f, d::AbstractGrid, args) = map(f, dims(d), args)
@@ -219,7 +219,7 @@ Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), key
 
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(dims::NamedTuple{Na, T}; executor=Serial(), header::AbstractHeader=NoHeader()) where {Na, N, T<:NTuple{N, DD.Dimension}}
-    return RectiGrid(values(dims), executor, header)
+    return RectiGrid(values(dims); executor, header)
 end
 
 @noinline function _make_dims(ks, vs)

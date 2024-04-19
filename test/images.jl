@@ -35,8 +35,8 @@
         nnk = axisdims(subimg1)
         @test nnk.X == ComradeBase.basedim(nk.X)
         @test nnk.Y == ComradeBase.basedim(nk.Y)
-        @test ComradeBase.basedim(nk.X) == x[5:10]
-        @test ComradeBase.basedim(nk.Y) == y[1:20]
+        @test ComradeBase.basedim(nk.X) == basedim(x[5:10])
+        @test ComradeBase.basedim(nk.Y) == basedim(y[1:20])
     end
 
     @testset "keys" begin
@@ -58,7 +58,7 @@
         imgV = rand(64, 64, 3, 3)
 
         imgP = StructArray{StokesParams}(I=imgI, Q=imgQ, U=imgU, V=imgV)
-        img1 = IntensityMap(imgP[:,:,1,1], (;x,y))
+        img1 = IntensityMap(imgP[:,:,1,1], RectiGrid((;X=x,Y=y)))
         img2 = IntensityMap(imgP, (;x, y, t, f))
         simg1 = StokesIntensityMap(img1)
         simg2 = StokesIntensityMap(img2)

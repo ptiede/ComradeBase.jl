@@ -1,3 +1,5 @@
+export UnstructuredMap
+
 struct UnstructuredMap{T, A<:AbstractVector{T}, G<:UnstructuredGrid} <: AbstractVector{T}
     data::A
     dims::G

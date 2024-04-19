@@ -160,7 +160,7 @@ baseimage(x::IntensityMap) = parent(x)
     # TODO find why Name is changing type
     # n2 = n == Symbol("") ? NoName : n
     # @info which(name, (typeof(img),))
-    grid = rebuild(typeof(axisdims(img)), dims, metadata)
+    grid = rebuild(typeof(axisdims(img)), dims, executor(img), metadata)
     # return name(img)
     return IntensityMap(data, grid, refdims, n)
 end
