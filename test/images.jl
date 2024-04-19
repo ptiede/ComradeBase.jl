@@ -1,14 +1,58 @@
+function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
+    @test typeof(executor(grid)) == E
+    arr = rand(size(grid))
+    @inferred create_map(arr, grid)
+    map = create_map(arr, grid)
+    @test typeof(map) == typeof(allocate_map(g))
+    @inferred domaingrid(grid)
+    @test typeof(DD.dims(grid)) == D
+
+    @test header(grid) isa ComradeBase.AbstractHeader
+    @test keys(grid) isa NamedTuple
+    @test keys(grid) == propertynames(grid)
+
+    @test keys(grid) == keys(named_dims(grid))
+    @test firstindex(grid) == 1
+    @test lastindex(grid) == length(grid)
+    @test Base.front(g) == DD.dims(g)[1:end-1]
+
+
+end
+
+@testset "AbstractGrid" begin
+    ex = Serial()
+    prect = (;X=range(-10.0, 10.0, length=128),
+                        Y=range(-10.0, 10.0, length=128),
+                        Fr = [230.0, 345.0],
+                        Ti = sort(rand(24)))
+    pustr = (;X=range(-10.0, 10.0, length=128),
+                    Y=range(-10.0, 10.0, length=128),
+                    Fr = fill(230e9, 128),
+                    Ti = sort(rand(128)))
+    grect = RectiGrid(prect)
+    gustr = UnstructuredGrid(pustr)
+
+    @test executor(grect) == Serial()
+    @test executor(gustr) == Serial()
+
+
+end
+
 @testset "images" begin
-    X = range(-10.0, 10.0, length=64)
-    Y = range(-10.0, 10.0, length=64)
-    T = [0.0, 0.5, 0.8]
-    F = [86e9, 230e9, 345e9]
+    x = X(range(-10.0, 10.0, length=64))
+    y = Y(range(-10.0, 10.0, length=64))
+    t = Ti([0.0, 0.5, 0.8])
+    f = Fr([86e9, 230e9, 345e9])
+
+    gsp = RectiGrid((x,y))
+    g1 = RectiGrid((x, y, f, t))
+    g2 = RectiGrid((x, y, t, f))
 
     imp = rand(64, 64, 3, 3)
 
-    img1 = IntensityMap(imp[:,:,1,1], (;X,Y))
-    img2 = IntensityMap(imp, (;X, Y, T, F))
-    img3 = IntensityMap(imp, (;X, Y, F, T))
+    img1 = IntensityMap(imp[:,:,1,1], gsp)
+    img2 = IntensityMap(imp, g1)
+    img3 = IntensityMap(imp, g2)
 
 
     @testset "Slicing" begin
@@ -31,8 +75,8 @@
         nnk = axisdims(subimg1)
         @test nnk.X == ComradeBase.basedim(nk.X)
         @test nnk.Y == ComradeBase.basedim(nk.Y)
-        @test ComradeBase.basedim(nk.X) == X[5:10]
-        @test ComradeBase.basedim(nk.Y) == Y[1:20]
+        @test ComradeBase.basedim(nk.X) == ComradeBase.basedim(x[5:10])
+        @test ComradeBase.basedim(nk.Y) == ComradeBase.basedim(y[1:20])
     end
 
     @testset "keys" begin
@@ -44,7 +88,7 @@
         @test img1.^2 isa typeof(img1)
         @test cos.(img1) isa typeof(img1)
         @test img1 .+ img1 isa typeof(img1)
-        @test cos.(img2[F=1,T=1]) isa IntensityMap
+        @test cos.(img2[Fr=1,Ti=1]) isa IntensityMap
     end
 
     @testset "polarized" begin
@@ -54,8 +98,8 @@
         imgV = rand(64, 64, 3, 3)
 
         imgP = StructArray{StokesParams}(I=imgI, Q=imgQ, U=imgU, V=imgV)
-        img1 = IntensityMap(imgP[:,:,1,1], (;X,Y))
-        img2 = IntensityMap(imgP, (;X, Y, T, F))
+        img1 = IntensityMap(imgP[:,:,1,1], RectiGrid((;X=x,Y=y)))
+        img2 = IntensityMap(imgP, RectiGrid((x, y, t, f)))
         simg1 = StokesIntensityMap(img1)
         simg2 = StokesIntensityMap(img2)
 
@@ -86,6 +130,14 @@ function FiniteDifferences.to_vec(k::IntensityMap)
     return v, back
 end
 
+function FiniteDifferences.to_vec(k::UnstructuredMap)
+    v, b = to_vec(baseimage(k))
+    d = axisdims(k)
+    back(x) = UnstructuredMap(b(x), d)
+    return v, back
+end
+
+
 @testset "ProjectTo" begin
 
     data = rand(32, 32)
@@ -110,6 +162,13 @@ end
     g = imagepixels(10.0, 10.0, 32, 32)
     test_rrule(IntensityMap, data, g⊢NoTangent())
 end
+
+@testset "rrule UnstructuredMap" begin
+    data = rand(64)
+    g = UnstructuredGrid((X=randn(64), Y=randn(64)))
+    test_rrule(UnstructuredMap, data, g⊢NoTangent())
+end
+
 
 @testset "rrule baseimage" begin
     data = rand(32, 24)

@@ -1,7 +1,119 @@
 # In this file we will define our base image class. This is entirely based on
-export RectiGrid, named_dims, dims, header, axisdims, executor
+export RectiGrid, UnstructuredGrid,
+       named_dims, dims, header, axisdims, executor,
+       Serial, ThreadsEx
 
 abstract type AbstractGrid{D, E} end
+
+"""
+    create_map(array, g::AbstractGrid)
+
+Create a map of values specialized by the grid `g`.
+"""
+function create_map end
+
+"""
+    allocate_map([array=Array{Float64}], g::AbstractGrid)
+
+Allocate the default map specialized by the grid `g`
+"""
+function allocate_map end
+allocate_map(g::AbstractGrid) = allocate_map(Array{Float64}, g)
+
+
+"""
+    domaingrid(g::AbstractGrid)
+
+Create a grid iterator that can be used to iterate through different points.
+All grid methods must implement this method.
+"""
+function domaingrid end
+
+# We enforce that all grids are static for performance reasons
+# If this is not true please create a custom subtype
+ChainRulesCore.@non_differentiable domaingrid(d::AbstractGrid)
+
+
+"""
+    executor(g::AbstractGrid)
+
+Returns the executor used to compute the intensitymap or visibilitymap
+"""
+executor(g::AbstractGrid) = getfield(g, :executor)
+ChainRulesCore.@non_differentiable executor(::AbstractGrid)
+
+"""
+    dims(g::AbstractGrid)
+
+Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
+"""
+DD.dims(g::AbstractGrid) = getfield(g, :dims)
+ChainRulesCore.@non_differentiable DD.dims(::AbstractGrid)
+
+"""
+    named_dims(g::AbstractGrid)
+
+Returns a named tuple containing the dimensions of `g`. For a unnamed version see [`dims`](@ref)
+"""
+named_dims(g::AbstractGrid) = NamedTuple{keys(g)}(dims(g))
+ChainRulesCore.@non_differentiable named_dims(::AbstractGrid)
+
+
+"""
+    header(g::AbstractGrid)
+
+Returns the headerinformation of the dimensions `g`
+"""
+header(g::AbstractGrid) = getfield(g, :header)
+ChainRulesCore.@non_differentiable header(::AbstractGrid)
+Base.keys(g::AbstractGrid) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
+
+"""
+    Serial()
+
+Uses serial execution when computing the intensitymap or visibilitymap
+"""
+struct Serial end
+
+"""
+    ThreadsEx(scheduler::Symbol = :dynamic)
+
+Uses Julia's Threads @threads macro when computing the intensitymap or visibilitymap.
+You can choose from Julia's various schedulers by passing the scheduler as a parameter.
+The default is :dynamic, but it isn't considered part of the stable API and may change
+at any moment.
+"""
+struct ThreadsEx{S} end
+ThreadsEx() = ThreadsEx(:dynamic)
+ThreadsEx(s) = ThreadsEx{s}()
+
+#TODO can this be made nicer?
+@static if VERSION ≥ v"1.11"
+    const schedulers = (:(:dynamic), :(:static), :(:greedy))
+else
+    const schedulers = (:(:dynamic), :(:static))
+end
+
+
+# We index the dimensions not the grid itself
+Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
+
+
+Base.ndims(d::AbstractGrid) = length(dims(d))
+Base.size(d::AbstractGrid) = map(length, dims(d))
+Base.length(d::AbstractGrid) = prod(size(d))
+Base.firstindex(d::AbstractGrid) = 1
+Base.lastindex(d::AbstractGrid) = length(d)
+Base.axes(d::AbstractGrid) = axes(dims(d))
+Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
+Base.front(d::AbstractGrid) = Base.front(dims(d))
+# We return the eltype of the dimensions. Should we change this?
+Base.eltype(d::AbstractGrid) = promote_type(map(eltype, dims(d))...)
+
+# These aren't needed and I am not sure if the semantics are what we actually want
+# Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
+# Base.map(f, args, d::AbstractGrid) = map(f, args, dims(d))
+# Base.map(f, d::AbstractGrid, args) = rebuild(typeof(d), map(f, dims(d), args))
 
 
 abstract type AbstractHeader end
@@ -51,10 +163,9 @@ struct NoHeader <: AbstractHeader end
 
 
 abstract type AbstractRectiGrid{D, E} <: AbstractGrid{D, E} end
+create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
+allocate_map(M::Type{<:Array}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
 
-struct Serial end
-
-executor(g::AbstractGrid) = getfield(g, :executor)
 
 
 """
@@ -64,16 +175,20 @@ Builds the EHT image dimensions using the names `Na` and dimensions `dims`.
 You can also optionally has a header that stores additional information from e.g.,
 a FITS header.
 The type parameter `Na` defines the names of each dimension.
-These names are usually one of
-  - (:X, :Y, :Ti, :F)
-  - (:X, :Y, :F,  :Ti)
+For image domain grids the names are usually one of
+  - (:X, :Y, :Ti, :Fr)
+  - (:X, :Y, :Fr,  :Ti)
   - (:X, :Y) # spatial only
-where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:T` is the
-the time direction and `:F` is the frequency direction.
+where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:Ti` is the
+the time direction and `:Fr` is the frequency direction. For visibility domain
+the dimensions usually are:
+  - (:U, :V, :Ti, :Fr)
+  - (:U, :V, :Fr, :Fr)
+  - (:U, :V) # spatial only
 # Notes
 Instead use the direct [`IntensityMap`](@ref) function.
 ```julia
-dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], F=[230, 345]))
+dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], Fr=[230, 345]))
 ```
 
 # Notes
@@ -91,6 +206,12 @@ struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
 
 end
 
+function domaingrid(d::RectiGrid{D, Hd}) where {D, Hd}
+    g = map(basedim, dims(d))
+    N = keys(d)
+    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
+end
+
 
 function _format_dims(dg::Tuple)
     return DD.format(dg, map(eachindex, dg))
@@ -100,58 +221,13 @@ Base.keys(g::RectiGrid) = map(name, dims(g))
 
 @inline RectiGrid(g::RectiGrid) = g
 
-"""
-    dims(g::AbstractGrid)
-
-Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
-"""
-DD.dims(g::AbstractGrid) = getfield(g, :dims)
-
-"""
-    named_dims(g::AbstractGrid)
-
-Returns a named tuple containing the dimensions of `g`. For a unnamed version see [`dims`](@ref)
-"""
-named_dims(g::AbstractGrid) = NamedTuple{keys(g)}(dims(g))
-
-"""
-    header(g::AbstractGrid)
-
-Returns the headerinformation of the dimensions `g`
-"""
-header(g::AbstractGrid) = getfield(g, :header)
-Base.keys(g::AbstractGrid) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
-
-ChainRulesCore.@non_differentiable header(AbstractGrid)
-
-
-Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
-Base.getindex(d::AbstractGrid, i::Tuple) = getindex(dims(d), i)
-Base.ndims(d::AbstractGrid) = length(dims(d))
-Base.size(d::AbstractGrid) = map(length, dims(d))
-Base.length(d::AbstractGrid) = prod(size(d))
-Base.firstindex(d::AbstractGrid) = 1
-Base.lastindex(d::AbstractGrid) = length(d)
-Base.axes(d::AbstractGrid) = axes(dims(d))
-Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
-Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), header(d))
-#Make sure we actually get a tuple here
-Base.map(f, args, d::AbstractGrid) = map(f, args, dims(d))
-Base.map(f, d::AbstractGrid, args) = map(f, dims(d), args)
-Base.front(d::AbstractGrid) = Base.front(dims(d))
-Base.eltype(d::AbstractGrid) = Base.eltype(dims(d))
 
 function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D, E}) where {D, E}
     println(io, "RectiGrid(")
     println(io, "executor: $(executor(x))")
     println(io, "Dimensions: ")
-    for n in propertynames(x)
-        print(io, "\t")
-        print(io, n, ": ")
-        show(io, mime, getproperty(x, n))
-        println(io)
-    end
-    print(io, ")")
+    show(io, mime, dims(x))
+    print(io, "\n)")
 end
 
 
@@ -162,7 +238,7 @@ Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), key
 
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(dims::NamedTuple{Na, T}; executor=Serial(), header::AbstractHeader=NoHeader()) where {Na, N, T<:NTuple{N, DD.Dimension}}
-    return RectiGrid(values(dims), executor, header)
+    return RectiGrid(values(dims); executor, header)
 end
 
 @noinline function _make_dims(ks, vs)
@@ -194,7 +270,7 @@ Instead use the direct [`IntensityMap`](@ref) function.
 dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], Fr=[230, 345]))
 ```
 """
-@inline function RectiGrid(nt::NamedTuple, executor=Serial(), header::AbstractHeader=ComradeBase.NoHeader())
+@inline function RectiGrid(nt::NamedTuple; executor=Serial(), header::AbstractHeader=ComradeBase.NoHeader())
     dims = _make_dims(keys(nt), values(nt))
     return RectiGrid(dims; executor, header)
 end
@@ -212,15 +288,26 @@ const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F
 
 
 
-# Now we have a completely unstructured grid or really a vector of points
-struct UnstructuredGrid{D, E, H<:AbstractHeader} <: AbstractGrid{D,E}
+# TODO make this play nice with dimensional data
+struct UnstructuredGrid{D,E, H<:AbstractHeader} <: AbstractGrid{D,E}
     dims::D
     executor::E
     header::H
 end
 
+"""
+    UnstructuredGrid(dims::AbstractArray; executor=Serial(), header=ComradeBase.NoHeader)
+
+Builds an unstructured grid (really a vector of points) from the dimensions `dims`.
+The `executor` is used controls how the grid is computed when calling
+`visibilitymap` or `intensitymap`.
+
+Note that unlike `RectiGrid` which assigns dimensions to the grid points, `UnstructuredGrid`
+does not. This is becuase the grid is unstructured the points are a cloud in a space
+"""
 function UnstructuredGrid(nt::NamedTuple; executor=Serial(), header=NoHeader())
-    return UnstructuredGrid(StructArray(nt), executor, header)
+    p = StructArray(nt)
+    return UnstructuredGrid(p, executor, header)
 end
 
 Base.ndims(d::UnstructuredGrid) = ndims(dims(d))
@@ -231,9 +318,23 @@ Base.lastindex(d::UnstructuredGrid) = lastindex(dims(d))
 Base.front(d::UnstructuredGrid) = Base.front(dims(d))
 Base.eltype(d::UnstructuredGrid) = Base.eltype(dims(d))
 
-function DD.rebuild(::Type{<:UnstructuredGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
+function DD.rebuild(::Type{<:UnstructuredGrid}, g::Tuple, executor=Serial(), header=ComradeBase.NoHeader())
     UnstructuredGrid(g, executor, header)
 end
 
-Base.propertynames(g::UnstructuredGrid) = propertynames(dims(g))
-Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(dims(g), p)
+Base.propertynames(g::UnstructuredGrid) = propertynames(domaingrid(g))
+Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(domaingrid(g), p)
+
+function domaingrid(d::UnstructuredGrid)
+    return getfield(d, :dims)
+end
+
+
+function Base.summary(io::IO, g::UnstructuredGrid)
+    n = propertynames(domaingrid(g))
+    printstyled(io, "│ "; color=:light_black)
+    print(io, "UnstructuredGrid with dims: $n")
+end
+
+create_map(array, g::UnstructuredGrid) = UnstructuredMap(array, g)
+allocate_map(M::Type{<:Array}, g::UnstructuredGrid) = UnstructuredMap(similar(M, size(g)), g)

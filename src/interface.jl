@@ -25,8 +25,8 @@ methods to satify the interface:
     must be defined if `visanalytic(::Type{YourModel})==IsAnalytic()`.
 **Optional Methods:**
 - [`ispolarized`](@ref): Specified whether a model is intrinsically polarized (returns `IsPolarized()`) or is not (returns `NotPolarized()`), by default a model is `NotPolarized()`
-- [`visibilities_analytic`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `IsAnalytic()`
-- [`visibilities_numeric`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `NotAnalytic()` typically these are numerical FT's
+- [`visibilitymap_analytic`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `IsAnalytic()`
+- [`visibilitymap_numeric`](@ref): Vectorized version of `visibility_point` for models where `visanalytic` returns `NotAnalytic()` typically these are numerical FT's
 - [`intensitymap_analytic`](@ref): Computes the entire image for models where `imanalytic` returns `IsAnalytic()`
 - [`intensitymap_numeric`](@ref): Computes the entire image for models where `imanalytic` returns `NotAnalytic()`
 - [`intensitymap_analytic!`](@ref): Inplace version of `intensitymap`
@@ -36,23 +36,11 @@ methods to satify the interface:
 """
 abstract type AbstractModel end
 
-"""
-        $(TYPEDEF)
-
-Type the classifies a model as being intrinsically polarized. This means that any call
-to visibility must return a `StokesParams` to denote the full stokes polarization of the model.
-"""
-abstract type AbstractPolarizedModel <: AbstractModel end
 
 
 export stokes, IsPolarized, NotPolarized
-"""
-    stokes(m::AbstractPolarizedModel, p::Symbol)
 
-Extract the specific stokes component `p` from the polarized model `m`
-"""
-stokes(m::AbstractPolarizedModel, v::Symbol) = getproperty(m, v)
-
+# Trait to signal whether a model is polarized or not
 struct IsPolarized end
 struct NotPolarized end
 
@@ -61,15 +49,33 @@ Base.@constprop  :aggressive Base.:*(::IsPolarized, ::NotPolarized) = IsPolarize
 Base.@constprop  :aggressive Base.:*(::NotPolarized, ::IsPolarized) = IsPolarized()
 Base.@constprop  :aggressive Base.:*(::NotPolarized, ::NotPolarized) = NotPolarized()
 
-
-
 """
     ispolarized(::Type)
 
 Trait function that defines whether a model is polarized or not.
 """
 ispolarized(::Type{<:AbstractModel}) = NotPolarized()
+
+
+"""
+        $(TYPEDEF)
+
+A generic polarized model. To implement the use needs to follow the [`AbstractModel`](@ref)
+implementation instructions. In addtion there is an optional method `stokes(model, p::Symbol)`
+which extracts the specific stokes parameter of the model. The default that the different
+stokes parameters are stored as fields of the model. To overwrite this behavior overload the
+function.
+"""
+abstract type AbstractPolarizedModel <: AbstractModel end
 ispolarized(::Type{<:AbstractPolarizedModel}) = IsPolarized()
+
+"""
+    stokes(m::AbstractPolarizedModel, p::Symbol)
+
+Extract the specific stokes component `p` from the polarized model `m`
+"""
+stokes(m::AbstractPolarizedModel, v::Symbol) = getfield(m, v)
+
 
 
 
@@ -274,89 +280,69 @@ estimate image size when plotting and using `modelimage`
 function radialextent end
 
 """
-    visibilities(model::AbstractModel, args...)
+    visibilitymap(model::AbstractModel, p)
 
-Computes the complex visibilities at the locations given by `args...`
+Computes the complex visibilities at the locations p.
 """
-function visibilities end
-
-
-"""
-    visibilities!(vis::AbstractArray, model::AbstractModel, args...)
-
-Computes the complex visibilities `vis` in place at the locations given by `args...`
-"""
-function visibilities! end
+function visibilitymap end
 
 
 """
-    _visibilities(model::AbstractModel, args...)
+    visibilitymap!(vis::AbstractArray, model::AbstractModel, p)
+
+Computes the complex visibilities `vis` in place at the locations p
+"""
+function visibilitymap! end
+
+
+"""
+    _visibilitymap(model::AbstractModel, p)
 
 Internal method used for trait dispatch and unpacking of args arguments in `visibilities`
 
 !!! warn
     Not part of the public API so it may change at any moment.
 """
-function _visibilities end
+function _visibilitymap end
 
 """
-    _visibilities!(model::AbstractModel, args...)
+    _visibilitymap!(model::AbstractModel, p)
 
 Internal method used for trait dispatch and unpacking of args arguments in `visibilities!`
 
 !!! warn
     Not part of the public API so it may change at any moment.
 """
-function _visibilities! end
+function _visibilitymap! end
 
 """
-    visibilties_numeric(model, u, v, time, freq)
+    visibilties_numeric(model, p)
 
 Computes the visibilties of a `model` using a numerical fourier transform. Note that
 none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
 """
-function visibilities_numeric end
+function visibilitymap_numeric end
 
 """
-    visibilties_analytic(model, u, v, time, freq)
+    visibilties_analytic(model, p)
 
 Computes the visibilties of a `model` using using the analytic visibility expression given by
 `visibility_point`.
 """
-function visibilities_analytic end
+function visibilitymap_analytic end
 
 """
-    visibilties_numeric!(vis, model, u, v, time, freq)
+    visibilties_numeric!(vis, model)
 
 Computes the visibilties of a `model` in-place using a numerical fourier transform. Note that
 none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
 """
-function visibilities_numeric! end
+function visibilitymap_numeric! end
 
 """
-    visibilties_analytic!(vis, model, u, v, time, freq)
+    visibilties_analytic!(vis, model)
 
 Computes the visibilties of a `model` in-place, using using the analytic visibility expression given by
 `visibility_point`.
 """
-function visibilities_analytic! end
-
-
-#     ($SIGNATURES)
-# A threaded version of the intensitymap function.
-
-# # Notes
-# If using autodiff this won't play well with zygote given the mutation. This will be fixed in
-# future versions.
-# """
-# function tintensitymap end
-
-# """
-#     ($SIGNATURES)
-# A threaded version of the intensitymap! function.
-
-# # Notes
-# If using autodiff this won't play well with zygote given the mutation. This will be fixed in
-# future versions.
-# """
-# function tintensitymap! end
+function visibilitymap_analytic! end

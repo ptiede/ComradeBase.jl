@@ -1,7 +1,7 @@
 name = "ComradeBase"
 uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.6.6"
+version = "0.7.0"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
@@ -35,6 +35,7 @@ OhMyThreads = "0.5"
 PolarizedTypes = "0.1"
 PrecompileTools = "1"
 Reexport = "1"
+Requires = "1"
 StaticArrays = "1"
 Statistics = "1.6"
 StructArrays = "0.6"

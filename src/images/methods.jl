@@ -1,11 +1,11 @@
 """
-    imagegrid(k::IntensityMap)
+    domaingrid(k::IntensityMap)
 
 Returns the grid the `IntensityMap` is defined as. Note that this is unallocating
 since it lazily computes the grid. The grid is an example of a DimArray and works similarly.
 This is useful for broadcasting a model across an abritrary grid.
 """
-imagegrid(img::IntensityMapTypes) = imagegrid(axisdims(img))
+domaingrid(img::IntensityMapTypes) = domaingrid(axisdims(img))
 
 
 struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
@@ -35,11 +35,6 @@ end
 @inline basedim(x::DD.LookupArrays.LookupArray) = basedim(parent(x))
 @inline basedim(x) = x
 
-function imagegrid(d::RectiGrid{D, Hd}) where {D, Hd}
-    g = map(basedim, dims(d))
-    N = keys(d)
-    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
-end
 
 
 

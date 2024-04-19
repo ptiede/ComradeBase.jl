@@ -1,17 +1,17 @@
 using DimensionalData
 const DD = DimensionalData
 using DimensionalData: AbstractDimArray, NoName, NoMetadata, format, DimTuple,
-                       Dimension
+                       Dimension, XDim, YDim, ZDim, X, Y, Ti
 
 
-DD.@dim F "frequency"
-# DD.@dim T "time"
+DD.@dim Fr ZDim "frequency"
+DD.@dim U  XDim "U"
+DD.@dim V  YDim "V"
 
-export IntensityMap, Fr
+export IntensityMap, Fr, X, Y, Ti, U, V
 
 """
     $(TYPEDEF)
-    IntensityMap(data::AbstractArray, g::AbstractGrid)
 
 This type is the basic array type for all images and models that obey the `ComradeBase`
 interface. The type is a subtype of `DimensionalData.AbstractDimArray` however, we make
@@ -42,7 +42,7 @@ julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
 
 Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
 """
-struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{D},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
+struct IntensityMap{T,N,D,G<:AbstractGrid{D},A<:AbstractArray{T,N},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
     data::A
     grid::G
     refdims::R
@@ -51,9 +51,7 @@ struct IntensityMap{T,N,D,A<:AbstractArray{T,N},G<:AbstractGrid{D},R<:Tuple,Na} 
         data::A, grid::G, refdims::R, name::Na
         ) where {A<:AbstractArray{T,N}, G<:AbstractGrid{D}, R<:Tuple, Na} where {T,N,D}
 
-        d = dims(grid)
-        # DD.checkdims(data, d)
-        new{T,N,D,A,G,R,Na}(data, grid, refdims, name)
+        new{T,N,D,G,A,R,Na}(data, grid, refdims, name)
     end
 end
 
@@ -62,6 +60,8 @@ DD.refdims(img::IntensityMap) = getfield(img, :refdims)
 DD.data(img::IntensityMap)    = getfield(img, :data)
 DD.name(img::IntensityMap)    = getfield(img, :name)
 DD.metadata(img::IntensityMap)= header(axisdims(img))
+
+executor(img::IntensityMap)   = executor(axisdims(img))
 
 function Base.propertynames(img::IntensityMap)
     return keys(axisdims(img))
@@ -160,7 +160,7 @@ baseimage(x::IntensityMap) = parent(x)
     # TODO find why Name is changing type
     # n2 = n == Symbol("") ? NoName : n
     # @info which(name, (typeof(img),))
-    grid = rebuild(typeof(axisdims(img)), dims, metadata)
+    grid = rebuild(typeof(axisdims(img)), dims, executor(img), metadata)
     # return name(img)
     return IntensityMap(data, grid, refdims, n)
 end
@@ -174,8 +174,42 @@ end
     rebuild(img, data, dims, refdims, name, metadata)
 end
 
+function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid)
+    dx = step(dims.X)
+    dy = step(dims.Y)
+    img = intensity_point.(Ref(s), domaingrid(dims)).*dx.*dy
+    return IntensityMap(img, dims)
+end
+
+function intensitymap_analytic!(img::IntensityMap, s::AbstractRectiGrid)
+    dx, dy = pixelsizes(img)
+    g = domaingrid(img)
+    img .= intensity_point.(Ref(s), g).*dx.*dy
+    return nothing
+end
+
+function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid{D, <:ThreadsEx}) where {D}
+    img = IntensityMap(zeros(eltype(dims), size(dims)), dims)
+    intensitymap_analytic!(img, s)
+    return img
+end
+
+function intensitymap_analytic!(
+    img::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
+    s::AbstractModel) where {T,N,D,S}
+    g = domaingrid(img)
+    _threads_intensitymap!(img, s, g, Val(S))
+    return nothing
+end
 
 
-function check_grid(I,Q,U,V)
-    named_dims(I) == named_dims(Q) == named_dims(U) == named_dims(V)
+for s in schedulers
+    @eval begin
+        function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{$s})
+            dx, dy = pixelsizes(img)
+            Threads.@threads $s for I in CartesianIndices(g)
+                img[I] = intensity_point(s, g[I])*dx*dy
+            end
+        end
+    end
 end

@@ -12,7 +12,9 @@ using Reexport
 @reexport using PolarizedTypes
 using PrecompileTools
 
-export  visibility, intensitymap, intensitymap!,
+export  visibility,
+        intensitymap, intensitymap!,
+        visibilitymap, visibilitymap!,
         StokesParams, CoherencyMatrix,
         flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
         named_dims, IntensityMapTypes
@@ -29,7 +31,7 @@ include("visibilities.jl")
     @compile_workload begin
         p = imagepixels(fovx, fovy, nx, ny)
         g = RectiGrid(p)
-        gs = imagegrid(p)
+        gs = domaingrid(p)
         imgI = IntensityMap(rand(10, 10), g)
         imgI.^2
 
