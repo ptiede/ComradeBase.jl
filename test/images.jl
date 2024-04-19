@@ -90,6 +90,14 @@ function FiniteDifferences.to_vec(k::IntensityMap)
     return v, back
 end
 
+function FiniteDifferences.to_vec(k::UnstructuredGrid)
+    v, b = to_vec(baseimage(k))
+    d = axisdims(k)
+    back(x) = UnstructuredMap(b(x), d)
+    return v, back
+end
+
+
 @testset "ProjectTo" begin
 
     data = rand(32, 32)
