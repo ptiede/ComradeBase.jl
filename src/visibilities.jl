@@ -89,8 +89,7 @@ consider using the [`visibilities`](@ref visibilities).
 """
 @inline function visibility(mimg::M, p) where {M}
     #first we split based on whether the model is primitive
-    T = typeof(p.U)
-    _visibility(isprimitive(M), mimg, p.U, p.V, zero(T), zero(T))
+    _visibility(isprimitive(M), mimg, p)
 end
 
 
@@ -185,7 +184,7 @@ The coordinates `p` are expected to have the properties `U`, `V`,
 and sometimes `Ti` and `Fr`.
 """
 function amplitudemap(m, p)
-    _amplitudemap(m, p)
+    create_map(_amplitudemap(m, p), p)
 end
 
 
@@ -193,12 +192,14 @@ function _amplitudemap(m::S, p) where {S}
     _amplitudemap(visanalytic(S), m, p)
 end
 
-function _amplitudemap(::IsAnalytic, m, p)
-    abs.(visibility_point.(Ref(m), p))
+function _amplitudemap(::IsAnalytic, m, p::AbstractGrid)
+    g = imagegrid(p)
+    abs.(visibility_point.(Ref(m), g))
 end
 
-function _amplitudemap(::NotAnalytic, m, p)
-    abs.(visibilitymap_numeric(m, p))
+function _amplitudemap(::NotAnalytic, m, p::AbstractGrid)
+    g = imagegrid(p)
+    abs.(visibilitymap_numeric(m, g))
 end
 
 
@@ -209,10 +210,10 @@ Computes the closure phases of the model `m` at the
 triangles p1, p2, p3, where `pi` are coordinates.
 """
 function bispectrummap(m,
-                    p1,
-                    p2,
-                    p3,
-                    )
+                    p1::T,
+                    p2::T,
+                    p3::T,
+                    ) where {T<:AbstractGrid}
 
     _bispectrummap(m, p1, p2, p3)
 end
@@ -228,17 +229,20 @@ end
 
 # internal method used for trait dispatch for analytic visibilities
 function _bispectrummap(::IsAnalytic, m,
-                    p1,
-                    p2,
-                    p3,
-                   )
-    return bispectrum.(Ref(m), StructArray(p1), StructArray(p2), StructArray(p3))
+                    p1::T,
+                    p2::T,
+                    p3::T,
+                   ) where {T<:AbstractGrid}
+    g1 = imagegrid(p1)
+    g2 = imagegrid(p2)
+    g3 = imagegrid(p3)
+    return bispectrum.(Ref(m), g1, g2, g3)
 end
 
 # internal method used for trait dispatch for non-analytic visibilities
 function _bispectrummap(::NotAnalytic, m,
-                    p1,p2,p3
-                   )
+                    p1::T,p2::T,p3::T
+                   ) where {T<:AbstractGrid}
     vis1 = visibilitymap(m, p1)
     vis2 = visibilitymap(m, p2)
     vis3 = visibilitymap(m, p3)
@@ -256,9 +260,9 @@ Computes the closure phases of the model `m` at the
 triangles p1, p2, p3, where `pi` are coordinates.
 """
 @inline function closure_phasemap(m::AbstractModel,
-                        p1,p2,p3
-                        )
-    _closure_phasemap(m, p1, p2, p3)
+                        p1::T,p2::T,p3::T
+                        ) where {T<:UnstructuredGrid}
+    create_map(_closure_phasemap(m, p1, p2, p3), UnstructuredGrid((;p1=imagegrid(p1), p2=imagegrid(p2), p3=imagegrid(p3))))
 end
 
 # internal method used for trait dispatch
@@ -268,11 +272,14 @@ end
 
 # internal method used for trait dispatch for analytic visibilities
 @inline function _closure_phasemap(::IsAnalytic, m,
-                        p1::NamedTuple,
-                        p2::NamedTuple,
-                        p3::NamedTuple
+                        p1::UnstructuredGrid,
+                        p2::UnstructuredGrid,
+                        p3::UnstructuredGrid
                        )
-    return closure_phase.(Ref(m), StructArray(p1), StructArray(p2), StructArray(p3))
+    g1 = imagegrid(p1)
+    g2 = imagegrid(p2)
+    g3 = imagegrid(p3)
+    return closure_phase.(Ref(m), g1, g2, g3)
 end
 
 # internal method used for trait dispatch for non-analytic visibilities
@@ -292,12 +299,13 @@ Computes the log closure amplitudemap of the model `m` at the
 quadrangles p1, p2, p3, p4.
 """
 function logclosure_amplitudemap(m::AbstractModel,
-                               p1,
-                               p2,
-                               p3,
-                               p4
-                              )
-    _logclosure_amplitudemap(m, p1, p2, p3, p4)
+                               p1::T,
+                               p2::T,
+                               p3::T,
+                               p4::T
+                              ) where {T<:AbstractGrid}
+    glc = UnstructuredGrid((;p1 = imagegrid(p1), p2 = imagegrid(p2), p3 = imagegrid(p3), p4 = imagegrid(p4)))
+    create_map(_logclosure_amplitudemap(m, p1, p2, p3, p4), glc)
 end
 
 
@@ -312,15 +320,19 @@ end
 end
 
 # internal method used for trait dispatch for analytic visibilities
-@inline function _logclosure_amplitudemap(::IsAnalytic, m, p1::NamedTuple, p2::NamedTuple, p3::NamedTuple, p4::NamedTuple)
-    return logclosure_amplitude.(Ref(m), StructArray(p1), StructArray(p2), StructArray(p3), StructArray(p4))
+@inline function _logclosure_amplitudemap(::IsAnalytic, m, p1, p2, p3, p4)
+    g1 = imagegrid(p1)
+    g2 = imagegrid(p2)
+    g3 = imagegrid(p3)
+    g4 = imagegrid(p4)
+    return logclosure_amplitude.(Ref(m), g1, g2, g3, g4)
 end
 
 # internal method used for trait dispatch for non-analytic visibilities
 @inline function _logclosure_amplitudemap(::NotAnalytic, m, p1, p2, p3, p4)
-    amp1 = amplitudemap(m, p1)
-    amp2 = amplitudemap(m, p2)
-    amp3 = amplitudemap(m, p3)
-    amp4 = amplitudemap(m, p4)
+    amp1 = _amplitudemap(m, p1)
+    amp2 = _amplitudemap(m, p2)
+    amp3 = _amplitudemap(m, p3)
+    amp4 = _amplitudemap(m, p4)
     return @. log(amp1*amp2*inv(amp3*amp4))
 end

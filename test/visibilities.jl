@@ -23,12 +23,12 @@ ComradeBase.radialextent(::GaussTest{T}) where {T} = 5*one(T)
 
 
 @testset "visibilities" begin
-    U = 0.1*randn(60)
-    V = 0.1*randn(60)
-    Ti = collect(Float64, 1:60)
-    Fr = fill(230e9, 60)
+    u = 0.1*randn(60)
+    v = 0.1*randn(60)
+    ti = collect(Float64, 1:60)
+    fr = fill(230e9, 60)
     m = GaussTest()
-    g = UnstructuredGrid((;U, V, Ti, Fr))
+    g = UnstructuredGrid((;U=u, V=v, Ti=ti, Fr=fr))
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
     closure_phasemap(m, g, g, g)

@@ -22,7 +22,7 @@ end
 Base.BroadcastStyle(::Type{<:UnstructuredMap}) = Broadcast.ArrayStyle{UnstructuredMap}()
 function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{UnstructuredMap}}, ::Type{ElType}) where {ElType}
     # Scan inputs for the time and sites
-    sarr = find_dims(bc)
+    sarr = find_ustr(bc)
     return UnstructuredMap(similar(parent(sarr), ElType), axisdims(sarr))
 end
 
