@@ -57,7 +57,7 @@ function visibilitymap_analytic!(vis::UnstructuredMap{T, <:Any, <:UnstructuredGr
 end
 
 function visibilitymap_analytic!(
-    vis::IntensityMap{T,N,D,<:AbstractArray{T,N},<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
+    vis::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
     m::AbstractModel) where {T,N,D,S}
     d = axisdims(vis)
     g = domaingrid(d)
