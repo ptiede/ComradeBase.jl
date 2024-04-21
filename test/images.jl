@@ -1,22 +1,21 @@
 function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
     @test typeof(executor(grid)) == E
-    arr = rand(size(grid))
-    @inferred create_map(arr, grid)
-    map = create_map(arr, grid)
-    @test typeof(map) == typeof(allocate_map(g))
+    arr = zeros(size(grid))
+    @inferred ComradeBase.create_map(arr, grid)
+    map = ComradeBase.create_map(arr, grid)
+    @test typeof(map) == typeof(ComradeBase.allocate_map(grid))
     @inferred domaingrid(grid)
     @test typeof(DD.dims(grid)) == D
 
     @test header(grid) isa ComradeBase.AbstractHeader
-    @test keys(grid) isa NamedTuple
     @test keys(grid) == propertynames(grid)
 
     @test keys(grid) == keys(named_dims(grid))
     @test firstindex(grid) == 1
     @test lastindex(grid) == length(grid)
-    @test Base.front(g) == DD.dims(g)[1:end-1]
+    # @test Base.front(grid) == DD.dims(grid)[1:end-1]
 
-
+    show(grid)
 end
 
 @testset "AbstractGrid" begin
@@ -32,9 +31,8 @@ end
     grect = RectiGrid(prect)
     gustr = UnstructuredGrid(pustr)
 
-    @test executor(grect) == Serial()
-    @test executor(gustr) == Serial()
-
+    test_grid_interface(grect)
+    test_grid_interface(gustr)
 
 end
 
@@ -53,6 +51,11 @@ end
     img1 = IntensityMap(imp[:,:,1,1], gsp)
     img2 = IntensityMap(imp, g1)
     img3 = IntensityMap(imp, g2)
+
+    @test header(img1) == header(gsp)
+    @test executor(img1) == executor(gsp)
+
+    @test_throws ArgumentError img1.Fr
 
 
     @testset "Slicing" begin

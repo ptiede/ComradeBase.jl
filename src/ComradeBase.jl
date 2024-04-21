@@ -28,15 +28,15 @@ include("visibilities.jl")
     fovy = 12.0
     nx = 10
     ny = 10
-    @compile_workload begin
-        p = imagepixels(fovx, fovy, nx, ny)
-        g = RectiGrid(p)
-        gs = domaingrid(p)
-        imgI = IntensityMap(rand(10, 10), g)
-        imgI.^2
+    # @compile_workload begin
+    #     p = imagepixels(fovx, fovy, nx, ny)
+    #     g = RectiGrid(p)
+    #     gs = domaingrid(p)
+    #     imgI = IntensityMap(rand(10, 10), g)
+    #     imgI.^2
 
-        pimg = StokesIntensityMap(imgI, imgI, imgI, imgI)
-    end
+    #     pimg = StokesIntensityMap(imgI, imgI, imgI, imgI)
+    # end
 end
 
 if !isdefined(Base, :get_extension)

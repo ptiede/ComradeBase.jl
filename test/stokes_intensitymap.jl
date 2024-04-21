@@ -16,8 +16,13 @@
     @test size(simg1) == size(img1)
     @test eltype(simg1) == StokesParams{Float64}
     @test ndims(simg1) == ndims(img1)
+    @test ndims(typeof(simg1)) == ndims(img1)
     @test getindex(simg1, 1) ≈ getindex(img1, 1)
     @test getindex(simg1, 2, 2) ≈ getindex(img1, 2, 2)
+    @test pixelsizes(simg1) == pixelsizes(img1)
+    @test imagepixels(simg1) == imagepixels(img1)
+    @test fieldofview(simg1) == fieldofview(img1)
+    @test domaingrid(simg1) == domaingrid(img1)
 
     simg1[2, 2] = img1[2,2]
     StokesIntensityMap(imgI, imgQ, imgU, imgV, axisdims(img1))
@@ -25,4 +30,5 @@
     summary(simg1)
     show(simg1)
 
+    IntensityMap(simg1)
 end

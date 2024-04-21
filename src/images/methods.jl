@@ -12,7 +12,7 @@ struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
     slice::A
     dir::Int
     dims::Dims{N}
-    function LazySlice(slice::AbstractVector{T}, dim::Int, dims::Dims{N}) where {T, N}
+    @inline function LazySlice(slice::AbstractVector{T}, dim::Int, dims::Dims{N}) where {T, N}
         @assert 1 ≤ dim ≤ N "Slice dimension is not valid. Must be ≤ $N and ≥ 1 and got $dim"
         return new{T, N, typeof(slice)}(slice, dim, dims)
     end
@@ -25,9 +25,11 @@ Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T, N}, I::V
     return A.slice[i]
 end
 
-@inline function _build_slices(g, sz::Dims{M}) where {M}
-    gs = ntuple(i->LazySlice(g[i], i, sz), Val(M))
-    return gs
+# The ntuple construction fails here (recursion limit?) so we use
+# a generated function to get around it
+@generated function _build_slices(g, sz::Dims{N}) where {N}
+    exprs = [:(LazySlice(g[$k], $k, sz)) for k in 1:N]
+    return :((tuple($(exprs...))))
 end
 
 # I need this because LazySlice is allocating unless I strip the dimension information

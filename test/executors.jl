@@ -34,7 +34,9 @@ end
         pim = (;X=range(-10.0, 10.0, length=64), Y=range(-10.0, 10.0, length=64))
         gim = RectiGrid(pim)
         img = intensitymap(m, gim)
-
+        img0 = copy(img)
+        intensitymap!(img, m)
+        @test img ≈ img0
 
         testeximg(img, m, ThreadsEx())
         testeximg(img, m, ThreadsEx(:static))
@@ -57,6 +59,10 @@ end
         puv = (;U=u, V=v, Ti=ti, Fr=fr)
         gim = UnstructuredGrid(pim)
         img = intensitymap(m, gim)
+        img0 = copy(img)
+        intensitymap!(img, m)
+        @test img ≈ img0
+
 
         testeximg(img, m, ThreadsEx())
         testeximg(img, m, ThreadsEx(:static))

@@ -2,6 +2,7 @@
 
 @testset "io.jl" begin
     imc = ComradeBase.load(joinpath(@__DIR__, "example_image.fits"), IntensityMap)
+    ComradeBase.load(joinpath(@__DIR__, "example_image.fits"), StokesIntensityMap)
     ime = ehtim.image.load_image(joinpath(@__DIR__, "example_image.fits"))
     @test pyconvert(Tuple, ime.imarr("I").shape) == size(imc)
     @test flux(imc) ≈ pyconvert(Float64, ime.total_flux())

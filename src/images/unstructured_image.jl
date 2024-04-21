@@ -58,7 +58,7 @@ function intensitymap_analytic(m::AbstractModel, dims::UnstructuredGrid)
     return img
 end
 
-function intensitymap_analytic!(img::UnstructuredMap, s::UnstructuredGrid)
+function intensitymap_analytic!(img::UnstructuredMap{T, <:Any, <:AbstractGrid}, s::AbstractModel) where {T}
     g = domaingrid(img)
     img .= intensity_point.(Ref(s), g)
     return nothing

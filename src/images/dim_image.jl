@@ -89,23 +89,6 @@ function IntensityMap(data::AbstractArray, g::AbstractGrid; refdims=(), name=Sym
 end
 
 """
-    IntensityMap(data::AbstractArray, dims::NamedTuple; header=NoHeader() refdims=(), name=Symbol(""))
-
-Creates a IntensityMap with the pixel fluxes `data` with dimensions `dims`. Note that `dims`
-must be a named tuple with names either
-  - (:X, :Y) for spatial intensity maps
-  - (:X, :Y, :Ti) for spatial-temporal intensity maps
-  - (:X, :Y, :F) for spatial-frequency intensity maps
-  - (:X, :Y, :Ti, :F) for spatial-temporal frequency intensity maps
-  - (:X, :Y, :F, :Ti) for spatial-frequency-temporal intensity maps
-additionally this method assumes that `dims` is specified in a recti-linear grid.
-"""
-function IntensityMap(data::AbstractArray, dims::NamedTuple; header=NoHeader(), refdims=(), name=Symbol(""))
-    return IntensityMap(data, RectiGrid(dims, header), refdims, name)
-end
-
-
-"""
     IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0, y0::Real=0; header=NoHeader())
 
 Creates a IntensityMap with the pixel fluxes `data` and a spatial grid with field of view
@@ -181,7 +164,7 @@ function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid)
     return IntensityMap(img, dims)
 end
 
-function intensitymap_analytic!(img::IntensityMap, s::AbstractRectiGrid)
+function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
     dx, dy = pixelsizes(img)
     g = domaingrid(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy

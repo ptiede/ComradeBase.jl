@@ -106,7 +106,7 @@ Base.firstindex(d::AbstractGrid) = 1
 Base.lastindex(d::AbstractGrid) = length(d)
 Base.axes(d::AbstractGrid) = axes(dims(d))
 Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
-Base.front(d::AbstractGrid) = Base.front(dims(d))
+# Base.front(d::AbstractGrid) = Base.front(dims(d))
 # We return the eltype of the dimensions. Should we change this?
 Base.eltype(d::AbstractGrid) = promote_type(map(eltype, dims(d))...)
 
@@ -315,7 +315,7 @@ Base.size(d::UnstructuredGrid) = size(dims(d))
 Base.firstindex(d::UnstructuredGrid) = firstindex(dims(d))
 Base.lastindex(d::UnstructuredGrid) = lastindex(dims(d))
 #Make sure we actually get a tuple here
-Base.front(d::UnstructuredGrid) = Base.front(dims(d))
+# Base.front(d::UnstructuredGrid) = UnstructuredGrid(Base.front(StructArrays.components(dims(d))), executor=executor(d), header=header(d))
 Base.eltype(d::UnstructuredGrid) = Base.eltype(dims(d))
 
 function DD.rebuild(::Type{<:UnstructuredGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
@@ -324,6 +324,8 @@ end
 
 Base.propertynames(g::UnstructuredGrid) = propertynames(domaingrid(g))
 Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(domaingrid(g), p)
+Base.keys(g::UnstructuredGrid) = propertynames(g)
+named_dims(g::UnstructuredGrid) = StructArrays.components(dims(g))
 
 function domaingrid(d::UnstructuredGrid)
     return getfield(d, :dims)
