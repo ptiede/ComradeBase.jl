@@ -41,7 +41,7 @@ domaingrid(x::UnstructuredMap) = domaingrid(axisdims(x))
 function Base.view(x::UnstructuredMap, I)
     dims = axisdims(x)
     g = domaingrid(dims)
-    newdims = ucturedGrid(@view(g[I]), executor(dims), header(dims))
+    newdims = UnstructuredGrid(@view(g[I]), executor(dims), header(dims))
     UnstructuredMap(view(parent(x), I), newdims)
 end
 

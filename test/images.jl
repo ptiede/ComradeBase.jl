@@ -9,6 +9,7 @@ function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
 
     @test header(grid) isa ComradeBase.AbstractHeader
     @test keys(grid) == propertynames(grid)
+    @test ndims(grid) == ndims(domaingrid(grid))
 
     @test keys(grid) == keys(named_dims(grid))
     @test firstindex(grid) == 1
@@ -16,6 +17,7 @@ function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
     # @test Base.front(grid) == DD.dims(grid)[1:end-1]
 
     show(grid)
+    summary(grid)
 end
 
 @testset "AbstractGrid" begin
@@ -37,9 +39,13 @@ end
     test_grid_interface(grect)
     test_grid_interface(gustr)
 
+    head = ComradeBase.MinimalHeader("M87", 90.0, 45, 21312, 230e9)
+    g = RectiGrid(prect; header=head)
+    @test header(g) == head
+
 end
 
-@testset "images" begin
+@testset "IntensityMap" begin
     x = X(range(-10.0, 10.0, length=64))
     y = Y(range(-10.0, 10.0, length=64))
     t = Ti([0.0, 0.5, 0.8])
@@ -118,7 +124,7 @@ end
         @test centroid(img1) == centroid(stokes(img1, :I))
         @test second_moment(img1) == second_moment(stokes(img1, :I))
     end
-
+end
 
 
 @testset "io.jl" begin
@@ -189,5 +195,21 @@ end
     test_rrule(ComradeBase.baseimage, img)
 end
 
+@testset "UnstructuredMap" begin
+    pustr = (;X=range(-10.0, 10.0, length=128),
+                    Y=range(-10.0, 10.0, length=128),
+                    Fr = fill(230e9, 128),
+                    Ti = sort(rand(128)))
 
+    g = UnstructuredGrid(pustr)
+    img = UnstructuredMap(rand(128), g)
+    @test typeof(img.^2) == typeof(img)
+    @test img[[1,4,6]] isa UnstructuredMap
+    @test view(img, [1,4,6]) isa UnstructuredMap
+
+    @test img[[6]][1] == img[6]
+    @test @view(img[[6]])[1] == img[6]
+
+    @test header(img) == header(g)
+    @test executor(img) == executor(g)
 end
