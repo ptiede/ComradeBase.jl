@@ -47,7 +47,7 @@ end
 Computes the phase center of an intensity map. Note this is the pixels that is in
 the middle of the image.
 """
-function phasecenter(dims::AbstractGrid)
+function phasecenter(dims::AbstractRectiGrid)
     (;X, Y) = dims
     x0 = -(last(X) + first(X))/2
     y0 = -(last(Y) + first(Y))/2
@@ -143,8 +143,8 @@ Computes the image centroid aka the center of light of the image.
 For polarized maps we return the centroid for Stokes I only.
 """
 function centroid(im::IntensityMapTypes{<:Number})
-    (;X, Y) = named_axisdims(im)
-    return mapslices(x->centroid(IntensityMap(x, (;X, Y))), im; dims=(:X, :Y))
+    (;X, Y) = named_dims(im)
+    return mapslices(x->centroid(IntensityMap(x, RectiGrid((;X, Y)))), im; dims=(:X, :Y))
 end
 centroid(im::IntensityMapTypes{<:StokesParams}) = centroid(stokes(im, :I))
 
@@ -182,8 +182,8 @@ second moment, which is specified by the `center` argument.
 For polarized maps we return the second moment for Stokes I only.
 """
 function second_moment(im::IntensityMapTypes{T,N}; center=true) where {T<:Real,N}
-    (;X, Y) = named_axisdims(im)
-    return mapslices(x->second_moment(IntensityMap(x, (;X, Y)); center), im; dims=(:X, :Y))
+    (;X, Y) = named_dims(im)
+    return mapslices(x->second_moment(IntensityMap(x, RectiGrid((;X, Y))); center), im; dims=(:X, :Y))
 end
 
 # Only return the second moment for Stokes I

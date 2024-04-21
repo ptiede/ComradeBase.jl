@@ -46,6 +46,10 @@ end
 
         puv = (U=range(-2.0, 2.0, length=128), V=range(-2.0, 2.0, length=64))
         vis = visibilitymap(m, RectiGrid(puv))
+        vis0 = copy(vis)
+        visibilitymap!(vis, m)
+        @test vis ≈ vis0
+
         @test size(vis) == size(RectiGrid(puv))
         testexvis(vis, m, ThreadsEx())
         testexvis(vis, m, ThreadsEx(:static))
@@ -71,6 +75,9 @@ end
         testeximg(img, m, SerialScheduler())
 
         vis = visibilitymap(m, UnstructuredGrid(puv))
+        vis0 = copy(vis)
+        visibilitymap!(vis, m)
+        @test vis ≈ vis0
         @test size(vis) == size(UnstructuredGrid(puv))
         testexvis(vis, m, ThreadsEx())
         testexvis(vis, m, ThreadsEx(:static))

@@ -29,6 +29,9 @@ end
                     Fr = fill(230e9, 128),
                     Ti = sort(rand(128)))
     grect = RectiGrid(prect)
+    pc = phasecenter(grect)
+    @test pc.X ≈ 0.0
+    @test pc.Y ≈ 0.0
     gustr = UnstructuredGrid(pustr)
 
     test_grid_interface(grect)
@@ -48,9 +51,14 @@ end
 
     imp = rand(64, 64, 3, 3)
 
+
     img1 = IntensityMap(imp[:,:,1,1], gsp)
     img2 = IntensityMap(imp, g1)
     img3 = IntensityMap(imp, g2)
+    phasecenter(img2)
+    centroid(img2)
+    second_moment(img2)
+    second_moment(img2; center=false)
 
     @test header(img1) == header(gsp)
     @test executor(img1) == executor(gsp)
