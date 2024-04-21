@@ -78,7 +78,7 @@ domaingrid(img::StokesIntensityMap)   = domaingrid(img.I)
 function StokesIntensityMap(
     I::AbstractArray{T,N}, Q::AbstractArray{T,N},
     U::AbstractArray{T,N}, V::AbstractArray{T,N},
-    dims::NamedTuple{Na,<:NTuple{N,Any}}) where {T, N, Na}
+    dims::AbstractGrid) where {T, N}
 
     imgI = IntensityMap(I, dims)
     imgQ = IntensityMap(Q, dims)
