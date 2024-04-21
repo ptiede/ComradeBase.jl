@@ -17,7 +17,7 @@ This type is the basic array type for all images and models that obey the `Comra
 interface. The type is a subtype of `DimensionalData.AbstractDimArray` however, we make
 a few changes to support the Comrade API.
 
-  1. The dimensions should be specified by an `AbstractGrid` interface. Usually users just
+  1. The dimensions should be specified by an `AbstractRectiGrid` interface. Usually users just
      need the [`RectiGrid`](@ref) grid, for rectilinear grids.
   2. There are two ways to access the dimensions of the array. `dims(img)` will
      return the usual `DimArray` dimensions, i.e. a `Tuple{DimensionalData.Dim, ...}`.
@@ -25,7 +25,7 @@ a few changes to support the Comrade API.
      `img.X` will return the RA/X grid locations but stripped of the usual `DimensionalData.Dimension`
      material. This `getproperty` behavior is *NOT CONSIDERED** part of the stable API and
      may be changed in the future.
-  3. Metadata is stored in the `AbstractGrid` type through the `header` property and can be
+  3. Metadata is stored in the `AbstractRectiGrid` type through the `header` property and can be
      accessed through `metadata` or `header`
 
 The most common way to create a `IntensityMap` is to use the function definitions
@@ -42,14 +42,14 @@ julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
 
 Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
 """
-struct IntensityMap{T,N,D,G<:AbstractGrid{D},A<:AbstractArray{T,N},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
+struct IntensityMap{T,N,D,G<:AbstractRectiGrid{D},A<:AbstractArray{T,N},R<:Tuple,Na} <: AbstractDimArray{T,N,D,A}
     data::A
     grid::G
     refdims::R
     name::Na
     function IntensityMap(
         data::A, grid::G, refdims::R, name::Na
-        ) where {A<:AbstractArray{T,N}, G<:AbstractGrid{D}, R<:Tuple, Na} where {T,N,D}
+        ) where {A<:AbstractArray{T,N}, G<:AbstractRectiGrid{D}, R<:Tuple, Na} where {T,N,D}
 
         new{T,N,D,G,A,R,Na}(data, grid, refdims, name)
     end
@@ -79,12 +79,12 @@ const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
 const SpatialIntensityMap{T, A, G} = IntensityMap{T,2,<:SpatialDims, A, G} where {T,A,G}
 
 """
-    IntensityMap(data::AbstractArray, g::AbstractGrid; refdims=(), name=Symbol(""))
+    IntensityMap(data::AbstractArray, g::AbstractRectiGrid; refdims=(), name=Symbol(""))
 
 Creates a IntensityMap with the pixel fluxes `data` on the grid `g`. Optionally, you can specify
 a set of reference dimensions `refdims` as a tuple and a name for array `name`.
 """
-function IntensityMap(data::AbstractArray, g::AbstractGrid; refdims=(), name=Symbol(""))
+function IntensityMap(data::AbstractArray, g::AbstractRectiGrid; refdims=(), name=Symbol(""))
     return IntensityMap(data, g, (), Symbol(""))
 end
 
@@ -100,7 +100,7 @@ function IntensityMap(data::AbstractArray{T}, fovx::Real, fovy::Real, x0::Real=0
 end
 
 
-function IntensityMap(data::IntensityMap, g::AbstractGrid)
+function IntensityMap(data::IntensityMap, g::AbstractRectiGrid)
     @assert g == axisdims(data) "Dimensions do not agree"
     return data
 end
@@ -110,7 +110,7 @@ end
     axisdims(img::IntensityMap)
     axisdims(img::IntensityMap, p::Symbol)
 
-Returns the keys of the `IntensityMap` as the actual internal `AbstractGrid` object.
+Returns the keys of the `IntensityMap` as the actual internal `AbstractRectiGrid` object.
 Optionall the user can ask for a specific dimension with `p`
 """
 axisdims(img::IntensityMap) = getfield(img, :grid)
@@ -160,13 +160,13 @@ end
 function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid)
     dx = step(dims.X)
     dy = step(dims.Y)
-    img = intensity_point.(Ref(s), domaingrid(dims)).*dx.*dy
+    img = intensity_point.(Ref(s), domainpoints(dims)).*dx.*dy
     return IntensityMap(img, dims)
 end
 
 function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
     dx, dy = pixelsizes(img)
-    g = domaingrid(img)
+    g = domainpoints(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy
     return nothing
 end
@@ -180,7 +180,7 @@ end
 function intensitymap_analytic!(
     img::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
     s::AbstractModel) where {T,N,D,S}
-    g = domaingrid(img)
+    g = domainpoints(img)
     _threads_intensitymap!(img, s, g, Val(S))
     return nothing
 end

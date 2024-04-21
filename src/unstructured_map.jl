@@ -1,6 +1,6 @@
 export UnstructuredMap
 
-struct UnstructuredMap{T, A<:AbstractVector{T}, G<:UnstructuredGrid} <: AbstractVector{T}
+struct UnstructuredMap{T, A<:AbstractVector{T}, G<:UnstructuredDomain} <: AbstractVector{T}
     data::A
     dims::G
 end
@@ -15,7 +15,7 @@ Base.IndexStyle(::Type{<:UnstructuredMap{T, A}}) where {T, A} = IndexStyle(A)
 Base.getindex(a::UnstructuredMap, i::Int) = getindex(parent(a), i)
 Base.setindex!(a::UnstructuredMap, v, i::Int) = setindex!(parent(a), v, i)
 
-UnstructuredMap(data::UnstructuredMap, dims::UnstructuredGrid) = UnstructuredMap(parent(data), dims)
+UnstructuredMap(data::UnstructuredMap, dims::UnstructuredDomain) = UnstructuredMap(parent(data), dims)
 
 
 function Base.similar(m::UnstructuredMap, ::Type{S}) where {S}
@@ -36,45 +36,45 @@ find_ustr(::Tuple{}) = nothing
 find_ustr(x::UnstructuredMap, rest) = x
 find_ustr(::Any, rest) = find_ustr(rest)
 
-domaingrid(x::UnstructuredMap) = domaingrid(axisdims(x))
+domainpoints(x::UnstructuredMap) = domainpoints(axisdims(x))
 
 function Base.view(x::UnstructuredMap, I)
     dims = axisdims(x)
-    g = domaingrid(dims)
-    newdims = UnstructuredGrid(@view(g[I]), executor(dims), header(dims))
+    g = domainpoints(dims)
+    newdims = UnstructuredDomain(@view(g[I]), executor(dims), header(dims))
     UnstructuredMap(view(parent(x), I), newdims)
 end
 
 function Base.getindex(x::UnstructuredMap, I)
     dims = axisdims(x)
-    g = domaingrid(dims)
-    newdims = UnstructuredGrid((g[I]), executor(dims), header(dims))
+    g = domainpoints(dims)
+    newdims = UnstructuredDomain((g[I]), executor(dims), header(dims))
     UnstructuredMap(parent(x)[I], newdims)
 end
 
-function intensitymap_analytic(m::AbstractModel, dims::UnstructuredGrid)
-    g = domaingrid(dims)
+function intensitymap_analytic(m::AbstractModel, dims::UnstructuredDomain)
+    g = domainpoints(dims)
     img = intensity_point.(Ref(m), g)
     return img
 end
 
-function intensitymap_analytic!(img::UnstructuredMap{T, <:Any, <:AbstractGrid}, s::AbstractModel) where {T}
-    g = domaingrid(img)
+function intensitymap_analytic!(img::UnstructuredMap{T, <:Any, <:AbstractDomain}, s::AbstractModel) where {T}
+    g = domainpoints(img)
     img .= intensity_point.(Ref(s), g)
     return nothing
 end
 
 
-function intensitymap_analytic(s::AbstractModel, dims::UnstructuredGrid{D, <:ThreadsEx}) where {D}
+function intensitymap_analytic(s::AbstractModel, dims::UnstructuredDomain{D, <:ThreadsEx}) where {D}
     img = UnstructuredMap(zeros(eltype(dims.X), size(dims)), dims)
     intensitymap_analytic!(img, s)
     return img
 end
 
 function intensitymap_analytic!(
-    img::UnstructuredMap{T,<:Any,<:UnstructuredGrid{D, <:ThreadsEx{S}}},
+    img::UnstructuredMap{T,<:Any,<:UnstructuredDomain{D, <:ThreadsEx{S}}},
     s::AbstractModel) where {T,D,S}
-    g = domaingrid(img)
+    g = domainpoints(img)
     _threads_intensitymap!(img, s, g, Val(S))
     return nothing
 end

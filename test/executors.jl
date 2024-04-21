@@ -58,10 +58,10 @@ end
         testexvis(vis, m, SerialScheduler())
     end
 
-    @testset "UnstructuredGrid" begin
+    @testset "UnstructuredDomain" begin
         pim = (;X=randn(64), Y=randn(64))
         puv = (;U=u, V=v, Ti=ti, Fr=fr)
-        gim = UnstructuredGrid(pim)
+        gim = UnstructuredDomain(pim)
         img = intensitymap(m, gim)
         img0 = copy(img)
         intensitymap!(img, m)
@@ -74,11 +74,11 @@ end
         testeximg(img, m, StaticScheduler())
         testeximg(img, m, SerialScheduler())
 
-        vis = visibilitymap(m, UnstructuredGrid(puv))
+        vis = visibilitymap(m, UnstructuredDomain(puv))
         vis0 = copy(vis)
         visibilitymap!(vis, m)
         @test vis ≈ vis0
-        @test size(vis) == size(UnstructuredGrid(puv))
+        @test size(vis) == size(UnstructuredDomain(puv))
         testexvis(vis, m, ThreadsEx())
         testexvis(vis, m, ThreadsEx(:static))
         testexvis(vis, m, DynamicScheduler())
@@ -119,25 +119,25 @@ end
         @test vis ≈ visibilitymap(m, RectiGrid(puv; executor=SerialScheduler()))
     end
 
-    @testset "UnstructuredGrid" begin
+    @testset "UnstructuredDomain" begin
         pim = (;X=randn(64), Y=randn(64))
         puv = (;U=u, V=v, Ti=ti, Fr=fr)
-        gim = UnstructuredGrid(pim)
+        gim = UnstructuredDomain(pim)
         img = intensitymap(m, gim)
 
-        @test img ≈ intensitymap(m, UnstructuredGrid(pim; executor=ThreadsEx()))
-        @test img ≈ intensitymap(m, UnstructuredGrid(pim; executor=ThreadsEx(:static)))
-        @test img ≈ intensitymap(m, UnstructuredGrid(pim; executor=DynamicScheduler()))
-        @test img ≈ intensitymap(m, UnstructuredGrid(pim; executor=StaticScheduler()))
-        @test img ≈ intensitymap(m, UnstructuredGrid(pim; executor=SerialScheduler()))
+        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor=ThreadsEx()))
+        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor=ThreadsEx(:static)))
+        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor=DynamicScheduler()))
+        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor=StaticScheduler()))
+        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor=SerialScheduler()))
 
-        vis = visibilitymap(m, UnstructuredGrid(puv))
-        @test size(vis) == size(UnstructuredGrid(puv))
-        @test vis ≈ visibilitymap(m, UnstructuredGrid(puv; executor=ThreadsEx()))
-        @test vis ≈ visibilitymap(m, UnstructuredGrid(puv; executor=ThreadsEx(:static)))
-        @test vis ≈ visibilitymap(m, UnstructuredGrid(puv; executor=DynamicScheduler()))
-        @test vis ≈ visibilitymap(m, UnstructuredGrid(puv; executor=StaticScheduler()))
-        @test vis ≈ visibilitymap(m, UnstructuredGrid(puv; executor=SerialScheduler()))
+        vis = visibilitymap(m, UnstructuredDomain(puv))
+        @test size(vis) == size(UnstructuredDomain(puv))
+        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=ThreadsEx()))
+        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=ThreadsEx(:static)))
+        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=DynamicScheduler()))
+        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=StaticScheduler()))
+        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=SerialScheduler()))
     end
 
 end

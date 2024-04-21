@@ -16,7 +16,7 @@ in Julia. The following methods have been implemented:
   - pixelsizes
   - fieldofview
   - imagepixels
-  - domaingrid
+  - domainpoints
   - stokes
 
 
@@ -73,12 +73,12 @@ end
 pixelsizes(img::StokesIntensityMap)  = pixelsizes(img.I)
 imagepixels(img::StokesIntensityMap) = imagepixels(img.I)
 fieldofview(img::StokesIntensityMap) = fieldofview(img.I)
-domaingrid(img::StokesIntensityMap)   = domaingrid(img.I)
+domainpoints(img::StokesIntensityMap)   = domainpoints(img.I)
 
 function StokesIntensityMap(
     I::AbstractArray{T,N}, Q::AbstractArray{T,N},
     U::AbstractArray{T,N}, V::AbstractArray{T,N},
-    dims::AbstractGrid) where {T, N}
+    dims::AbstractDomain) where {T, N}
 
     imgI = IntensityMap(I, dims)
     imgQ = IntensityMap(Q, dims)

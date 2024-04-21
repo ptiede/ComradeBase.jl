@@ -40,7 +40,7 @@ function ComradeBase.visibility_point(::GaussTestNA, p)
 end
 
 # Fake it to for testing
-function ComradeBase.intensitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractGrid)
+function ComradeBase.intensitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractDomain)
     return ComradeBase.intensitymap_analytic(m, p)
 end
 
@@ -49,7 +49,7 @@ function ComradeBase.intensitymap_numeric!(img, m::GaussTestNA)
 end
 
 
-function ComradeBase.visibilitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractGrid)
+function ComradeBase.visibilitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractDomain)
     return ComradeBase.visibilitymap_analytic(m, p)
 end
 
@@ -70,7 +70,7 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5*one(T)
     fr = fill(230e9, 60)
     m = GaussTest()
     p = (;U=u, V=v, Ti=ti, Fr=fr)
-    g = UnstructuredGrid(p)
+    g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
     closure_phasemap(m, g, g, g)
@@ -85,7 +85,7 @@ end
     fr = fill(230e9, 60)
     m = GaussTestNA()
     p = (;U=u, V=v, Ti=ti, Fr=fr)
-    g = UnstructuredGrid(p)
+    g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
     closure_phasemap(m, g, g, g)

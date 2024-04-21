@@ -1,11 +1,11 @@
 """
-    domaingrid(k::IntensityMap)
+    domainpoints(k::IntensityMap)
 
 Returns the grid the `IntensityMap` is defined as. Note that this is unallocating
 since it lazily computes the grid. The grid is an example of a DimArray and works similarly.
 This is useful for broadcasting a model across an abritrary grid.
 """
-domaingrid(img::IntensityMapTypes) = domaingrid(axisdims(img))
+domainpoints(img::IntensityMapTypes) = domainpoints(axisdims(img))
 
 
 struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
@@ -90,7 +90,7 @@ function fieldofview(img::IntensityMapTypes)
     return fieldofview(axisdims(img))
 end
 
-function fieldofview(dims::RectiGrid)
+function fieldofview(dims::AbstractRectiGrid)
     (;X,Y) = dims
     dx = step(X)
     dy = step(Y)
@@ -100,11 +100,11 @@ end
 
 """
     pixelsizes(img::IntensityMap)
-    pixelsizes(img::AbstractGrid)
+    pixelsizes(img::AbstractRectiGrid)
 
 Returns a named tuple with the spatial pixel sizes of the image.
 """
-function pixelsizes(keys::AbstractGrid)
+function pixelsizes(keys::AbstractRectiGrid)
     x = keys.X
     y = keys.Y
     return (X=step(x), Y=step(y))

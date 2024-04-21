@@ -10,7 +10,7 @@ end
 function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.AbstractRectiGrid{D, <:OhMyThreads.Scheduler}) where {D}
     dx = step(dims.X)
     dy = step(dims.Y)
-    g = domaingrid(dims)
+    g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     img = tmap(g; scheduler=executor(dims)) do p
         f(p)*dx*dy
@@ -22,7 +22,7 @@ function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBas
     dims = axisdims(img)
     dx = step(dims.X)
     dy = step(dims.Y)
-    g = domaingrid(dims)
+    g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     tforeach(CartesianIndices(img); scheduler=executor(dims)) do I
         img[I] = f(g[I])*dx*dy
@@ -30,17 +30,17 @@ function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBas
     return nothing
 end
 
-function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.UnstructuredGrid{D, <:OhMyThreads.Scheduler}) where {D}
-    g = domaingrid(dims)
+function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.UnstructuredDomain{D, <:OhMyThreads.Scheduler}) where {D}
+    g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     img = tmap(f, g; scheduler=executor(dims))
     return img
 end
 
 
-function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,<:AbstractVector,<:UnstructuredGrid{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,D}
+function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,<:AbstractVector,<:UnstructuredDomain{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,D}
     dims = axisdims(img)
-    g = domaingrid(dims)
+    g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     tforeach(CartesianIndices(img); scheduler=executor(dims)) do I
         img[I] = f(g[I])
@@ -48,16 +48,16 @@ function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,<:AbstractVec
     return nothing
 end
 
-function ComradeBase.visibilitymap_analytic(m::ComradeBase.AbstractModel, dims::ComradeBase.AbstractGrid{D, <:OhMyThreads.Scheduler}) where {D}
-    g = domaingrid(dims)
+function ComradeBase.visibilitymap_analytic(m::ComradeBase.AbstractModel, dims::ComradeBase.AbstractDomain{D, <:OhMyThreads.Scheduler}) where {D}
+    g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, m)
     img = tmap(f, g; scheduler=executor(dims))
     return img
 end
 
-function ComradeBase.visibilitymap_analytic!(vis::ComradeBase.FluxMap2{T,N,<:ComradeBase.AbstractGrid{<:Any, <: OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N}
+function ComradeBase.visibilitymap_analytic!(vis::ComradeBase.FluxMap2{T,N,<:ComradeBase.AbstractDomain{<:Any, <: OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N}
     dims = axisdims(vis)
-    g = domaingrid(dims)
+    g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
     tforeach(CartesianIndices(vis); scheduler=executor(dims)) do I
         vis[I] = f(g[I])

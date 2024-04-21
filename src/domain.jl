@@ -1,72 +1,73 @@
 # In this file we will define our base image class. This is entirely based on
-export RectiGrid, UnstructuredGrid,
+export RectiGrid, UnstructuredDomain, domainpoints,
        named_dims, dims, header, axisdims, executor,
        Serial, ThreadsEx
 
-abstract type AbstractGrid{D, E} end
+
+abstract type AbstractDomain{D, E} end
 
 """
-    create_map(array, g::AbstractGrid)
+    create_map(array, g::AbstractDomain)
 
 Create a map of values specialized by the grid `g`.
 """
 function create_map end
 
 """
-    allocate_map([array=Array{Float64}], g::AbstractGrid)
+    allocate_map([array=Array{Float64}], g::AbstractDomain)
 
 Allocate the default map specialized by the grid `g`
 """
 function allocate_map end
-allocate_map(g::AbstractGrid) = allocate_map(Array{Float64}, g)
+allocate_map(g::AbstractDomain) = allocate_map(Array{Float64}, g)
 
 
 """
-    domaingrid(g::AbstractGrid)
+    domainpoints(g::AbstractDomain)
 
 Create a grid iterator that can be used to iterate through different points.
 All grid methods must implement this method.
 """
-function domaingrid end
+function domainpoints end
 
 # We enforce that all grids are static for performance reasons
 # If this is not true please create a custom subtype
-ChainRulesCore.@non_differentiable domaingrid(d::AbstractGrid)
+ChainRulesCore.@non_differentiable domainpoints(d::AbstractDomain)
 
 
 """
-    executor(g::AbstractGrid)
+    executor(g::AbstractDomain)
 
 Returns the executor used to compute the intensitymap or visibilitymap
 """
-executor(g::AbstractGrid) = getfield(g, :executor)
-ChainRulesCore.@non_differentiable executor(::AbstractGrid)
+executor(g::AbstractDomain) = getfield(g, :executor)
+ChainRulesCore.@non_differentiable executor(::AbstractDomain)
 
 """
-    dims(g::AbstractGrid)
+    dims(g::AbstractDomain)
 
 Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
 """
-DD.dims(g::AbstractGrid) = getfield(g, :dims)
-ChainRulesCore.@non_differentiable DD.dims(::AbstractGrid)
+DD.dims(g::AbstractDomain) = getfield(g, :dims)
+ChainRulesCore.@non_differentiable DD.dims(::AbstractDomain)
 
 """
-    named_dims(g::AbstractGrid)
+    named_dims(g::AbstractDomain)
 
 Returns a named tuple containing the dimensions of `g`. For a unnamed version see [`dims`](@ref)
 """
-named_dims(g::AbstractGrid) = NamedTuple{keys(g)}(dims(g))
-ChainRulesCore.@non_differentiable named_dims(::AbstractGrid)
+named_dims(g::AbstractDomain) = NamedTuple{keys(g)}(dims(g))
+ChainRulesCore.@non_differentiable named_dims(::AbstractDomain)
 
 
 """
-    header(g::AbstractGrid)
+    header(g::AbstractDomain)
 
 Returns the headerinformation of the dimensions `g`
 """
-header(g::AbstractGrid) = getfield(g, :header)
-ChainRulesCore.@non_differentiable header(::AbstractGrid)
-Base.keys(g::AbstractGrid) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
+header(g::AbstractDomain) = getfield(g, :header)
+ChainRulesCore.@non_differentiable header(::AbstractDomain)
+Base.keys(g::AbstractDomain) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
 
 """
     Serial()
@@ -96,24 +97,24 @@ end
 
 
 # We index the dimensions not the grid itself
-Base.getindex(d::AbstractGrid, i::Int) = getindex(dims(d), i)
+Base.getindex(d::AbstractDomain, i::Int) = getindex(dims(d), i)
 
 
-Base.ndims(d::AbstractGrid) = length(dims(d))
-Base.size(d::AbstractGrid) = map(length, dims(d))
-Base.length(d::AbstractGrid) = prod(size(d))
-Base.firstindex(d::AbstractGrid) = 1
-Base.lastindex(d::AbstractGrid) = length(d)
-Base.axes(d::AbstractGrid) = axes(dims(d))
-Base.iterate(d::AbstractGrid, i::Int = 1) = iterate(dims(d), i)
-# Base.front(d::AbstractGrid) = Base.front(dims(d))
+Base.ndims(d::AbstractDomain) = length(dims(d))
+Base.size(d::AbstractDomain) = map(length, dims(d))
+Base.length(d::AbstractDomain) = prod(size(d))
+Base.firstindex(d::AbstractDomain) = 1
+Base.lastindex(d::AbstractDomain) = length(d)
+Base.axes(d::AbstractDomain) = axes(dims(d))
+Base.iterate(d::AbstractDomain, i::Int = 1) = iterate(dims(d), i)
+# Base.front(d::AbstractDomain) = Base.front(dims(d))
 # We return the eltype of the dimensions. Should we change this?
-Base.eltype(d::AbstractGrid) = promote_type(map(eltype, dims(d))...)
+Base.eltype(d::AbstractDomain) = promote_type(map(eltype, dims(d))...)
 
 # These aren't needed and I am not sure if the semantics are what we actually want
-# Base.map(f, d::AbstractGrid) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
-# Base.map(f, args, d::AbstractGrid) = map(f, args, dims(d))
-# Base.map(f, d::AbstractGrid, args) = rebuild(typeof(d), map(f, dims(d), args))
+# Base.map(f, d::AbstractDomain) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
+# Base.map(f, args, d::AbstractDomain) = map(f, args, dims(d))
+# Base.map(f, d::AbstractDomain, args) = rebuild(typeof(d), map(f, dims(d), args))
 
 
 abstract type AbstractHeader end
@@ -162,7 +163,7 @@ end
 struct NoHeader <: AbstractHeader end
 
 
-abstract type AbstractRectiGrid{D, E} <: AbstractGrid{D, E} end
+abstract type AbstractRectiGrid{D, E} <: AbstractDomain{D, E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
 allocate_map(M::Type{<:Array}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
 
@@ -206,7 +207,7 @@ struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
 
 end
 
-function domaingrid(d::RectiGrid{D, Hd}) where {D, Hd}
+function domainpoints(d::RectiGrid{D, Hd}) where {D, Hd}
     g = map(basedim, dims(d))
     N = keys(d)
     return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
@@ -289,56 +290,56 @@ const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F
 
 
 # TODO make this play nice with dimensional data
-struct UnstructuredGrid{D,E, H<:AbstractHeader} <: AbstractGrid{D,E}
+struct UnstructuredDomain{D,E, H<:AbstractHeader} <: AbstractDomain{D,E}
     dims::D
     executor::E
     header::H
 end
 
 """
-    UnstructuredGrid(dims::AbstractArray; executor=Serial(), header=ComradeBase.NoHeader)
+    UnstructuredDomain(dims::AbstractArray; executor=Serial(), header=ComradeBase.NoHeader)
 
 Builds an unstructured grid (really a vector of points) from the dimensions `dims`.
 The `executor` is used controls how the grid is computed when calling
 `visibilitymap` or `intensitymap`.
 
-Note that unlike `RectiGrid` which assigns dimensions to the grid points, `UnstructuredGrid`
+Note that unlike `RectiGrid` which assigns dimensions to the grid points, `UnstructuredDomain`
 does not. This is becuase the grid is unstructured the points are a cloud in a space
 """
-function UnstructuredGrid(nt::NamedTuple; executor=Serial(), header=NoHeader())
+function UnstructuredDomain(nt::NamedTuple; executor=Serial(), header=NoHeader())
     p = StructArray(nt)
-    return UnstructuredGrid(p, executor, header)
+    return UnstructuredDomain(p, executor, header)
 end
 
-Base.ndims(d::UnstructuredGrid) = ndims(dims(d))
-Base.size(d::UnstructuredGrid) = size(dims(d))
-Base.firstindex(d::UnstructuredGrid) = firstindex(dims(d))
-Base.lastindex(d::UnstructuredGrid) = lastindex(dims(d))
+Base.ndims(d::UnstructuredDomain) = ndims(dims(d))
+Base.size(d::UnstructuredDomain) = size(dims(d))
+Base.firstindex(d::UnstructuredDomain) = firstindex(dims(d))
+Base.lastindex(d::UnstructuredDomain) = lastindex(dims(d))
 #Make sure we actually get a tuple here
-# Base.front(d::UnstructuredGrid) = UnstructuredGrid(Base.front(StructArrays.components(dims(d))), executor=executor(d), header=header(d))
-Base.eltype(d::UnstructuredGrid) = Base.eltype(dims(d))
+# Base.front(d::UnstructuredDomain) = UnstructuredDomain(Base.front(StructArrays.components(dims(d))), executor=executor(d), header=header(d))
+Base.eltype(d::UnstructuredDomain) = Base.eltype(dims(d))
 
-function DD.rebuild(::Type{<:UnstructuredGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
-    UnstructuredGrid(g, executor, header)
+function DD.rebuild(::Type{<:UnstructuredDomain}, g, executor=Serial(), header=ComradeBase.NoHeader())
+    UnstructuredDomain(g, executor, header)
 end
 
-Base.propertynames(g::UnstructuredGrid) = propertynames(domaingrid(g))
-Base.getproperty(g::UnstructuredGrid, p::Symbol) = getproperty(domaingrid(g), p)
-Base.keys(g::UnstructuredGrid) = propertynames(g)
-named_dims(g::UnstructuredGrid) = StructArrays.components(dims(g))
+Base.propertynames(g::UnstructuredDomain) = propertynames(domainpoints(g))
+Base.getproperty(g::UnstructuredDomain, p::Symbol) = getproperty(domainpoints(g), p)
+Base.keys(g::UnstructuredDomain) = propertynames(g)
+named_dims(g::UnstructuredDomain) = StructArrays.components(dims(g))
 
-function domaingrid(d::UnstructuredGrid)
+function domainpoints(d::UnstructuredDomain)
     return getfield(d, :dims)
 end
 
 
-function Base.summary(io::IO, g::UnstructuredGrid)
-    n = propertynames(domaingrid(g))
+function Base.summary(io::IO, g::UnstructuredDomain)
+    n = propertynames(domainpoints(g))
     printstyled(io, "│ "; color=:light_black)
-    print(io, "UnstructuredGrid with dims: $n")
+    print(io, "UnstructuredDomain with dims: $n")
 end
 
-function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredGrid)
+function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredDomain)
     println(io, "UnstructredGrid(")
     println(io, "executor: $(executor(x))")
     println(io, "Dimensions: ")
@@ -347,5 +348,5 @@ function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredGrid)
 end
 
 
-create_map(array, g::UnstructuredGrid) = UnstructuredMap(array, g)
-allocate_map(M::Type{<:Array}, g::UnstructuredGrid) = UnstructuredMap(similar(M, size(g)), g)
+create_map(array, g::UnstructuredDomain) = UnstructuredMap(array, g)
+allocate_map(M::Type{<:Array}, g::UnstructuredDomain) = UnstructuredMap(similar(M, size(g)), g)

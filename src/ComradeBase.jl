@@ -20,8 +20,15 @@ export  visibility,
         named_dims, IntensityMapTypes
 
 include("interface.jl")
+include("domain.jl")
+include("unstructured_map.jl")
 include("images/images.jl")
+
+const FluxMap2{T, N, E} = Union{IntensityMap{T,N,<:Any,E}, UnstructuredMap{T,<:AbstractVector,E}}
+
+
 include("visibilities.jl")
+include("rrules.jl")
 
 @setup_workload begin
     fovx = 10.0
@@ -31,7 +38,7 @@ include("visibilities.jl")
     # @compile_workload begin
     #     p = imagepixels(fovx, fovy, nx, ny)
     #     g = RectiGrid(p)
-    #     gs = domaingrid(p)
+    #     gs = domainpoints(p)
     #     imgI = IntensityMap(rand(10, 10), g)
     #     imgI.^2
 

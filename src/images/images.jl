@@ -1,38 +1,31 @@
 export IntensityMap, SpatialIntensityMap,
         DataArr, SpatialDataArr, DataNames,
-        named_axisdims, imagepixels, pixelsizes, domaingrid,
+        named_axisdims, imagepixels, pixelsizes, domainpoints,
         phasecenter, baseimage
-include("grid.jl")
 
 include("dim_image.jl")
 include("stokes_image.jl")
 const IntensityMapTypes{T,N} = Union{IntensityMap{T,N}, StokesIntensityMap{T,N}}
 
-include("unstructured_image.jl")
-
-const FluxMap2{T, N, E} = Union{IntensityMap{T,N,<:Any,E}, UnstructuredMap{T,<:AbstractVector,E}}
-
-
 export flux, centroid, second_moment, named_axisdims, axisdims,
-       imagepixels, pixelsizes, domaingrid, phasecenter
+       imagepixels, pixelsizes, domainpoints, phasecenter
 include("methods.jl")
 include("io.jl")
-include("rrules.jl")
 
 
 """
-    intensitymap(model::AbstractModel, dims::AbstractGrid)
+    intensitymap(model::AbstractModel, dims::AbstractDomain)
 
 Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap` which
-is a `IntensityMap` with `dims` an [`AbstractGrid`](@ref) as dimensions.
+is a `IntensityMap` with `dims` an [`AbstractDomain`](@ref) as dimensions.
 """
 @inline function intensitymap(s::M,
-                              dims::AbstractGrid
+                              dims::AbstractDomain
                               ) where {M<:AbstractModel}
     return create_map(intensitymap(imanalytic(M), s, dims), dims)
 end
-@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractGrid)  = intensitymap_analytic(m, dims)
-@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractGrid) = intensitymap_numeric(m, dims)
+@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDomain)  = intensitymap_analytic(m, dims)
+@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_numeric(m, dims)
 
 
 """

@@ -1,15 +1,15 @@
-function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
+function test_grid_interface(grid::ComradeBase.AbstractDomain{D, E}) where {D,E}
     @test typeof(executor(grid)) == E
     arr = zeros(size(grid))
     @inferred ComradeBase.create_map(arr, grid)
     map = ComradeBase.create_map(arr, grid)
     @test typeof(map) == typeof(ComradeBase.allocate_map(grid))
-    @inferred domaingrid(grid)
+    @inferred domainpoints(grid)
     @test typeof(DD.dims(grid)) == D
 
     @test header(grid) isa ComradeBase.AbstractHeader
     @test keys(grid) == propertynames(grid)
-    @test ndims(grid) == ndims(domaingrid(grid))
+    @test ndims(grid) == ndims(domainpoints(grid))
 
     @test keys(grid) == keys(named_dims(grid))
     @test firstindex(grid) == 1
@@ -23,7 +23,7 @@ function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
     summary(grid)
 end
 
-@testset "AbstractGrid" begin
+@testset "AbstractDomain" begin
     ex = Serial()
     prect = (;X=range(-10.0, 10.0, length=128),
                         Y=range(-10.0, 10.0, length=128),
@@ -37,7 +37,7 @@ end
     pc = phasecenter(grect)
     @test pc.X ≈ 0.0
     @test pc.Y ≈ 0.0
-    gustr = UnstructuredGrid(pustr)
+    gustr = UnstructuredDomain(pustr)
 
     test_grid_interface(grect)
     test_grid_interface(gustr)
@@ -185,7 +185,7 @@ end
 
 @testset "rrule UnstructuredMap" begin
     data = rand(64)
-    g = UnstructuredGrid((X=randn(64), Y=randn(64)))
+    g = UnstructuredDomain((X=randn(64), Y=randn(64)))
     test_rrule(UnstructuredMap, data, g⊢NoTangent())
 end
 
@@ -204,7 +204,7 @@ end
                     Fr = fill(230e9, 128),
                     Ti = sort(rand(128)))
 
-    g = UnstructuredGrid(pustr)
+    g = UnstructuredDomain(pustr)
     img = UnstructuredMap(rand(128), g)
     @test typeof(img.^2) == typeof(img)
     @test img[[1,4,6]] isa UnstructuredMap

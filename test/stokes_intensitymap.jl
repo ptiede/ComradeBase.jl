@@ -22,7 +22,7 @@
     @test pixelsizes(simg1) == pixelsizes(img1)
     @test imagepixels(simg1) == imagepixels(img1)
     @test fieldofview(simg1) == fieldofview(img1)
-    @test domaingrid(simg1) == domaingrid(img1)
+    @test domainpoints(simg1) == domainpoints(img1)
 
     simg1[2, 2] = img1[2,2]
     StokesIntensityMap(imgI, imgQ, imgU, imgV, axisdims(img1))
