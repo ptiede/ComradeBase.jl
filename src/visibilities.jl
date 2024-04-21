@@ -88,12 +88,23 @@ the coordinates of the model. These need to have the properties `U`, `V` and som
 
 # Notes
 If you want to compute the visibilities at a large number of positions
-consider using the [`visibilities`](@ref visibilities).
+consider using the [`visibilitymap`](@ref visibilitymap).
+
+# Warn
+This is only defined for analytic models. If you want to compute the visibility for a
+single point for a non-analytic model, please use the `visibilitymap` function
+and create an `UnstructuredGrid` with a single point.
+
 """
 @inline function visibility(mimg::M, p) where {M}
-    #first we split based on whether the model is primitive
-    _visibility(isprimitive(M), mimg, p)
+    return _visibility(visanalytic(M), mimg, p)
 end
+
+@inline function _visibility(::IsAnalytic, mimg, p)
+    return visibility_point(mimg, p)
+end
+
+
 
 
 """
@@ -158,23 +169,6 @@ consider using the `logclosure_amplitudemap` function.
     return log(a1*a2/(a3*a4))
 end
 
-
-#=
-    Welcome to the trait jungle. Below is
-    how we specify how to evaluate the model
-=#
-@inline function _visibility(::NotPrimitive, m, p)
-    return visibility_point(m, p)
-end
-
-@inline function _visibility(::IsPrimitive, m::M, p) where {M}
-    _visibility_primitive(visanalytic(M), m, p)
-end
-
-
-@inline function _visibility_primitive(::IsAnalytic, mimg, p)
-    return visibility_point(mimg, p)
-end
 
 
 

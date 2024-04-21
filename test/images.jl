@@ -14,10 +14,12 @@ function test_grid_interface(grid::ComradeBase.AbstractGrid{D, E}) where {D,E}
     @test keys(grid) == keys(named_dims(grid))
     @test firstindex(grid) == 1
     @test lastindex(grid) == length(grid)
+    iterate(grid)
     # @test Base.front(grid) == DD.dims(grid)[1:end-1]
     grid[1]
     axes(grid)
     show(grid)
+    show(IOBuffer(), MIME"text/plain"(), grid)
     summary(grid)
 end
 

@@ -338,5 +338,14 @@ function Base.summary(io::IO, g::UnstructuredGrid)
     print(io, "UnstructuredGrid with dims: $n")
 end
 
+function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredGrid)
+    println(io, "UnstructredGrid(")
+    println(io, "executor: $(executor(x))")
+    println(io, "Dimensions: ")
+    show(io, mime, dims(x))
+    print(io, "\n)")
+end
+
+
 create_map(array, g::UnstructuredGrid) = UnstructuredMap(array, g)
 allocate_map(M::Type{<:Array}, g::UnstructuredGrid) = UnstructuredMap(similar(M, size(g)), g)

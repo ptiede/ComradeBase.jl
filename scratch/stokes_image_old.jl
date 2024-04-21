@@ -27,7 +27,6 @@ SingleStokes(m::M, param::Symbol) where {M} = SingleStokes{M, param}(m)
 
 visanalytic(::Type{SingleStokes{M,S}}) where {M,S} = visanalytic(M)
 imanalytic(::Type{SingleStokes{M,S}})  where {M,S} = imanalytic(M)
-isprimitive(::Type{SingleStokes{M,S}}) where {M,S} = isprimitive(M)
 @inline intensity_point(s::SingleStokes{M,S}, x,y) where {M,S} = getproperty(intensity_point(s.model, x,y), S)
 
 

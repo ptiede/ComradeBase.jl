@@ -7,9 +7,6 @@ subtybe from this model. Additionally you need to implement the following
 methods to satify the interface:
 
 **Mandatory Methods**
-- [`isprimitive`](@ref): defines whether a model is standalone or is defined in terms of other models.
-   is the model is primitive then this should return `IsPrimitive()` otherwise it returns
-   `NotPrimitive()`
 - [`visanalytic`](@ref): defines whether the model visibilities can be computed analytically. If yes
    then this should return `IsAnalytic()` and the user *must* to define `visibility_point`.
    If not analytic then `visanalytic` should return `NotAnalytic()`.
@@ -76,55 +73,6 @@ Extract the specific stokes component `p` from the polarized model `m`
 """
 stokes(m::AbstractPolarizedModel, v::Symbol) = getfield(m, v)
 
-
-
-
-"""
-    $(TYPEDEF)
-
-This trait specifies whether the model is a *primitive*
-
-# Notes
-This will likely turn into a trait in the future so people
-can inject their models into Comrade more easily.
-"""
-abstract type PrimitiveTrait end
-
-"""
-    $(TYPEDEF)
-Trait for primitive model
-"""
-struct IsPrimitive end
-"""
-    $(TYPEDEF)
-Trait for not-primitive model
-"""
-struct NotPrimitive end
-
-"""
-    isprimitive(::Type)
-
-Dispatch function that specifies whether a type is a primitive Comrade model.
-This function is used for dispatch purposes when composing models.
-
-# Notes
-If a user is specifying their own model primitive model outside of Comrade they need
-to specify if it is primitive
-
-```julia
-struct MyPrimitiveModel end
-ComradeBase.isprimitive(::Type{MyModel}) = ComradeBase.IsPrimitive()
-```
-
-"""
-function isprimitive end
-
-
-
-
-
-
-@inline isprimitive(::Type{<:AbstractModel}) = NotPrimitive()
 
 """
     DensityAnalytic
@@ -193,7 +141,6 @@ Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic
 # Traits are not differentiable
 ChainRulesCore.@non_differentiable visanalytic(::Type)
 ChainRulesCore.@non_differentiable imanalytic(::Type)
-ChainRulesCore.@non_differentiable isprimitive(::Type)
 ChainRulesCore.@non_differentiable ispolarized(::Type)
 
 """
