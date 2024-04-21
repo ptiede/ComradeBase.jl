@@ -72,7 +72,7 @@ function intensitymap_analytic(s::AbstractModel, dims::UnstructuredGrid{D, <:Thr
 end
 
 function intensitymap_analytic!(
-    img::UnstructuredMap{T,<:AbstractVector,<:UnstructuredGrid{D, <:ThreadsEx{S}}},
+    img::UnstructuredMap{T,<:Any,<:UnstructuredGrid{D, <:ThreadsEx{S}}},
     s::AbstractModel) where {T,D,S}
     g = domaingrid(img)
     _threads_intensitymap!(img, s, g, Val(S))

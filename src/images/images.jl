@@ -10,6 +10,8 @@ const IntensityMapTypes{T,N} = Union{IntensityMap{T,N}, StokesIntensityMap{T,N}}
 
 include("unstructured_image.jl")
 
+const FluxMap2{T, N, E} = Union{IntensityMap{T,N,<:Any,E}, UnstructuredMap{T,<:AbstractVector,E}}
+
 
 export flux, centroid, second_moment, named_axisdims, axisdims,
        imagepixels, pixelsizes, domaingrid, phasecenter

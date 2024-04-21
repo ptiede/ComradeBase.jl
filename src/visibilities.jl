@@ -49,7 +49,7 @@ function visibilitymap_analytic(m::AbstractModel, p::AbstractGrid{D, <:ThreadsEx
     return vis
 end
 
-function visibilitymap_analytic!(vis::UnstructuredMap{T, <:AbstractVector, <:UnstructuredGrid{D, <:ThreadsEx{S}}}, m::AbstractModel) where {T,D,S}
+function visibilitymap_analytic!(vis::UnstructuredMap{T, <:Any, <:UnstructuredGrid{D, <:ThreadsEx{S}}}, m::AbstractModel) where {T,D,S}
     d = axisdims(vis)
     g = domaingrid(d)
     _threads_visibilitymap!(vis, m, g, Val(S))
@@ -201,8 +201,7 @@ function _amplitudemap(::IsAnalytic, m, p::AbstractGrid)
 end
 
 function _amplitudemap(::NotAnalytic, m, p::AbstractGrid)
-    g = domaingrid(p)
-    abs.(visibilitymap_numeric(m, g))
+    abs.(visibilitymap_numeric(m, p))
 end
 
 

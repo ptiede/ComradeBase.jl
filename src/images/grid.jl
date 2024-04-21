@@ -318,7 +318,7 @@ Base.lastindex(d::UnstructuredGrid) = lastindex(dims(d))
 Base.front(d::UnstructuredGrid) = Base.front(dims(d))
 Base.eltype(d::UnstructuredGrid) = Base.eltype(dims(d))
 
-function DD.rebuild(::Type{<:UnstructuredGrid}, g::Tuple, executor=Serial(), header=ComradeBase.NoHeader())
+function DD.rebuild(::Type{<:UnstructuredGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
     UnstructuredGrid(g, executor, header)
 end
 
