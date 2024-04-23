@@ -33,8 +33,6 @@ methods to satify the interface:
 """
 abstract type AbstractModel end
 
-
-
 export stokes, IsPolarized, NotPolarized
 
 # Trait to signal whether a model is polarized or not

@@ -38,6 +38,9 @@ find_ustr(::Any, rest) = find_ustr(rest)
 
 domainpoints(x::UnstructuredMap) = domainpoints(axisdims(x))
 
+Base.propertynames(x::UnstructuredMap) = propertynames(axisdims(x))
+Base.getproperty(x::UnstructuredMap, s::Symbol) = getproperty(axisdims(x), s)
+
 function Base.view(x::UnstructuredMap, I)
     dims = axisdims(x)
     g = domainpoints(dims)

@@ -12,7 +12,7 @@ Computes the visibilities of the model `m` using the coordinates `p`. The coordi
 are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 """
 @inline function visibilitymap(m::M, p) where {M<:AbstractModel}
-    return create_map(_visibilitymap(visanalytic(M), m, p), p)
+    return create_vismap(_visibilitymap(visanalytic(M), m, p), p)
 end
 @inline _visibilitymap(::IsAnalytic,  m::AbstractModel, p)  = visibilitymap_analytic(m, p)
 @inline _visibilitymap(::NotAnalytic, m::AbstractModel, p)  = visibilitymap_numeric(m, p)

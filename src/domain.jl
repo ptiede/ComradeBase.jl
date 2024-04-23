@@ -14,12 +14,65 @@ Create a map of values specialized by the grid `g`.
 function create_map end
 
 """
-    allocate_map([array=Array{Float64}], g::AbstractDomain)
+    create_vismap(array, g::AbstractDomain)
+
+Create a map of values specialized by the grid `g` in the visibility domain.
+The default is to call `create_map` with the same arguments.
+"""
+create_vismap(array, g::AbstractDomain) = create_map(array, g)
+
+"""
+    create_imgmap(array, g::AbstractDomain)
+
+Create a map of values specialized by the grid `g` in the image domain.
+The default is to call `create_map` with the same arguments.
+"""
+create_imgmap(array, g::AbstractDomain) = create_map(array, g)
+
+"""
+    allocate_imgmap(m::AbstractModel, g::AbstractDomain)
 
 Allocate the default map specialized by the grid `g`
 """
-function allocate_map end
-allocate_map(g::AbstractDomain) = allocate_map(Array{Float64}, g)
+function allocate_imgmap end
+
+"""
+    allocate_vismap(m::AbstractModel, g::AbstractDomain)
+
+Allocate the default map specialized by the grid `g`
+"""
+function allocate_vismap end
+
+function allocate_vismap(m::AbstractModel, g::AbstractDomain)
+    allocate_vismap(ispolarized(typeof(m)), m, g)
+end
+
+function allocate_vismap(::IsPolarized, m::AbstractModel, g::AbstractDomain)
+    M = StructArray{StokesParams{Complex{eltype(g)}}}
+    return allocate_map(M, g)
+end
+
+function allocate_vismap(::NotPolarized, m::AbstractModel, g::AbstractDomain)
+    M = Array{Complex{eltype(g)}}
+    return allocate_map(M, g)
+end
+
+function allocate_imgmap(m::AbstractModel, g::AbstractDomain)
+    allocate_imgmap(ispolarized(typeof(m)), m, g)
+end
+
+function allocate_imgmap(::IsPolarized, m::AbstractModel, g::AbstractDomain)
+    M = StructArray{StokesParams{eltype(g)}}
+    return allocate_map(M, g)
+end
+
+function allocate_imgmap(::NotPolarized, m::AbstractModel, g::AbstractDomain)
+    M = Array{eltype(g)}
+    return allocate_map(M, g)
+end
+
+
+
 
 
 """
@@ -109,7 +162,7 @@ Base.axes(d::AbstractDomain) = axes(dims(d))
 Base.iterate(d::AbstractDomain, i::Int = 1) = iterate(dims(d), i)
 # Base.front(d::AbstractDomain) = Base.front(dims(d))
 # We return the eltype of the dimensions. Should we change this?
-Base.eltype(d::AbstractDomain) = promote_type(map(eltype, dims(d))...)
+Base.eltype(d::AbstractDomain) = promote_type(map(eltype, named_dims(d))...)
 
 # These aren't needed and I am not sure if the semantics are what we actually want
 # Base.map(f, d::AbstractDomain) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
@@ -165,7 +218,7 @@ struct NoHeader <: AbstractHeader end
 
 abstract type AbstractRectiGrid{D, E} <: AbstractDomain{D, E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
-allocate_map(M::Type{<:Array}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
+allocate_map(M::Type{<:AbstractArray}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
 
 
 
@@ -317,7 +370,7 @@ Base.firstindex(d::UnstructuredDomain) = firstindex(dims(d))
 Base.lastindex(d::UnstructuredDomain) = lastindex(dims(d))
 #Make sure we actually get a tuple here
 # Base.front(d::UnstructuredDomain) = UnstructuredDomain(Base.front(StructArrays.components(dims(d))), executor=executor(d), header=header(d))
-Base.eltype(d::UnstructuredDomain) = Base.eltype(dims(d))
+# Base.eltype(d::UnstructuredDomain) = Base.eltype(dims(d))
 
 function DD.rebuild(::Type{<:UnstructuredDomain}, g, executor=Serial(), header=ComradeBase.NoHeader())
     UnstructuredDomain(g, executor, header)
