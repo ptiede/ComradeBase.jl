@@ -14,18 +14,18 @@ include("io.jl")
 
 
 """
-    intensitymap(model::AbstractModel, dims::AbstractDomain)
+    intensitymap(model::AbstractModel, dims::AbstractSingleDomain)
 
 Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap` which
-is a `IntensityMap` with `dims` an [`AbstractDomain`](@ref) as dimensions.
+is a `IntensityMap` with `dims` an [`AbstractSingleDomain`](@ref) as dimensions.
 """
 @inline function intensitymap(s::M,
-                              dims
+                              dims::AbstractDomain
                               ) where {M<:AbstractModel}
     return create_imgmap(intensitymap(imanalytic(M), s, dims), dims)
 end
-@inline intensitymap(::IsAnalytic, m::AbstractModel, dims)  = intensitymap_analytic(m, dims)
-@inline intensitymap(::NotAnalytic, m::AbstractModel, dims) = intensitymap_numeric(m, dims)
+@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDomain)  = intensitymap_analytic(m, dims)
+@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_numeric(m, dims)
 
 
 """

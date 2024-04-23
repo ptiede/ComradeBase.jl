@@ -61,7 +61,7 @@ function intensitymap_analytic(m::AbstractModel, dims::UnstructuredDomain)
     return img
 end
 
-function intensitymap_analytic!(img::UnstructuredMap{T, <:Any, <:AbstractDomain}, s::AbstractModel) where {T}
+function intensitymap_analytic!(img::UnstructuredMap{T, <:Any, <:AbstractSingleDomain}, s::AbstractModel) where {T}
     g = domainpoints(img)
     img .= intensity_point.(Ref(s), g)
     return nothing

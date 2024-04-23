@@ -40,7 +40,7 @@ function ComradeBase.visibility_point(::GaussTestNA, p)
 end
 
 # Fake it to for testing
-function ComradeBase.intensitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractDomain)
+function ComradeBase.intensitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractSingleDomain)
     return ComradeBase.intensitymap_analytic(m, p)
 end
 
@@ -49,7 +49,7 @@ function ComradeBase.intensitymap_numeric!(img, m::GaussTestNA)
 end
 
 
-function ComradeBase.visibilitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractDomain)
+function ComradeBase.visibilitymap_numeric(m::GaussTestNA, p::ComradeBase.AbstractSingleDomain)
     return ComradeBase.visibilitymap_analytic(m, p)
 end
 

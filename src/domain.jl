@@ -4,17 +4,18 @@ export RectiGrid, UnstructuredDomain, domainpoints,
        Serial, ThreadsEx
 
 
-abstract type AbstractDomain{D, E} end
+abstract type AbstractDomain end
+abstract type AbstractSingleDomain{D, E} <: AbstractDomain end
 
 """
-    create_map(array, g::AbstractDomain)
+    create_map(array, g::AbstractSingleDomain)
 
 Create a map of values specialized by the grid `g`.
 """
 function create_map end
 
 """
-    create_vismap(array, g::AbstractDomain)
+    create_vismap(array, g::AbstractSingleDomain)
 
 Create a map of values specialized by the grid `g` in the visibility domain.
 The default is to call `create_map` with the same arguments.
@@ -22,7 +23,7 @@ The default is to call `create_map` with the same arguments.
 create_vismap(array, g::AbstractDomain) = create_map(array, g)
 
 """
-    create_imgmap(array, g::AbstractDomain)
+    create_imgmap(array, g::AbstractSingleDomain)
 
 Create a map of values specialized by the grid `g` in the image domain.
 The default is to call `create_map` with the same arguments.
@@ -30,14 +31,14 @@ The default is to call `create_map` with the same arguments.
 create_imgmap(array, g::AbstractDomain) = create_map(array, g)
 
 """
-    allocate_imgmap(m::AbstractModel, g::AbstractDomain)
+    allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
 
 Allocate the default map specialized by the grid `g`
 """
 function allocate_imgmap end
 
 """
-    allocate_vismap(m::AbstractModel, g::AbstractDomain)
+    allocate_vismap(m::AbstractModel, g::AbstractSingleDomain)
 
 Allocate the default map specialized by the grid `g`
 """
@@ -76,7 +77,7 @@ end
 
 
 """
-    domainpoints(g::AbstractDomain)
+    domainpoints(g::AbstractSingleDomain)
 
 Create a grid iterator that can be used to iterate through different points.
 All grid methods must implement this method.
@@ -85,49 +86,49 @@ function domainpoints end
 
 # We enforce that all grids are static for performance reasons
 # If this is not true please create a custom subtype
-ChainRulesCore.@non_differentiable domainpoints(d::AbstractDomain)
+ChainRulesCore.@non_differentiable domainpoints(d::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(domainpoints), args...) = nothing
 
 
 """
-    executor(g::AbstractDomain)
+    executor(g::AbstractSingleDomain)
 
 Returns the executor used to compute the intensitymap or visibilitymap
 """
-executor(g::AbstractDomain) = getfield(g, :executor)
-ChainRulesCore.@non_differentiable executor(::AbstractDomain)
+executor(g::AbstractSingleDomain) = getfield(g, :executor)
+ChainRulesCore.@non_differentiable executor(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(executor), args...) = nothing
 
 
 """
-    dims(g::AbstractDomain)
+    dims(g::AbstractSingleDomain)
 
 Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
 """
-DD.dims(g::AbstractDomain) = getfield(g, :dims)
-ChainRulesCore.@non_differentiable DD.dims(::AbstractDomain)
-EnzymeRules.inactive(::typeof(DD.dims), x::AbstractDomain) = nothing
+DD.dims(g::AbstractSingleDomain) = getfield(g, :dims)
+ChainRulesCore.@non_differentiable DD.dims(::AbstractSingleDomain)
+EnzymeRules.inactive(::typeof(DD.dims), x::AbstractSingleDomain) = nothing
 
 
 """
-    named_dims(g::AbstractDomain)
+    named_dims(g::AbstractSingleDomain)
 
 Returns a named tuple containing the dimensions of `g`. For a unnamed version see [`dims`](@ref)
 """
-named_dims(g::AbstractDomain) = NamedTuple{keys(g)}(dims(g))
-ChainRulesCore.@non_differentiable named_dims(::AbstractDomain)
+named_dims(g::AbstractSingleDomain) = NamedTuple{keys(g)}(dims(g))
+ChainRulesCore.@non_differentiable named_dims(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(named_dims), args...) = nothing
 
 
 """
-    header(g::AbstractDomain)
+    header(g::AbstractSingleDomain)
 
 Returns the headerinformation of the dimensions `g`
 """
-header(g::AbstractDomain) = getfield(g, :header)
-ChainRulesCore.@non_differentiable header(::AbstractDomain)
+header(g::AbstractSingleDomain) = getfield(g, :header)
+ChainRulesCore.@non_differentiable header(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(header), args...) = nothing
-Base.keys(g::AbstractDomain) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
+Base.keys(g::AbstractSingleDomain) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
 
 """
     Serial()
@@ -157,24 +158,24 @@ end
 
 
 # We index the dimensions not the grid itself
-Base.getindex(d::AbstractDomain, i::Int) = getindex(dims(d), i)
+Base.getindex(d::AbstractSingleDomain, i::Int) = getindex(dims(d), i)
 
 
-Base.ndims(d::AbstractDomain) = length(dims(d))
-Base.size(d::AbstractDomain) = map(length, dims(d))
-Base.length(d::AbstractDomain) = prod(size(d))
-Base.firstindex(d::AbstractDomain) = 1
-Base.lastindex(d::AbstractDomain) = length(d)
-Base.axes(d::AbstractDomain) = axes(dims(d))
-Base.iterate(d::AbstractDomain, i::Int = 1) = iterate(dims(d), i)
-# Base.front(d::AbstractDomain) = Base.front(dims(d))
+Base.ndims(d::AbstractSingleDomain) = length(dims(d))
+Base.size(d::AbstractSingleDomain) = map(length, dims(d))
+Base.length(d::AbstractSingleDomain) = prod(size(d))
+Base.firstindex(d::AbstractSingleDomain) = 1
+Base.lastindex(d::AbstractSingleDomain) = length(d)
+Base.axes(d::AbstractSingleDomain) = axes(dims(d))
+Base.iterate(d::AbstractSingleDomain, i::Int = 1) = iterate(dims(d), i)
+# Base.front(d::AbstractSingleDomain) = Base.front(dims(d))
 # We return the eltype of the dimensions. Should we change this?
-Base.eltype(d::AbstractDomain) = promote_type(map(eltype, named_dims(d))...)
+Base.eltype(d::AbstractSingleDomain) = promote_type(map(eltype, named_dims(d))...)
 
 # These aren't needed and I am not sure if the semantics are what we actually want
-# Base.map(f, d::AbstractDomain) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
-# Base.map(f, args, d::AbstractDomain) = map(f, args, dims(d))
-# Base.map(f, d::AbstractDomain, args) = rebuild(typeof(d), map(f, dims(d), args))
+# Base.map(f, d::AbstractSingleDomain) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
+# Base.map(f, args, d::AbstractSingleDomain) = map(f, args, dims(d))
+# Base.map(f, d::AbstractSingleDomain, args) = rebuild(typeof(d), map(f, dims(d), args))
 
 
 abstract type AbstractHeader end
@@ -223,7 +224,7 @@ end
 struct NoHeader <: AbstractHeader end
 
 
-abstract type AbstractRectiGrid{D, E} <: AbstractDomain{D, E} end
+abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
 allocate_map(M::Type{<:AbstractArray}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
 
@@ -350,7 +351,7 @@ const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F
 
 
 # TODO make this play nice with dimensional data
-struct UnstructuredDomain{D,E, H<:AbstractHeader} <: AbstractDomain{D,E}
+struct UnstructuredDomain{D,E, H<:AbstractHeader} <: AbstractSingleDomain{D,E}
     dims::D
     executor::E
     header::H

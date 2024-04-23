@@ -169,14 +169,14 @@ function intensitymap! end
 
 
 """
-    intensitymap(model::AbstractModel, p::AbstractDomain)
+    intensitymap(model::AbstractModel, p::AbstractSingleDomain)
 
 Computes the intensity map of model. For the inplace version see [`intensitymap!`](@ref)
 """
 function intensitymap end
 
 """
-    intensitymap_numeric(m::AbstractModel, p::AbstractDomain)
+    intensitymap_numeric(m::AbstractModel, p::AbstractSingleDomain)
 
 Computes the `IntensityMap` of a model `m` at the image positions `p` using a numerical method.
 This has to be specified uniquely for every model `m` if `imanalytic(typeof(m)) === NotAnalytic()`.
@@ -185,7 +185,7 @@ See `Comrade.jl` for example implementations.
 function intensitymap_numeric end
 
 """
-    intensitymap_analytic(m::AbstractModel, p::AbstractDomain)
+    intensitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
 
 Computes the `IntensityMap` of a model `m` using the image dimensions `p`
 by broadcasting over the analytic [`intensity_point`](@ref) method.

@@ -1,4 +1,4 @@
-function test_grid_interface(grid::ComradeBase.AbstractDomain{D, E}) where {D,E}
+function test_grid_interface(grid::ComradeBase.AbstractSingleDomain{D, E}) where {D,E}
     @test typeof(executor(grid)) == E
     arr = zeros(size(grid))
     @inferred ComradeBase.create_map(arr, grid)
@@ -23,7 +23,7 @@ function test_grid_interface(grid::ComradeBase.AbstractDomain{D, E}) where {D,E}
     summary(grid)
 end
 
-@testset "AbstractDomain" begin
+@testset "AbstractSingleDomain" begin
     ex = Serial()
     prect = (;X=range(-10.0, 10.0, length=128),
                         Y=range(-10.0, 10.0, length=128),

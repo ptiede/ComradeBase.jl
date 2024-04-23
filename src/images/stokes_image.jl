@@ -78,7 +78,7 @@ domainpoints(img::StokesIntensityMap)   = domainpoints(img.I)
 function StokesIntensityMap(
     I::AbstractArray{T,N}, Q::AbstractArray{T,N},
     U::AbstractArray{T,N}, V::AbstractArray{T,N},
-    dims::AbstractDomain) where {T, N}
+    dims::AbstractSingleDomain) where {T, N}
 
     imgI = IntensityMap(I, dims)
     imgQ = IntensityMap(Q, dims)

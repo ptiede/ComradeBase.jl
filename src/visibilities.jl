@@ -11,7 +11,7 @@ export visibilities, visibilities!,
 Computes the visibilities of the model `m` using the coordinates `p`. The coordinates `p`
 are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 """
-@inline function visibilitymap(m::M, p) where {M<:AbstractModel}
+@inline function visibilitymap(m::M, p::AbstractDomain) where {M<:AbstractModel}
     return create_vismap(_visibilitymap(visanalytic(M), m, p), p)
 end
 @inline _visibilitymap(::IsAnalytic,  m::AbstractModel, p)  = visibilitymap_analytic(m, p)
@@ -31,7 +31,7 @@ end
 @inline _visibilitymap!(::IsAnalytic , vis, m::AbstractModel)  = visibilitymap_analytic!(vis, m)
 @inline _visibilitymap!(::NotAnalytic, vis, m::AbstractModel)  = visibilitymap_numeric!(vis, m)
 
-function visibilitymap_analytic(m::AbstractModel, p::AbstractDomain)
+function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
     g = domainpoints(p)
     return  visibility_point.(Ref(m), g)
 end
@@ -43,7 +43,7 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
     return nothing
 end
 
-function visibilitymap_analytic(m::AbstractModel, p::AbstractDomain{D, <:ThreadsEx}) where {D}
+function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain{D, <:ThreadsEx}) where {D}
     vis = allocate_vismap(m, p)
     visibilitymap_analytic!(vis, m)
     return vis
@@ -189,12 +189,12 @@ function _amplitudemap(m::S, p) where {S}
     _amplitudemap(visanalytic(S), m, p)
 end
 
-function _amplitudemap(::IsAnalytic, m, p::AbstractDomain)
+function _amplitudemap(::IsAnalytic, m, p::AbstractSingleDomain)
     g = domainpoints(p)
     abs.(visibility_point.(Ref(m), g))
 end
 
-function _amplitudemap(::NotAnalytic, m, p::AbstractDomain)
+function _amplitudemap(::NotAnalytic, m, p::AbstractSingleDomain)
     abs.(visibilitymap_numeric(m, p))
 end
 
@@ -209,7 +209,7 @@ function bispectrummap(m,
                     p1::T,
                     p2::T,
                     p3::T,
-                    ) where {T<:AbstractDomain}
+                    ) where {T<:AbstractSingleDomain}
 
     _bispectrummap(m, p1, p2, p3)
 end
@@ -228,7 +228,7 @@ function _bispectrummap(::IsAnalytic, m,
                     p1::T,
                     p2::T,
                     p3::T,
-                   ) where {T<:AbstractDomain}
+                   ) where {T<:AbstractSingleDomain}
     g1 = domainpoints(p1)
     g2 = domainpoints(p2)
     g3 = domainpoints(p3)
@@ -238,7 +238,7 @@ end
 # internal method used for trait dispatch for non-analytic visibilities
 function _bispectrummap(::NotAnalytic, m,
                     p1::T,p2::T,p3::T
-                   ) where {T<:AbstractDomain}
+                   ) where {T<:AbstractSingleDomain}
     vis1 = visibilitymap(m, p1)
     vis2 = visibilitymap(m, p2)
     vis3 = visibilitymap(m, p3)
@@ -299,7 +299,7 @@ function logclosure_amplitudemap(m::AbstractModel,
                                p2::T,
                                p3::T,
                                p4::T
-                              ) where {T<:AbstractDomain}
+                              ) where {T<:AbstractSingleDomain}
     glc = UnstructuredDomain((;p1 = domainpoints(p1), p2 = domainpoints(p2), p3 = domainpoints(p3), p4 = domainpoints(p4)))
     create_map(_logclosure_amplitudemap(m, p1, p2, p3, p4), glc)
 end
