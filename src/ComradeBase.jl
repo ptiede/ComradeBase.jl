@@ -1,6 +1,7 @@
 module ComradeBase
 
 using ChainRulesCore
+using EnzymeCore: EnzymeRules
 using DimensionalData
 const DD = DimensionalData
 using DocStringExtensions

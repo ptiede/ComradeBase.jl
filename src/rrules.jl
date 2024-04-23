@@ -23,7 +23,7 @@ function ChainRulesCore.rrule(::Type{IntensityMap}, data::AbstractArray, keys...
 end
 
 ChainRulesCore.@non_differentiable axisdims(img::IntensityMap)
-ChainRulesCore.@non_differentiable axisdims(img::UnstructuredMap)
+EnzymeRules.inactive(::typeof(axisdims), args...) = nothing
 
 _baseim_pb(Δ, pr) = (NoTangent(), pr(Δ))
 _baseim_pb(Δ::Tangent, pr) = _baseim_pb(Δ.data, pr)
@@ -51,3 +51,4 @@ function ChainRulesCore.rrule(::Type{UnstructuredMap}, data::AbstractArray, dims
     end
     return img, _UnstructuredMap_pullback
 end
+ChainRulesCore.@non_differentiable axisdims(img::UnstructuredMap)

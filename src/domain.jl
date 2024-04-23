@@ -86,6 +86,7 @@ function domainpoints end
 # We enforce that all grids are static for performance reasons
 # If this is not true please create a custom subtype
 ChainRulesCore.@non_differentiable domainpoints(d::AbstractDomain)
+EnzymeRules.inactive(::typeof(domainpoints), args...) = nothing
 
 
 """
@@ -95,6 +96,8 @@ Returns the executor used to compute the intensitymap or visibilitymap
 """
 executor(g::AbstractDomain) = getfield(g, :executor)
 ChainRulesCore.@non_differentiable executor(::AbstractDomain)
+EnzymeRules.inactive(::typeof(executor), args...) = nothing
+
 
 """
     dims(g::AbstractDomain)
@@ -103,6 +106,8 @@ Returns a tuple containing the dimensions of `g`. For a named version see [`Comr
 """
 DD.dims(g::AbstractDomain) = getfield(g, :dims)
 ChainRulesCore.@non_differentiable DD.dims(::AbstractDomain)
+EnzymeRules.inactive(::typeof(DD.dims), x::AbstractDomain) = nothing
+
 
 """
     named_dims(g::AbstractDomain)
@@ -111,6 +116,7 @@ Returns a named tuple containing the dimensions of `g`. For a unnamed version se
 """
 named_dims(g::AbstractDomain) = NamedTuple{keys(g)}(dims(g))
 ChainRulesCore.@non_differentiable named_dims(::AbstractDomain)
+EnzymeRules.inactive(::typeof(named_dims), args...) = nothing
 
 
 """
@@ -120,6 +126,7 @@ Returns the headerinformation of the dimensions `g`
 """
 header(g::AbstractDomain) = getfield(g, :header)
 ChainRulesCore.@non_differentiable header(::AbstractDomain)
+EnzymeRules.inactive(::typeof(header), args...) = nothing
 Base.keys(g::AbstractDomain) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
 
 """
