@@ -172,7 +172,7 @@ function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
 end
 
 function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid{D, <:ThreadsEx}) where {D}
-    img = IntensityMap(zeros(eltype(dims), size(dims)), dims)
+    img = allocate_imgmap(s, dims)
     intensitymap_analytic!(img, s)
     return img
 end
