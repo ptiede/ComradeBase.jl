@@ -44,7 +44,7 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
 end
 
 function visibilitymap_analytic(m::AbstractModel, p::AbstractDomain{D, <:ThreadsEx}) where {D}
-    vis = allocate_map(p)
+    vis = allocate_vismap(m, p)
     visibilitymap_analytic!(vis, m)
     return vis
 end

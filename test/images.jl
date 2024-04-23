@@ -3,7 +3,7 @@ function test_grid_interface(grid::ComradeBase.AbstractDomain{D, E}) where {D,E}
     arr = zeros(size(grid))
     @inferred ComradeBase.create_map(arr, grid)
     map = ComradeBase.create_map(arr, grid)
-    @test typeof(map) == typeof(ComradeBase.allocate_map(grid))
+    @test typeof(map) == typeof(ComradeBase.allocate_map(Array{eltype(arr)}, grid))
     @inferred domainpoints(grid)
     @test typeof(DD.dims(grid)) == D
 
