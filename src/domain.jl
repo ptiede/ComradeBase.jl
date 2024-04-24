@@ -170,7 +170,7 @@ Base.axes(d::AbstractSingleDomain) = axes(dims(d))
 Base.iterate(d::AbstractSingleDomain, i::Int = 1) = iterate(dims(d), i)
 # Base.front(d::AbstractSingleDomain) = Base.front(dims(d))
 # We return the eltype of the dimensions. Should we change this?
-Base.eltype(d::AbstractSingleDomain) = promote_type(map(eltype, named_dims(d))...)
+Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 
 # These aren't needed and I am not sure if the semantics are what we actually want
 # Base.map(f, d::AbstractSingleDomain) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
