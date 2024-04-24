@@ -55,14 +55,7 @@ end
 phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
 
 
-"""
-    imagepixels(img::IntensityMap)
 
-Returns a abstract spatial dimension with the image pixels locations `X` and `Y`.
-"""
-imagepixels(img::IntensityMap) = (X=img.X, Y=img.Y)
-
-ChainRulesCore.@non_differentiable imagepixels(img::IntensityMap)
 ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0; executor=Serial(), header=NoHeader())

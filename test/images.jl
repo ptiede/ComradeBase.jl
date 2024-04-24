@@ -100,7 +100,6 @@ end
     end
 
     @testset "keys" begin
-        @test imagepixels(img1) == imagepixels(img2) == imagepixels(img3)
         @test pixelsizes(img1) == pixelsizes(img2) == pixelsizes(img3)
     end
 
