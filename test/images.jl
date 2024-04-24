@@ -120,10 +120,8 @@ end
         imgP = StructArray{StokesParams}(I=imgI, Q=imgQ, U=imgU, V=imgV)
         img1 = IntensityMap(imgP[:,:,1,1], RectiGrid((;X=x,Y=y)))
         img2 = IntensityMap(imgP, RectiGrid((x, y, t, f)))
-        simg1 = StokesIntensityMap(img1)
-        simg2 = StokesIntensityMap(img2)
 
-        @test flux(img1) ≈ flux(simg1)
+        @test flux(img1) ≈ flux(img2)[1,1,1,1]
         @test centroid(img1) == centroid(stokes(img1, :I))
         @test second_moment(img1) == second_moment(stokes(img1, :I))
     end

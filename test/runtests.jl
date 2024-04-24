@@ -15,5 +15,4 @@ import DimensionalData as DD
     include(joinpath(@__DIR__, "io.jl"))
     include(joinpath(@__DIR__, "visibilities.jl"))
     include(joinpath(@__DIR__, "executors.jl"))
-    include(joinpath(@__DIR__, "stokes_intensitymap.jl"))
 end

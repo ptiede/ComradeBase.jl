@@ -194,7 +194,6 @@ function intensitymap_analytic end
 
 """
     intensitymap_numeric!(img::IntensityMap, m::AbstractModel)
-    intensitymap_numeric!(img::StokesIntensityMap, m::AbstractModel)
 
 Updates the `img` using the model `m`  using a numerical method.
 This has to be specified uniquely for every model `m` if `imanalytic(typeof(m)) === NotAnalytic()`.
@@ -204,7 +203,6 @@ function intensitymap_numeric! end
 
 """
     intensitymap_analytic!(img::IntensityMap, m::AbstractModel)
-    intensitymap_analytic!(img::StokesIntensityMap, m::AbstractModel)
 
 Updates the `img` using the model `m`  by broadcasting over the analytic [`intensity_point`](@ref) method.
 """
@@ -291,3 +289,17 @@ Computes the visibilties of a `model` in-place, using using the analytic visibil
 `visibility_point`.
 """
 function visibilitymap_analytic! end
+
+
+"""
+    stokes(m::AbstractArray{<:StokesParams}, p::Symbol)
+
+Extract the specific stokes component `p` from the polarized image `m`.
+"""
+function stokes(m::AbstractArray{<:StokesParams}, p::Symbol)
+    return getproperty.(m, p)
+end
+
+function stokes(m::StructArray{<:StokesParams}, p::Symbol)
+    return getproperty(m, p)
+end

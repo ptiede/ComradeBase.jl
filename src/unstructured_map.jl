@@ -17,6 +17,10 @@ Base.setindex!(a::UnstructuredMap, v, i::Int) = setindex!(parent(a), v, i)
 
 UnstructuredMap(data::UnstructuredMap, dims::UnstructuredDomain) = UnstructuredMap(parent(data), dims)
 
+function stokes(x::UnstructuredMap, p::Symbol)
+    return UnstructuredMap(stokes(parent(x), p), axisdims(x))
+end
+
 
 function Base.similar(m::UnstructuredMap, ::Type{S}) where {S}
     return UnstructuredMap(similar(parent(m), S), axisdims(m))

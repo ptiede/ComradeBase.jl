@@ -5,7 +5,7 @@ Returns the grid the `IntensityMap` is defined as. Note that this is unallocatin
 since it lazily computes the grid. The grid is an example of a DimArray and works similarly.
 This is useful for broadcasting a model across an abritrary grid.
 """
-domainpoints(img::IntensityMapTypes) = domainpoints(axisdims(img))
+domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
 
 struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
@@ -42,7 +42,6 @@ end
 
 """
     phasecenter(img::IntensityMap)
-    phasecenter(img::StokesIntensitymap)
 
 Computes the phase center of an intensity map. Note this is the pixels that is in
 the middle of the image.
@@ -53,19 +52,18 @@ function phasecenter(dims::AbstractRectiGrid)
     y0 = -(last(Y) + first(Y))/2
     return (X=x0, Y=y0)
 end
-phasecenter(img::IntensityMapTypes) = phasecenter(axisdims(img))
+phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
 
 
 """
     imagepixels(img::IntensityMap)
-    imagepixels(img::IntensityMapTypes)
 
 Returns a abstract spatial dimension with the image pixels locations `X` and `Y`.
 """
-imagepixels(img::IntensityMapTypes) = (X=img.X, Y=img.Y)
+imagepixels(img::IntensityMap) = (X=img.X, Y=img.Y)
 
-ChainRulesCore.@non_differentiable imagepixels(img::IntensityMapTypes)
-ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMapTypes)
+ChainRulesCore.@non_differentiable imagepixels(img::IntensityMap)
+ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0; executor=Serial(), header=NoHeader())
     @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
@@ -82,53 +80,28 @@ end
 
 """
     fieldofview(img::IntensityMap)
-    fieldofview(img::IntensityMapTypes)
+    fieldofview(img::IntensityMap)
 
 Returns a named tuple with the field of view of the image.
 """
-function fieldofview(img::IntensityMapTypes)
+function fieldofview(img::IntensityMap)
     return fieldofview(axisdims(img))
 end
 
-function fieldofview(dims::AbstractRectiGrid)
-    (;X,Y) = dims
-    dx = step(X)
-    dy = step(Y)
-    (X=abs(last(X) - first(X))+dx, Y=abs(last(Y)-first(Y))+dy)
-end
-
-
-"""
-    pixelsizes(img::IntensityMap)
-    pixelsizes(img::AbstractRectiGrid)
-
-Returns a named tuple with the spatial pixel sizes of the image.
-"""
-function pixelsizes(keys::AbstractRectiGrid)
-    x = keys.X
-    y = keys.Y
-    return (X=step(x), Y=step(y))
-end
-pixelsizes(img::IntensityMapTypes) = pixelsizes(axisdims(img))
+pixelsizes(img::IntensityMap) = pixelsizes(axisdims(img))
 
 
 
 """
     flux(im::IntensityMap)
-    flux(img::StokesIntensityMap)
 
 Computes the flux of a intensity map
 """
-function flux(im::IntensityMapTypes{T,N}) where {T,N}
+function flux(im::IntensityMap{T,N}) where {T,N}
     return sum(im, dims=(:X, :Y))
 end
 
 flux(im::SpatialIntensityMap) = sum(im)
-flux(img::StokesIntensityMap{T}) where {T} = StokesParams(flux(stokes(img, :I)),
-                                             flux(stokes(img, :Q)),
-                                             flux(stokes(img, :U)),
-                                             flux(stokes(img, :V)),
-                                             )
 
 
 
@@ -142,13 +115,13 @@ Computes the image centroid aka the center of light of the image.
 
 For polarized maps we return the centroid for Stokes I only.
 """
-function centroid(im::IntensityMapTypes{<:Number})
+function centroid(im::IntensityMap{<:Number})
     (;X, Y) = named_dims(im)
     return mapslices(x->centroid(IntensityMap(x, RectiGrid((;X, Y)))), im; dims=(:X, :Y))
 end
-centroid(im::IntensityMapTypes{<:StokesParams}) = centroid(stokes(im, :I))
+centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T<:Real}
+function centroid(im::IntensityMap{T,2})::Tuple{T,T} where {T<:Real}
     f = flux(im)
     cent = sum(pairs(DimPoints(im)); init=SVector(zero(f), zero(f))) do (I, (x, y))
         x0 = x.*im[I]
@@ -158,7 +131,7 @@ function centroid(im::IntensityMapTypes{T,2})::Tuple{T,T} where {T<:Real}
     return cent[1]./f, cent[2]./f
 end
 
-function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMapTypes{T,2}) where {T<:Real}
+function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMap{T,2}) where {T<:Real}
     out = centroid(img)
     x0, y0 = out
     pr = ProjectTo(img)
@@ -181,13 +154,13 @@ second moment, which is specified by the `center` argument.
 
 For polarized maps we return the second moment for Stokes I only.
 """
-function second_moment(im::IntensityMapTypes{T,N}; center=true) where {T<:Real,N}
+function second_moment(im::IntensityMap{T,N}; center=true) where {T<:Real,N}
     (;X, Y) = named_dims(im)
     return mapslices(x->second_moment(IntensityMap(x, RectiGrid((;X, Y))); center), im; dims=(:X, :Y))
 end
 
 # Only return the second moment for Stokes I
-second_moment(im::IntensityMapTypes{<:StokesParams}; center=true) = second_moment(stokes(im, :I); center)
+second_moment(im::IntensityMap{<:StokesParams}; center=true) = second_moment(stokes(im, :I); center)
 
 
 """
@@ -197,7 +170,7 @@ Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered
 second moment, which is specified by the `center` argument.
 """
-function second_moment(im::IntensityMapTypes{T,2}; center=true) where {T<:Real}
+function second_moment(im::IntensityMap{T,2}; center=true) where {T<:Real}
     xx = zero(T)
     xy = zero(T)
     yy = zero(T)

@@ -6,7 +6,7 @@ in the EHT, i.e. is works with clean, smili, eht-imaging.
 The function returns an tuple with an intensitymap and a second named tuple with ancillary
 information about the image, like the source name, location, mjd, and radio frequency.
 """
-function load(file, T::Type{<:IntensityMapTypes})
+function load(file, T::Type{<:IntensityMap})
     if !endswith(file, ".fits")
         @warn "File does not end with FITS trying to load anyways"
     end
@@ -17,7 +17,7 @@ function _load_fits(fname, ::Type{IntensityMap})
     img = FITS(fname, "r") do f
         if length(f) > 1
             @warn "Currently only loading stokes I. To load polarized quantities\n"*
-                  "please call `ComradeBase.load(filename, StokesIntensityMap)`"
+                  "please call `ComradeBase.load(filename, IntensityMap{StokesParams})`"
         end
         # assume that the first element is stokes I
         return _extract_fits_image(f[1])
@@ -37,7 +37,7 @@ function try_loading(f, stokes, imgI)
 end
 
 
-function _load_fits(fname, ::Type{StokesIntensityMap})
+function _load_fits(fname, ::Type{<:IntensityMap{<:StokesParams}})
     img = FITS(fname, "r") do f
         # assume that the first element is stokes I
         imgI = _extract_fits_image(f[1])
@@ -48,7 +48,6 @@ function _load_fits(fname, ::Type{StokesIntensityMap})
             StructArray{StokesParams{eltype(imgI)}}((I=baseimage(imgI), Q=baseimage(imgQ), U=baseimage(imgU), V=baseimage(imgV))),
             axisdims(imgI)
             )
-        # return StokesIntensityMap(imgI, imgQ, imgU, imgV)
     end
     return img
 end
@@ -113,7 +112,7 @@ end
 Saves an image to a fits file. You can optionally pass an EHTObservation so that ancillary information
 will be added.
 """
-function save(fname::String, img::IntensityMapTypes)
+function save(fname::String, img::IntensityMap)
     _save_fits(fname, img)
 end
 
@@ -207,7 +206,7 @@ function write_stokes(f, image, stokes="I", innername="")
     FITSIO.write(f, img; header=hdeheader, name=innername)
 end
 
-function _save_fits(fname::String, image::Union{StokesIntensityMap, IntensityMap{T}}) where {T<:StokesParams}
+function _save_fits(fname::String, image::IntensityMap{T}) where {T<:StokesParams}
     FITS(fname, "w") do fits
         write_stokes(fits, ComradeBase.stokes(image, :I), "I")
         write_stokes(fits, ComradeBase.stokes(image, :Q), "Q", "Q")

@@ -2,7 +2,7 @@
 
 @testset "io.jl" begin
     imc = ComradeBase.load(joinpath(@__DIR__, "example_image.fits"), IntensityMap)
-    ComradeBase.load(joinpath(@__DIR__, "example_image.fits"), StokesIntensityMap)
+    ComradeBase.load(joinpath(@__DIR__, "example_image.fits"), IntensityMap{StokesParams})
     ime = ehtim.image.load_image(joinpath(@__DIR__, "example_image.fits"))
     @test pyconvert(Tuple, ime.imarr("I").shape) == size(imc)
     @test flux(imc) ≈ pyconvert(Float64, ime.total_flux())
@@ -27,7 +27,7 @@
     img1 = IntensityMap(imgP[:,:,1,1], RectiGrid((;X=x,Y=y)))
     ComradeBase.save("ptest.fits", img1)
     ComradeBase.load("ptest.fits", IntensityMap)
-    img2 = ComradeBase.load("ptest.fits", StokesIntensityMap)
+    img2 = ComradeBase.load("ptest.fits", IntensityMap{StokesParams})
     rm("ptest.fits")
     @test parent(img1) ≈ parent(img2)
 end

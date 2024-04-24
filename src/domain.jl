@@ -86,8 +86,8 @@ function domainpoints end
 
 # We enforce that all grids are static for performance reasons
 # If this is not true please create a custom subtype
-ChainRulesCore.@non_differentiable domainpoints(d::AbstractSingleDomain)
-EnzymeRules.inactive(::typeof(domainpoints), args...) = nothing
+# ChainRulesCore.@non_differentiable domainpoints(d::AbstractSingleDomain)
+# EnzymeRules.inactive(::typeof(domainpoints), args...) = nothing
 
 
 """
@@ -227,6 +227,26 @@ struct NoHeader <: AbstractHeader end
 abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
 allocate_map(M::Type{<:AbstractArray}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
+
+function fieldofview(dims::AbstractRectiGrid)
+    (;X,Y) = dims
+    dx = step(X)
+    dy = step(Y)
+    (X=abs(last(X) - first(X))+dx, Y=abs(last(Y)-first(Y))+dy)
+end
+
+
+"""
+    pixelsizes(img::IntensityMap)
+    pixelsizes(img::AbstractRectiGrid)
+
+Returns a named tuple with the spatial pixel sizes of the image.
+"""
+function pixelsizes(keys::AbstractRectiGrid)
+    x = keys.X
+    y = keys.Y
+    return (X=step(x), Y=step(y))
+end
 
 
 

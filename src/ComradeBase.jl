@@ -18,7 +18,7 @@ export  visibility,
         visibilitymap, visibilitymap!,
         StokesParams, CoherencyMatrix,
         flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
-        named_dims, IntensityMapTypes
+        named_dims
 
 include("interface.jl")
 include("domain.jl")
@@ -36,15 +36,13 @@ include("rrules.jl")
     fovy = 12.0
     nx = 10
     ny = 10
-    # @compile_workload begin
-    #     p = imagepixels(fovx, fovy, nx, ny)
-    #     g = RectiGrid(p)
-    #     gs = domainpoints(p)
-    #     imgI = IntensityMap(rand(10, 10), g)
-    #     imgI.^2
-
-    #     pimg = StokesIntensityMap(imgI, imgI, imgI, imgI)
-    # end
+    @compile_workload begin
+        p = imagepixels(fovx, fovy, nx, ny)
+        g = RectiGrid(p)
+        gs = domainpoints(p)
+        imgI = IntensityMap(rand(10, 10), g)
+        imgI.^2
+    end
 end
 
 if !isdefined(Base, :get_extension)

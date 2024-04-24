@@ -63,6 +63,11 @@ DD.metadata(img::IntensityMap)= header(axisdims(img))
 
 executor(img::IntensityMap)   = executor(axisdims(img))
 
+function stokes(x::IntensityMap, p::Symbol)
+    return IntensityMap(stokes(parent(x), p), axisdims(x))
+end
+
+
 function Base.propertynames(img::IntensityMap)
     return keys(axisdims(img))
 end

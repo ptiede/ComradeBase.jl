@@ -22,8 +22,8 @@ function ChainRulesCore.rrule(::Type{IntensityMap}, data::AbstractArray, keys...
     return img, _IntensityMap_pullback
 end
 
-ChainRulesCore.@non_differentiable axisdims(img::IntensityMap)
-EnzymeRules.inactive(::typeof(axisdims), args...) = nothing
+# ChainRulesCore.@non_differentiable axisdims(img::IntensityMap)
+# EnzymeRules.inactive(::typeof(axisdims), args...) = nothing
 
 _baseim_pb(Δ, pr) = (NoTangent(), pr(Δ))
 _baseim_pb(Δ::Tangent, pr) = _baseim_pb(Δ.data, pr)
