@@ -1,4 +1,4 @@
-export visibilities, visibilities!,
+export visibilitymap, visibilitymap!,
       logclosure_amplitude, logclosure_amplitudemap,
       amplitude, amplitudemap,
       closure_phase, closure_phasemap,
