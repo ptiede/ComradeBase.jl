@@ -303,3 +303,8 @@ end
 function stokes(m::StructArray{<:StokesParams}, p::Symbol)
     return getproperty(m, p)
 end
+
+"""
+    Returns the base image of a intensity map type object
+"""
+baseimage(m::AbstractArray) = m

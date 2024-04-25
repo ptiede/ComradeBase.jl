@@ -136,7 +136,7 @@ DD._noname(::IntensityMap) = Symbol("")
 
 Base.parent(img::IntensityMap) = DD.data(img)
 
-baseimage(x::IntensityMap) = parent(x)
+baseimage(x::IntensityMap) = baseimage(parent(x))
 
 @inline function DD.rebuild(
     img::IntensityMap, data, dims::Tuple = dims(img),
