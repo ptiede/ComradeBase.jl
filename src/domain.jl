@@ -270,7 +270,7 @@ the dimensions usually are:
 # Notes
 Instead use the direct [`IntensityMap`](@ref) function.
 ```julia
-dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], Fr=[230, 345]))
+dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([230, 345])))
 ```
 
 # Notes
@@ -324,7 +324,7 @@ Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), key
 end
 
 @noinline function _make_dims(ks, vs)
-    ds = DD.key2dim(ks)
+    ds = DD.name2dim(ks)
     return map(ds, vs) do d,v
         DD.rebuild(d, v)
     end
@@ -349,7 +349,7 @@ the time direction and `:F` is the frequency direction.
 # Notes
 Instead use the direct [`IntensityMap`](@ref) function.
 ```julia
-dims = RectiGrid((X=-5.0:0.1:5.0, Y=-4.0:0.1:4.0, Ti=[1.0, 1.5, 1.75], Fr=[230, 345]))
+dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([230, 345])))
 ```
 """
 @inline function RectiGrid(nt::NamedTuple; executor=Serial(), header::AbstractHeader=ComradeBase.NoHeader())
