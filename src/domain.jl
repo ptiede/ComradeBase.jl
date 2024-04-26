@@ -422,7 +422,7 @@ function Base.summary(io::IO, g::UnstructuredDomain)
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredDomain)
-    println(io, "UnstructredGrid(")
+    println(io, "UnstructredDomain(")
     println(io, "executor: $(executor(x))")
     println(io, "Dimensions: ")
     show(io, mime, dims(x))
