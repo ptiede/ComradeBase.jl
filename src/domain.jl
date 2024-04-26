@@ -431,4 +431,4 @@ end
 
 
 create_map(array, g::UnstructuredDomain) = UnstructuredMap(array, g)
-allocate_map(M::Type{<:Array}, g::UnstructuredDomain) = UnstructuredMap(similar(M, size(g)), g)
+allocate_map(M::Type{<:A}, g::UnstructuredDomain) where {A<:AbstractArray} = UnstructuredMap(similar(M, size(g)), g)
