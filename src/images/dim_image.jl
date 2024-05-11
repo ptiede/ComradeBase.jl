@@ -120,7 +120,7 @@ Optionall the user can ask for a specific dimension with `p`
 """
 axisdims(img::IntensityMap) = getfield(img, :grid)
 axisdims(img::IntensityMap, p::Symbol) = getproperty(axisdims(img), p)
-
+EnzymeRules.inactive(::typeof(axisdims), args...) = nothing
 named_dims(img::IntensityMap) = named_dims(axisdims(img))
 
 
