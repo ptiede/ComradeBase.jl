@@ -24,8 +24,8 @@ baseimage(x::UnstructuredMap) = baseimage(parent(x))
 Base.parent(x::UnstructuredMap) = getfield(x, :data)
 Base.length(x::UnstructuredMap) = length(parent(x))
 Base.IndexStyle(::Type{<:UnstructuredMap{T, A}}) where {T, A} = IndexStyle(A)
-Base.getindex(a::UnstructuredMap, i::Int) = getindex(parent(a), i)
-Base.setindex!(a::UnstructuredMap, v, i::Int) = setindex!(parent(a), v, i)
+Base.@propagate_inbounds Base.getindex(a::UnstructuredMap, i::Int) = getindex(parent(a), i)
+Base.@propagate_inbounds Base.setindex!(a::UnstructuredMap, v, i::Int) = setindex!(parent(a), v, i)
 
 UnstructuredMap(data::UnstructuredMap, dims::UnstructuredDomain) = UnstructuredMap(parent(data), dims)
 
@@ -64,7 +64,7 @@ function Base.view(x::UnstructuredMap, I)
     UnstructuredMap(view(parent(x), I), newdims)
 end
 
-function Base.getindex(x::UnstructuredMap, I)
+Base.@propagate_inbounds function Base.getindex(x::UnstructuredMap, I)
     dims = axisdims(x)
     g = domainpoints(dims)
     newdims = UnstructuredDomain((g[I]), executor(dims), header(dims))
