@@ -138,7 +138,7 @@ Uses serial execution when computing the intensitymap or visibilitymap
 struct Serial end
 
 """
-    ThreadsEx(scheduler::Symbol = :dynamic)
+    ThreadsEx(;scheduler::Symbol = :dynamic)
 
 Uses Julia's Threads @threads macro when computing the intensitymap or visibilitymap.
 You can choose from Julia's various schedulers by passing the scheduler as a parameter.
@@ -250,33 +250,6 @@ end
 
 
 
-"""
-    RectiGrid(dims::Tuple, header=ComradeBase.NoHeader)
-
-Builds the EHT image dimensions using the names `Na` and dimensions `dims`.
-You can also optionally has a header that stores additional information from e.g.,
-a FITS header.
-The type parameter `Na` defines the names of each dimension.
-For image domain grids the names are usually one of
-  - (:X, :Y, :Ti, :Fr)
-  - (:X, :Y, :Fr,  :Ti)
-  - (:X, :Y) # spatial only
-where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:Ti` is the
-the time direction and `:Fr` is the frequency direction. For visibility domain
-the dimensions usually are:
-  - (:U, :V, :Ti, :Fr)
-  - (:U, :V, :Fr, :Fr)
-  - (:U, :V) # spatial only
-# Notes
-Instead use the direct [`IntensityMap`](@ref) function.
-```julia
-dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([230, 345])))
-```
-
-# Notes
-Warning it is rare you need to access this constructor directly. For spatial intensitymaps
-just use the [`imagepixels`](@ref) function.
-"""
 struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
     dims::D
     executor::E
@@ -332,24 +305,35 @@ end
 
 
 """
-    RectiGrid(dims::NamedTuple{Na}, header=ComradeBase.NoHeader())
+    RectiGrid(dims::NamedTuple{Na}; executor=Serial(), header=ComradeBase.NoHeader())
+    RectiGrid(dims::NTuple{N, <:DimensionalData.Dimension}; executor=Serial(), header=ComradeBase.NoHeader())
 
-Builds the EHT image dimensions using the names `Na` and dimensions are the values of `dims`.
-You can also optionally has a header that stores additional information from e.g.,
-a FITS header.
-The type parameter `Na` defines the names of each dimension.
-These names are usually one of
-
-  - (:X, :Y, :Ti, :F)
-  - (:X, :Y, :F, :Ti)
+Creates a rectilinear grid of pixels with the dimensions `dims`. The dims can either be
+a named tuple of dimensions or a tuple of dimensions. The dimensions can be in any order
+however the standard orders are:
+  - (:X, :Y, :Ti, :Fr)
+  - (:X, :Y, :Fr, :Ti)
   - (:X, :Y) # spatial only
 
-    where `:X,:Y` are the RA and DEC spatial dimensions respectively, `:Ti` is the
-the time direction and `:F` is the frequency direction.
-# Notes
-Instead use the direct [`IntensityMap`](@ref) function.
+where `X,Y` are the RA and DEC spatial dimensions respectively, `Ti` is the time dimension
+and `Fr` is the frequency dimension.
+
+Note that the majority of the time users should just call [`imagepixels`](@ref) to create
+a spatial grid.
+
+## Optional Arguments
+
+ - `executor`: specifies how different models
+    are executed. The default is `Serial` which mean serial CPU computations. For threaded
+    computations use [`ThreadsEx()`](@ref) or load `OhMyThreads.jl` to uses their schedulers.
+ - `header`: specified underlying header information for the grid. This is used to store
+    information about the image such as the source, RA and DEC, MJD.
+
+## Examples
+
 ```julia
-dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([230, 345])))
+dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([230, 345])); executor=ThreadsEx())
+dims = RectiGrid((X = -5.0:0.1:5.0, Y = -4.0:0.1:4.0, Ti = [1.0, 1.5, 1.75], Fr = [230, 345]); executor=ThreadsEx()))
 ```
 """
 @inline function RectiGrid(nt::NamedTuple; executor=Serial(), header::AbstractHeader=ComradeBase.NoHeader())
