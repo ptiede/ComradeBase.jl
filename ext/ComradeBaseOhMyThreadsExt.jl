@@ -1,11 +1,7 @@
 module ComradeBaseOhMyThreadsExt
 
 using ComradeBase
-if isdefined(Base, :get_extension)
-    using OhMyThreads
-else
-    using .OhMyThreads
-end
+using OhMyThreads
 
 function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.AbstractRectiGrid{D, <:OhMyThreads.Scheduler}) where {D}
     dx = step(dims.X)

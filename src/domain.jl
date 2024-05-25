@@ -156,6 +156,20 @@ else
     const schedulers = (:(:dynamic), :(:static))
 end
 
+struct FastBroadEx{S} end
+
+"""
+    FastBroadEx(;thread::Bool=false)
+
+Uses FastBroadcast.jl to compute the intensitymap or visibilitymap. You can optionally use
+threading with the `thread` keyword argument. The default is `false`.
+
+!!! warn
+    This is an extension and a user must first load FastBroadcast to use this executor.
+
+"""
+FastBroadEx(;thread::Bool=false) = FastBroadEx{thread}()
+
 
 # We index the dimensions not the grid itself
 Base.getindex(d::AbstractSingleDomain, i::Int) = getindex(dims(d), i)
