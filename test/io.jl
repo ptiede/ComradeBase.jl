@@ -1,4 +1,4 @@
-
+μas2rad(x) = x * π / 180 / 3600 / 1e6
 
 @testset "io.jl" begin
     imc = ComradeBase.load(joinpath(@__DIR__, "example_image.fits"), IntensityMap)
@@ -30,4 +30,18 @@
     img2 = ComradeBase.load("ptest.fits", IntensityMap{StokesParams})
     rm("ptest.fits")
     @test parent(img1) ≈ parent(img2)
+    @test parent(img1.X) ≈ parent(img2.X)
+    @test parent(img1.Y) ≈ parent(img2.Y)
+
+    # Now test shift
+    Xnew = imc.X .+ μas2rad(50.0)
+    Ynew = imc.Y .- μas2rad(75.0)
+
+    imgc2 = IntensityMap(baseimage(imc), RectiGrid((;X=Xnew, Y=Ynew); header=header(imc)))
+    ComradeBase.save("etest.fits", imgc2)
+    imgc2l = ComradeBase.load("etest.fits", IntensityMap)
+    @test parent(imgc2) ≈ parent(imgc2l)
+    @test parent(imgc2.X) ≈ parent(imgc2l.X)
+    @test parent(imgc2.Y) ≈ parent(imgc2l.Y)
+    rm("etest.fits")
 end
