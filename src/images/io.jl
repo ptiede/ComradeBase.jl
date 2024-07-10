@@ -62,6 +62,9 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
 
     psizex = abs(float(header["CDELT1"]))*π/180
     psizey = abs(float(header["CDELT2"]))*π/180
+    # We assume that the pixel center is in the middle of the image
+    x0c    = float(header["CRPIX1"]) - nx/2 - 0.5
+    y0c    = float(header["CRPIX2"]) - ny/2 - 0.5
     ra = (180)
     dec = zero(T)
     try
@@ -102,7 +105,8 @@ function _extract_fits_image(f::FITSIO.ImageHDU{T}) where {T}
         end
     end
     info = MinimalHeader(source, ra, dec, mjd, freq)
-    imap = IntensityMap(image, psizex*nx, psizey*ny; header=info)
+    g = imagepixels(psizex*nx, psizey*nx, nx, ny, x0c*psizex, y0c*psizey; header=info)
+    imap = IntensityMap(image, g)
     return imap
 end
 
@@ -148,6 +152,7 @@ function _prepare_header(image, stokes="I")
                   "BUNIT",
                   "STOKES"]
 
+    x0c, y0c = phasecenter(image)
     psizex, psizey = pixelsizes(image)
     values = [true,
               -64,
@@ -163,8 +168,8 @@ function _prepare_header(image, stokes="I")
               head.RA,
               head.DEC,
               head.F,
-              size(image,1)/2+0.5,
-              size(image,2)/2+0.5,
+              size(image,1)/2+0.5 + x0c/psizex,
+              size(image,2)/2+0.5 + y0c/psizey,
               head.mjd,
               "VLBI",
               "JY/PIXEL",
