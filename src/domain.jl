@@ -362,7 +362,7 @@ struct UnstructuredDomain{D,E, H<:AbstractHeader} <: AbstractSingleDomain{D,E}
 end
 
 """
-    UnstructuredDomain(dims::AbstractArray; executor=Serial(), header=ComradeBase.NoHeader)
+    UnstructuredDomain(dims::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader)
 
 Builds an unstructured grid (really a vector of points) from the dimensions `dims`.
 The `executor` is used controls how the grid is computed when calling
