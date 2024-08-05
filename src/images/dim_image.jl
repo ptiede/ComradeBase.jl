@@ -60,8 +60,15 @@ DD.refdims(img::IntensityMap) = getfield(img, :refdims)
 DD.data(img::IntensityMap)    = getfield(img, :data)
 DD.name(img::IntensityMap)    = getfield(img, :name)
 DD.metadata(img::IntensityMap)= header(axisdims(img))
-
 executor(img::IntensityMap)   = executor(axisdims(img))
+
+# For the `IntensityMap` nothing is AD-able except the data so
+# let's tell Enzyme this
+EnzymeRules.inactive(::typeof(DD.dims), ::IntensityMap) = nothing
+EnzymeRules.inactive(::typeof(DD.refdims), ::IntensityMap) = nothing
+EnzymeRules.inactive(::typeof(DD.name), ::IntensityMap) = nothing
+EnzymeRules.inactive(::typeof(DD.metadata), ::IntensityMap) = nothing
+EnzymeRules.inactive(::typeof(DD.executor), ::IntensityMap) = nothing
 
 @inline function stokes(pimg::IntensityMap{<:StokesParams}, v::Symbol)
     IntensityMap(stokes(baseimage(pimg), v), axisdims(pimg), refdims(pimg), name(pimg))
