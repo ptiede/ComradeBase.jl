@@ -114,7 +114,7 @@ function flux(im::IntensityMap{T,N}) where {T,N}
     return sum(im, dims=(:X, :Y))
 end
 
-flux(im::SpatialIntensityMap) = sum(im)
+flux(im::SpatialIntensityMap) = sum(parent(im))
 
 
 
