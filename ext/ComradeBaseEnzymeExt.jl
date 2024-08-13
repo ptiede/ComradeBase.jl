@@ -5,18 +5,6 @@ using Enzyme: @parallel
 
 const EnzymeThreads = ComradeBase.ThreadsEx{:enzyme}
 
-function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.AbstractRectiGrid{D, <:EnzymeThreads}) where {D}
-    img = ComradeBase.allocate_imgmap(s, dims)
-    ComradeBase.intensitymap_analytic!(img, s)
-    return img
-end
-
-function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.UnstructuredDomain{D, <:EnzymeThreads}) where {D}
-    img = ComradeBase.allocate_imgmap(s, dims)
-    ComradeBase.intensitymap_analytic!(img, s)
-    return img
-end
-
 function ComradeBase.intensitymap_analytic!(img::IntensityMap{T, N, D, <:ComradeBase.AbstractRectiGrid{D, <:EnzymeThreads}}, s::ComradeBase.AbstractModel) where {T, N, D}
     dx, dy = ComradeBase.pixelsizes(img)
     g = ComradeBase.domainpoints(img)

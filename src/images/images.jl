@@ -25,6 +25,13 @@ end
 @inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDomain)  = intensitymap_analytic(m, dims)
 @inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_numeric(m, dims)
 
+function intensitymap_analytic(s::AbstractModel, dims::AbstractDomain)
+    img = allocate_imgmap(s, dims)
+    intensitymap_analytic!(img, s)
+    return img
+end
+
+
 
 """
     intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())

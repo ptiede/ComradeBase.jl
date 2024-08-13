@@ -71,24 +71,12 @@ Base.@propagate_inbounds function Base.getindex(x::UnstructuredMap, I)
     UnstructuredMap(parent(x)[I], newdims)
 end
 
-function intensitymap_analytic(m::AbstractModel, dims::UnstructuredDomain)
-    g = domainpoints(dims)
-    img = intensity_point.(Ref(m), g)
-    return img
-end
-
 function intensitymap_analytic!(img::UnstructuredMap{T, <:Any, <:AbstractSingleDomain}, s::AbstractModel) where {T}
     g = domainpoints(img)
     img .= intensity_point.(Ref(s), g)
     return nothing
 end
 
-
-function intensitymap_analytic(s::AbstractModel, dims::UnstructuredDomain{D, <:ThreadsEx}) where {D}
-    img = UnstructuredMap(zeros(eltype(dims.X), size(dims)), dims)
-    intensitymap_analytic!(img, s)
-    return img
-end
 
 function intensitymap_analytic!(
     img::UnstructuredMap{T,<:Any,<:UnstructuredDomain{D, <:ThreadsEx{S}}},
