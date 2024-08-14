@@ -32,8 +32,9 @@ end
 @inline _visibilitymap!(::NotAnalytic, vis, m::AbstractModel)  = visibilitymap_numeric!(vis, m)
 
 function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
-    g = domainpoints(p)
-    return  visibility_point.(Ref(m), g)
+    vis = allocate_vismap(m, p)
+    visibilitymap_analytic!(vis, m)
+    return vis
 end
 
 function visibilitymap_analytic!(vis, m::AbstractModel)
@@ -43,16 +44,10 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
     return nothing
 end
 
-function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain{D, <:ThreadsEx}) where {D}
-    vis = allocate_vismap(m, p)
-    visibilitymap_analytic!(vis, m)
-    return vis
-end
-
 function visibilitymap_analytic!(vis::UnstructuredMap{T, <:Any, <:UnstructuredDomain{D, <:ThreadsEx{S}}}, m::AbstractModel) where {T,D,S}
     d = axisdims(vis)
     g = domainpoints(d)
-    _threads_visibilitymap!(vis, m, g, Val(S))
+    _threads_visibilitymap!(parent(vis), m, g, Val(S))
     return nothing
 end
 

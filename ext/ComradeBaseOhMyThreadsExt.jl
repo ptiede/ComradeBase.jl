@@ -1,11 +1,7 @@
 module ComradeBaseOhMyThreadsExt
 
 using ComradeBase
-if isdefined(Base, :get_extension)
-    using OhMyThreads
-else
-    using .OhMyThreads
-end
+using OhMyThreads
 
 function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N,D}
     dims = axisdims(img)
@@ -30,19 +26,13 @@ function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,<:AbstractVec
     return nothing
 end
 
-function ComradeBase.visibilitymap_analytic(m::ComradeBase.AbstractModel, dims::ComradeBase.AbstractSingleDomain{D, <:OhMyThreads.Scheduler}) where {D}
-    g = domainpoints(dims)
-    f = Base.Fix1(ComradeBase.visibility_point, m)
-    img = tmap(f, g; scheduler=executor(dims))
-    return img
-end
-
 function ComradeBase.visibilitymap_analytic!(vis::ComradeBase.FluxMap2{T,N,<:ComradeBase.AbstractSingleDomain{<:Any, <: OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N}
     dims = axisdims(vis)
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
+    pvis = parent(vis)
     tforeach(CartesianIndices(vis); scheduler=executor(dims)) do I
-        vis[I] = f(g[I])
+        pvis[I] = f(g[I])
     end
     return nothing
 end

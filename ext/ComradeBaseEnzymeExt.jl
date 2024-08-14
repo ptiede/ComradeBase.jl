@@ -26,4 +26,15 @@ function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T, N, <:Comrade
     return nothing
 end
 
+function ComradeBase.visibilitymap_analytic!(vis::ComradeBase.FluxMap2{T,N,<:ComradeBase.AbstractSingleDomain{<:Any, <:EnzymeThreads}}, s::ComradeBase.AbstractModel) where {T,N}
+    dims = axisdims(vis)
+    g = domainpoints(dims)
+    f = Base.Fix1(ComradeBase.visibility_point, s)
+    pvis = parent(vis)
+    @parallel for I in CartesianIndices(img)
+        pvis[I] = f(g[I])
+    end
+    return nothing
+end
+
 end
