@@ -168,24 +168,11 @@ end
     rebuild(img, data, dims, refdims, name, metadata)
 end
 
-function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid)
-    dx = step(dims.X)
-    dy = step(dims.Y)
-    img = intensity_point.(Ref(s), domainpoints(dims)).*dx.*dy
-    return IntensityMap(img, dims)
-end
-
 function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
     img .= intensity_point.(Ref(s), g).*dx.*dy
     return nothing
-end
-
-function intensitymap_analytic(s::AbstractModel, dims::AbstractRectiGrid{D, <:ThreadsEx}) where {D}
-    img = allocate_imgmap(s, dims)
-    intensitymap_analytic!(img, s)
-    return img
 end
 
 function intensitymap_analytic!(

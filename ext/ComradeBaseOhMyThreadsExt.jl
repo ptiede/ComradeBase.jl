@@ -7,17 +7,6 @@ else
     using .OhMyThreads
 end
 
-function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.AbstractRectiGrid{D, <:OhMyThreads.Scheduler}) where {D}
-    dx = step(dims.X)
-    dy = step(dims.Y)
-    g = domainpoints(dims)
-    f = Base.Fix1(ComradeBase.intensity_point, s)
-    img = tmap(g; scheduler=executor(dims)) do p
-        f(p)*dx*dy
-    end
-    return img
-end
-
 function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:OhMyThreads.Scheduler}}, s::ComradeBase.AbstractModel) where {T,N,D}
     dims = axisdims(img)
     dx = step(dims.X)
@@ -28,13 +17,6 @@ function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBas
         img[I] = f(g[I])*dx*dy
     end
     return nothing
-end
-
-function ComradeBase.intensitymap_analytic(s::ComradeBase.AbstractModel, dims::ComradeBase.UnstructuredDomain{D, <:OhMyThreads.Scheduler}) where {D}
-    g = domainpoints(dims)
-    f = Base.Fix1(ComradeBase.intensity_point, s)
-    img = tmap(f, g; scheduler=executor(dims))
-    return img
 end
 
 
