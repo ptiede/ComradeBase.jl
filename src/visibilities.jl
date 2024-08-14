@@ -40,7 +40,8 @@ end
 function visibilitymap_analytic!(vis, m::AbstractModel)
     d = axisdims(vis)
     g = domainpoints(d)
-    vis .= visibility_point.(Ref(m), g)
+    pvis = parent(vis)
+    pvis .= visibility_point.(Ref(m), g)
     return nothing
 end
 

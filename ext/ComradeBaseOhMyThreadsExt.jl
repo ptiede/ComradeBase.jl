@@ -8,9 +8,10 @@ function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,<:ComradeBas
     dx = step(dims.X)
     dy = step(dims.Y)
     g = domainpoints(dims)
+    pimg = parent(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
-    tforeach(CartesianIndices(img); scheduler=executor(dims)) do I
-        img[I] = f(g[I])*dx*dy
+    tforeach(CartesianIndices(pimg); scheduler=executor(dims)) do I
+        pimg[I] = f(g[I])*dx*dy
     end
     return nothing
 end
@@ -20,8 +21,9 @@ function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,<:AbstractVec
     dims = axisdims(img)
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
-    tforeach(CartesianIndices(img); scheduler=executor(dims)) do I
-        img[I] = f(g[I])
+    pimg = parent(img)
+    tforeach(CartesianIndices(pimg); scheduler=executor(dims)) do I
+        pimg[I] = f(g[I])
     end
     return nothing
 end
@@ -31,7 +33,7 @@ function ComradeBase.visibilitymap_analytic!(vis::ComradeBase.FluxMap2{T,N,<:Com
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
     pvis = parent(vis)
-    tforeach(CartesianIndices(vis); scheduler=executor(dims)) do I
+    tforeach(CartesianIndices(pvis); scheduler=executor(dims)) do I
         pvis[I] = f(g[I])
     end
     return nothing

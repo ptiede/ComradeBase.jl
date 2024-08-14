@@ -9,9 +9,9 @@ function ComradeBase.intensitymap_analytic!(img::IntensityMap{T, N, D, <:Comrade
     dx, dy = ComradeBase.pixelsizes(img)
     g = ComradeBase.domainpoints(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
-    I = CartesianIndices(img)
-    @parallel for I in CartesianIndices(img)
-        img[I] = f(g[I])*dx*dy
+    pimg = parent(img)
+    @parallel for I in CartesianIndices(pimg)
+        pimg[I] = f(g[I])*dx*dy
     end
     return nothing
 end
@@ -19,9 +19,9 @@ end
 function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T, N, <:ComradeBase.UnstructuredDomain{D, <:EnzymeThreads}}, s::ComradeBase.AbstractModel) where {T, N, D}
     g = ComradeBase.domainpoints(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
-    I = CartesianIndices(img)
-    @parallel for I in CartesianIndices(img)
-        img[I] = f(g[I])
+    pimg = parent(img)
+    @parallel for I in CartesianIndices(pimg)
+        pimg[I] = f(g[I])
     end
     return nothing
 end
