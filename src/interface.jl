@@ -137,9 +137,9 @@ Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic
 
 
 # Traits are not differentiable
-ChainRulesCore.@non_differentiable visanalytic(::Type)
-ChainRulesCore.@non_differentiable imanalytic(::Type)
-ChainRulesCore.@non_differentiable ispolarized(::Type)
+# ChainRulesCore.@non_differentiable visanalytic(::Type)
+# ChainRulesCore.@non_differentiable imanalytic(::Type)
+# ChainRulesCore.@non_differentiable ispolarized(::Type)
 
 """
     visibility_point(model::AbstractModel, p)

@@ -56,7 +56,7 @@ phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
 
 
 
-ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
+# ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 """
     imagepixels(fovx, fovy, nx, ny; x0=0, y0=0, executor=Serial(), header=NoHeader())
@@ -144,18 +144,18 @@ function centroid(im::IntensityMap{T,2})::Tuple{T,T} where {T<:Real}
     return cent[1]./f, cent[2]./f
 end
 
-function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMap{T,2}) where {T<:Real}
-    out = centroid(img)
-    x0, y0 = out
-    pr = ProjectTo(img)
-    function _centroid_pullback(Δ)
-        f = flux(img)
-        Δf = NoTangent()
-        Δimg = Δ[1].*(img.X./f .- x0/f) .+ Δ[2].*(img.Y'./f .- y0/f)
-        return Δf, pr(Δimg)
-    end
-    return out, _centroid_pullback
-end
+# function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMap{T,2}) where {T<:Real}
+#     out = centroid(img)
+#     x0, y0 = out
+#     pr = ProjectTo(img)
+#     function _centroid_pullback(Δ)
+#         f = flux(img)
+#         Δf = NoTangent()
+#         Δimg = Δ[1].*(img.X./f .- x0/f) .+ Δ[2].*(img.Y'./f .- y0/f)
+#         return Δf, pr(Δimg)
+#     end
+#     return out, _centroid_pullback
+# end
 
 
 """
@@ -177,7 +177,7 @@ second_moment(im::IntensityMap{<:StokesParams}; center=true) = second_moment(sto
 
 
 """
-    second_moment(im::AbstractIntensityMap; center=true)
+    second_moment(im::IntensityMap; center=true)
 
 Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered

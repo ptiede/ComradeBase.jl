@@ -8,7 +8,6 @@ include("dim_image.jl")
 export flux, centroid, second_moment, named_axisdims, axisdims,
        imagepixels, pixelsizes, domainpoints, phasecenter
 include("methods.jl")
-include("io.jl")
 
 
 """
