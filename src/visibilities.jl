@@ -45,21 +45,13 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
     return nothing
 end
 
-function visibilitymap_analytic!(vis::UnstructuredMap{T, <:Any, <:UnstructuredDomain{D, <:ThreadsEx{S}}}, m::AbstractModel) where {T,D,S}
+function visibilitymap_analytic!(vis::FluxMap2{T, <:Any, <:ComradeBase.AbstractSingleDomain{<:Any, <:ThreadsEx{S}}}, m::AbstractModel) where {T,S}
     d = axisdims(vis)
     g = domainpoints(d)
     _threads_visibilitymap!(parent(vis), m, g, Val(S))
     return nothing
 end
 
-function visibilitymap_analytic!(
-    vis::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
-    m::AbstractModel) where {T,N,D,S}
-    d = axisdims(vis)
-    g = domainpoints(d)
-    _threads_visibilitymap!(parent(vis), m, g, Val(S))
-    return nothing
-end
 
 for s in schedulers
     @eval begin

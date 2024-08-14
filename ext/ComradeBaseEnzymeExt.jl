@@ -3,7 +3,7 @@ module ComradeBaseEnzymeExt
 using ComradeBase
 using Enzyme: @parallel
 
-const EnzymeThreads = ComradeBase.ThreadsEx{:enzyme}
+const EnzymeThreads = ComradeBase.ThreadsEx{:Enzyme}
 
 function ComradeBase.intensitymap_analytic!(img::IntensityMap{T, N, D, <:ComradeBase.AbstractRectiGrid{D, <:EnzymeThreads}}, s::ComradeBase.AbstractModel) where {T, N, D}
     dx, dy = ComradeBase.pixelsizes(img)
@@ -31,7 +31,7 @@ function ComradeBase.visibilitymap_analytic!(vis::ComradeBase.FluxMap2{T,N,<:Com
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
     pvis = parent(vis)
-    @parallel for I in CartesianIndices(img)
+    @parallel for I in CartesianIndices(g)
         pvis[I] = f(g[I])
     end
     return nothing

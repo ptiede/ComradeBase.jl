@@ -2,6 +2,8 @@ using ComradeBase, StaticArrays, JET
 using StructArrays
 using Pyehtim
 using Test
+using OhMyThreads
+using Enzyme
 
 using FiniteDifferences
 # using ChainRulesCore
