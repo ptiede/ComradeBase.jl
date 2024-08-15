@@ -96,7 +96,7 @@ function domainpoints end
 Returns the executor used to compute the intensitymap or visibilitymap
 """
 executor(g::AbstractSingleDomain) = getfield(g, :executor)
-ChainRulesCore.@non_differentiable executor(::AbstractSingleDomain)
+# ChainRulesCore.@non_differentiable executor(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(executor), args...) = nothing
 
 
@@ -106,7 +106,7 @@ EnzymeRules.inactive(::typeof(executor), args...) = nothing
 Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
 """
 DD.dims(g::AbstractSingleDomain) = getfield(g, :dims)
-ChainRulesCore.@non_differentiable DD.dims(::AbstractSingleDomain)
+# ChainRulesCore.@non_differentiable DD.dims(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(DD.dims), x::AbstractSingleDomain) = nothing
 
 
@@ -116,7 +116,7 @@ EnzymeRules.inactive(::typeof(DD.dims), x::AbstractSingleDomain) = nothing
 Returns a named tuple containing the dimensions of `g`. For a unnamed version see [`dims`](@ref)
 """
 named_dims(g::AbstractSingleDomain) = NamedTuple{keys(g)}(dims(g))
-ChainRulesCore.@non_differentiable named_dims(::AbstractSingleDomain)
+# ChainRulesCore.@non_differentiable named_dims(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(named_dims), args...) = nothing
 
 
@@ -126,7 +126,7 @@ EnzymeRules.inactive(::typeof(named_dims), args...) = nothing
 Returns the headerinformation of the dimensions `g`
 """
 header(g::AbstractSingleDomain) = getfield(g, :header)
-ChainRulesCore.@non_differentiable header(::AbstractSingleDomain)
+# ChainRulesCore.@non_differentiable header(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(header), args...) = nothing
 Base.keys(g::AbstractSingleDomain) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
 

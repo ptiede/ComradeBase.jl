@@ -32,38 +32,26 @@ end
 @inline _visibilitymap!(::NotAnalytic, vis, m::AbstractModel)  = visibilitymap_numeric!(vis, m)
 
 function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
-    g = domainpoints(p)
-    return  visibility_point.(Ref(m), g)
-end
-
-function visibilitymap_analytic!(vis, m::AbstractModel)
-    d = axisdims(vis)
-    g = domainpoints(d)
-    vis .= visibility_point.(Ref(m), g)
-    return nothing
-end
-
-function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain{D, <:ThreadsEx}) where {D}
     vis = allocate_vismap(m, p)
     visibilitymap_analytic!(vis, m)
     return vis
 end
 
-function visibilitymap_analytic!(vis::UnstructuredMap{T, <:Any, <:UnstructuredDomain{D, <:ThreadsEx{S}}}, m::AbstractModel) where {T,D,S}
+function visibilitymap_analytic!(vis, m::AbstractModel)
     d = axisdims(vis)
     g = domainpoints(d)
-    _threads_visibilitymap!(vis, m, g, Val(S))
+    pvis = parent(vis)
+    pvis .= visibility_point.(Ref(m), g)
     return nothing
 end
 
-function visibilitymap_analytic!(
-    vis::IntensityMap{T,N,D,<:ComradeBase.AbstractRectiGrid{D, <:ThreadsEx{S}}},
-    m::AbstractModel) where {T,N,D,S}
+function visibilitymap_analytic!(vis::FluxMap2{T, <:Any, <:ComradeBase.AbstractSingleDomain{<:Any, <:ThreadsEx{S}}}, m::AbstractModel) where {T,S}
     d = axisdims(vis)
     g = domainpoints(d)
     _threads_visibilitymap!(parent(vis), m, g, Val(S))
     return nothing
 end
+
 
 for s in schedulers
     @eval begin

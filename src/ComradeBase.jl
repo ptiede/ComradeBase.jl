@@ -1,14 +1,12 @@
 module ComradeBase
 
-using ChainRulesCore
+# using ChainRulesCore
 using EnzymeCore: EnzymeRules
 using DimensionalData
 const DD = DimensionalData
 using DocStringExtensions
-using FITSIO
 using StaticArrays
 using StructArrays
-using Statistics
 using Reexport
 @reexport using PolarizedTypes
 using PrecompileTools
@@ -29,7 +27,7 @@ const FluxMap2{T, N, E} = Union{IntensityMap{T,N,<:Any,E}, UnstructuredMap{T,<:A
 
 
 include("visibilities.jl")
-include("rrules.jl")
+# include("rrules.jl")
 
 @setup_workload begin
     fovx = 10.0

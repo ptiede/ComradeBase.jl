@@ -1,4 +1,3 @@
-using OhMyThreads
 
 function testeximg(img, m, ex)
     g = axisdims(img)
@@ -140,4 +139,24 @@ end
         @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=SerialScheduler()))
     end
 
+end
+
+@testset "EnzymeExecutors" begin
+    u = 0.1*randn(60)
+    v = 0.1*randn(60)
+    ti = collect(Float64, 1:60)
+    fr = fill(230e9, 60)
+    m = GaussTest()
+
+    pim = (;X=range(-10.0, 10.0, length=64), Y=range(-10.0, 10.0, length=64))
+    gim = RectiGrid(pim)
+    guv = UnstructuredDomain((;U=u, V=v, Ti=ti, Fr=fr))
+    guvm = RectiGrid((;U=u, V=v))
+
+    img = intensitymap(m, gim)
+    vis = visibilitymap(m, guv)
+    vism = visibilitymap(m, guvm)
+    testeximg(img, m, ThreadsEx(:Enzyme))
+    testexvis(vis, m, ThreadsEx(:Enzyme))
+    testexvis(vism, m, ThreadsEx(:Enzyme))
 end
