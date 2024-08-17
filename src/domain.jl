@@ -248,7 +248,7 @@ function pixelsizes(keys::AbstractRectiGrid)
     return (X=step(x), Y=step(y))
 end
 
-
+EnzymeRules.inactive_type(::Type{<:RectiGrid}) = true
 
 struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
     dims::D
@@ -359,6 +359,9 @@ struct UnstructuredDomain{D,E, H<:AbstractHeader} <: AbstractSingleDomain{D,E}
     executor::E
     header::H
 end
+
+EnzymeRules.inactive_type(::Type{<:UnstructuredDomain}) = true
+
 
 """
     UnstructuredDomain(dims::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader)
