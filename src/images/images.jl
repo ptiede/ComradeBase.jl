@@ -1,14 +1,13 @@
 export IntensityMap, SpatialIntensityMap,
-        DataArr, SpatialDataArr, DataNames,
-        named_axisdims, imagepixels, pixelsizes, domainpoints,
-        phasecenter, baseimage, stokes
+       DataArr, SpatialDataArr, DataNames,
+       named_axisdims, imagepixels, pixelsizes, domainpoints,
+       phasecenter, baseimage, stokes
 
 include("dim_image.jl")
 
 export flux, centroid, second_moment, named_axisdims, axisdims,
        imagepixels, pixelsizes, domainpoints, phasecenter
 include("methods.jl")
-
 
 """
     intensitymap(model::AbstractModel, dims::AbstractSingleDomain)
@@ -17,20 +16,19 @@ Computes the intensity map or _image_ of the `model`. This returns an `Intensity
 is a `IntensityMap` with `dims` an [`AbstractSingleDomain`](@ref) as dimensions.
 """
 @inline function intensitymap(s::M,
-                              dims::AbstractDomain
-                              ) where {M<:AbstractModel}
+                              dims::AbstractDomain) where {M<:AbstractModel}
     return create_imgmap(intensitymap(imanalytic(M), s, dims), dims)
 end
-@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDomain)  = intensitymap_analytic(m, dims)
-@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_numeric(m, dims)
+@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_analytic(m,
+                                                                                                   dims)
+@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_numeric(m,
+                                                                                                   dims)
 
 function intensitymap_analytic(s::AbstractModel, dims::AbstractDomain)
     img = allocate_imgmap(s, dims)
     intensitymap_analytic!(img, s)
     return img
 end
-
-
 
 """
     intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())
@@ -44,5 +42,5 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
 @inline function intensitymap!(img, s::M) where {M}
     return intensitymap!(imanalytic(M), img, s)
 end
-@inline intensitymap!(::IsAnalytic, img, m::AbstractModel)  = intensitymap_analytic!(img, m)
+@inline intensitymap!(::IsAnalytic, img, m::AbstractModel) = intensitymap_analytic!(img, m)
 @inline intensitymap!(::NotAnalytic, img, m::AbstractModel) = intensitymap_numeric!(img, m)

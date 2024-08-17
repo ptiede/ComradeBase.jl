@@ -39,10 +39,10 @@ export stokes, IsPolarized, NotPolarized
 struct IsPolarized end
 struct NotPolarized end
 
-Base.@constprop  :aggressive Base.:*(::IsPolarized, ::IsPolarized) = IsPolarized()
-Base.@constprop  :aggressive Base.:*(::IsPolarized, ::NotPolarized) = IsPolarized()
-Base.@constprop  :aggressive Base.:*(::NotPolarized, ::IsPolarized) = IsPolarized()
-Base.@constprop  :aggressive Base.:*(::NotPolarized, ::NotPolarized) = NotPolarized()
+Base.@constprop :aggressive Base.:*(::IsPolarized, ::IsPolarized) = IsPolarized()
+Base.@constprop :aggressive Base.:*(::IsPolarized, ::NotPolarized) = IsPolarized()
+Base.@constprop :aggressive Base.:*(::NotPolarized, ::IsPolarized) = IsPolarized()
+Base.@constprop :aggressive Base.:*(::NotPolarized, ::NotPolarized) = NotPolarized()
 
 """
     ispolarized(::Type)
@@ -50,7 +50,6 @@ Base.@constprop  :aggressive Base.:*(::NotPolarized, ::NotPolarized) = NotPolari
 Trait function that defines whether a model is polarized or not.
 """
 ispolarized(::Type{<:AbstractModel}) = NotPolarized()
-
 
 """
         $(TYPEDEF)
@@ -70,7 +69,6 @@ ispolarized(::Type{<:AbstractPolarizedModel}) = IsPolarized()
 Extract the specific stokes component `p` from the polarized model `m`
 """
 stokes(m::AbstractPolarizedModel, v::Symbol) = getfield(m, v)
-
 
 """
     DensityAnalytic
@@ -123,18 +121,15 @@ If `IsAnalytic()` then it will try to call `intensity_point` to calculate the in
 """
 @inline imanalytic(::Type{<:AbstractModel}) = IsAnalytic()
 
-
-
 #=
     This is internal function definitions for how to
     compose whether a model is analytic. We need this
     for composite models.
 =#
-Base.@constprop  :aggressive Base.:*(::IsAnalytic, ::IsAnalytic) = IsAnalytic()
-Base.@constprop  :aggressive Base.:*(::IsAnalytic, ::NotAnalytic) = NotAnalytic()
-Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::IsAnalytic) = NotAnalytic()
-Base.@constprop  :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
-
+Base.@constprop :aggressive Base.:*(::IsAnalytic, ::IsAnalytic) = IsAnalytic()
+Base.@constprop :aggressive Base.:*(::IsAnalytic, ::NotAnalytic) = NotAnalytic()
+Base.@constprop :aggressive Base.:*(::NotAnalytic, ::IsAnalytic) = NotAnalytic()
+Base.@constprop :aggressive Base.:*(::NotAnalytic, ::NotAnalytic) = NotAnalytic()
 
 # Traits are not differentiable
 # ChainRulesCore.@non_differentiable visanalytic(::Type)
@@ -159,14 +154,12 @@ space and invert it.
 """
 function intensity_point end
 
-
 """
     intensitymap!(buffer::AbstractDimArray, model::AbstractModel)
 
 Computes the intensity map of `model` by modifying the `buffer`
 """
 function intensitymap! end
-
 
 """
     intensitymap(model::AbstractModel, p::AbstractSingleDomain)
@@ -208,12 +201,6 @@ Updates the `img` using the model `m`  by broadcasting over the analytic [`inten
 """
 function intensitymap_analytic! end
 
-
-
-
-
-
-
 """
     radialextent(model::AbstractModel)
 
@@ -229,14 +216,12 @@ Computes the complex visibilities at the locations p.
 """
 function visibilitymap end
 
-
 """
     visibilitymap!(vis::AbstractArray, model::AbstractModel, p)
 
 Computes the complex visibilities `vis` in place at the locations p
 """
 function visibilitymap! end
-
 
 """
     _visibilitymap(model::AbstractModel, p)
@@ -289,7 +274,6 @@ Computes the visibilties of a `model` in-place, using using the analytic visibil
 `visibility_point`.
 """
 function visibilitymap_analytic! end
-
 
 """
     stokes(m::AbstractArray{<:StokesParams}, p::Symbol)

@@ -1,9 +1,8 @@
 export visibilitymap, visibilitymap!,
-      logclosure_amplitude, logclosure_amplitudemap,
-      amplitude, amplitudemap,
-      closure_phase, closure_phasemap,
-      bispectrum, bispectrummap
-
+       logclosure_amplitude, logclosure_amplitudemap,
+       amplitude, amplitudemap,
+       closure_phase, closure_phasemap,
+       bispectrum, bispectrummap
 
 """
     visibilitymap(m, p)
@@ -14,10 +13,8 @@ are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 @inline function visibilitymap(m::M, p::AbstractDomain) where {M<:AbstractModel}
     return create_vismap(_visibilitymap(visanalytic(M), m, p), p)
 end
-@inline _visibilitymap(::IsAnalytic,  m::AbstractModel, p)  = visibilitymap_analytic(m, p)
-@inline _visibilitymap(::NotAnalytic, m::AbstractModel, p)  = visibilitymap_numeric(m, p)
-
-
+@inline _visibilitymap(::IsAnalytic, m::AbstractModel, p) = visibilitymap_analytic(m, p)
+@inline _visibilitymap(::NotAnalytic, m::AbstractModel, p) = visibilitymap_numeric(m, p)
 
 """
     visibilitymap!(vis, m, p)
@@ -28,8 +25,10 @@ are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 @inline function visibilitymap!(vis, m::M) where {M<:AbstractModel}
     return _visibilitymap!(visanalytic(M), vis, m)
 end
-@inline _visibilitymap!(::IsAnalytic , vis, m::AbstractModel)  = visibilitymap_analytic!(vis, m)
-@inline _visibilitymap!(::NotAnalytic, vis, m::AbstractModel)  = visibilitymap_numeric!(vis, m)
+@inline _visibilitymap!(::IsAnalytic, vis, m::AbstractModel) = visibilitymap_analytic!(vis,
+                                                                                       m)
+@inline _visibilitymap!(::NotAnalytic, vis, m::AbstractModel) = visibilitymap_numeric!(vis,
+                                                                                       m)
 
 function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
     vis = allocate_vismap(m, p)
@@ -45,13 +44,15 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
     return nothing
 end
 
-function visibilitymap_analytic!(vis::FluxMap2{T, <:Any, <:ComradeBase.AbstractSingleDomain{<:Any, <:ThreadsEx{S}}}, m::AbstractModel) where {T,S}
+function visibilitymap_analytic!(vis::FluxMap2{T,<:Any,
+                                               <:ComradeBase.AbstractSingleDomain{<:Any,
+                                                                                  <:ThreadsEx{S}}},
+                                 m::AbstractModel) where {T,S}
     d = axisdims(vis)
     g = domainpoints(d)
     _threads_visibilitymap!(parent(vis), m, g, Val(S))
     return nothing
 end
-
 
 for s in schedulers
     @eval begin
@@ -63,9 +64,6 @@ for s in schedulers
         return nothing
     end
 end
-
-
-
 
 """
     visibility(mimg, p)
@@ -92,9 +90,6 @@ end
     return visibility_point(mimg, p)
 end
 
-
-
-
 """
     amplitude(model, p)
 
@@ -119,7 +114,7 @@ If you want to compute the bispectrum over a number of triangles
 consider using the `bispectrummap` function.
 """
 @inline function bispectrum(model, p1, p2, p3)
-    return visibility(model, p1)*visibility(model, p2)*visibility(model, p3)
+    return visibility(model, p1) * visibility(model, p2) * visibility(model, p3)
 end
 
 """
@@ -154,12 +149,8 @@ consider using the `logclosure_amplitudemap` function.
     a3 = amplitude(model, p3)
     a4 = amplitude(model, p4)
 
-    return log(a1*a2/(a3*a4))
+    return log(a1 * a2 / (a3 * a4))
 end
-
-
-
-
 
 """
     amplitudemap(m::AbstractModel, p)
@@ -169,23 +160,21 @@ The coordinates `p` are expected to have the properties `U`, `V`,
 and sometimes `Ti` and `Fr`.
 """
 function amplitudemap(m, p)
-    create_map(_amplitudemap(m, p), p)
+    return create_map(_amplitudemap(m, p), p)
 end
 
-
 function _amplitudemap(m::S, p) where {S}
-    _amplitudemap(visanalytic(S), m, p)
+    return _amplitudemap(visanalytic(S), m, p)
 end
 
 function _amplitudemap(::IsAnalytic, m, p::AbstractSingleDomain)
     g = domainpoints(p)
-    abs.(visibility_point.(Ref(m), g))
+    return abs.(visibility_point.(Ref(m), g))
 end
 
 function _amplitudemap(::NotAnalytic, m, p::AbstractSingleDomain)
-    abs.(visibilitymap_numeric(m, p))
+    return abs.(visibilitymap_numeric(m, p))
 end
-
 
 """
     bispectrummap(m, p1, p2, p3)
@@ -194,29 +183,25 @@ Computes the closure phases of the model `m` at the
 triangles p1, p2, p3, where `pi` are coordinates.
 """
 function bispectrummap(m,
-                    p1::T,
-                    p2::T,
-                    p3::T,
-                    ) where {T<:AbstractSingleDomain}
-
-    _bispectrummap(m, p1, p2, p3)
+                       p1::T,
+                       p2::T,
+                       p3::T) where {T<:AbstractSingleDomain}
+    return _bispectrummap(m, p1, p2, p3)
 end
 
 # internal method used for trait dispatch
 function _bispectrummap(m::M,
-                    p1,
-                    p2,
-                    p3
-                    ) where {M}
-    _bispectrummap(visanalytic(M), m, p1, p2, p3)
+                        p1,
+                        p2,
+                        p3) where {M}
+    return _bispectrummap(visanalytic(M), m, p1, p2, p3)
 end
 
 # internal method used for trait dispatch for analytic visibilities
 function _bispectrummap(::IsAnalytic, m,
-                    p1::T,
-                    p2::T,
-                    p3::T,
-                   ) where {T<:AbstractSingleDomain}
+                        p1::T,
+                        p2::T,
+                        p3::T) where {T<:AbstractSingleDomain}
     g1 = domainpoints(p1)
     g2 = domainpoints(p2)
     g3 = domainpoints(p3)
@@ -225,12 +210,11 @@ end
 
 # internal method used for trait dispatch for non-analytic visibilities
 function _bispectrummap(::NotAnalytic, m,
-                    p1::T,p2::T,p3::T
-                   ) where {T<:AbstractSingleDomain}
+                        p1::T, p2::T, p3::T) where {T<:AbstractSingleDomain}
     vis1 = visibilitymap(m, p1)
     vis2 = visibilitymap(m, p2)
     vis3 = visibilitymap(m, p3)
-    return @. vis1*vis2*vis3
+    return @. vis1 * vis2 * vis3
 end
 
 """
@@ -244,22 +228,22 @@ Computes the closure phases of the model `m` at the
 triangles p1, p2, p3, where `pi` are coordinates.
 """
 @inline function closure_phasemap(m::AbstractModel,
-                        p1::T,p2::T,p3::T
-                        ) where {T<:UnstructuredDomain}
-    create_map(_closure_phasemap(m, p1, p2, p3), UnstructuredDomain((;p1=domainpoints(p1), p2=domainpoints(p2), p3=domainpoints(p3))))
+                                  p1::T, p2::T, p3::T) where {T<:UnstructuredDomain}
+    return create_map(_closure_phasemap(m, p1, p2, p3),
+                      UnstructuredDomain((; p1=domainpoints(p1), p2=domainpoints(p2),
+                                          p3=domainpoints(p3))))
 end
 
 # internal method used for trait dispatch
 @inline function _closure_phasemap(m::M, p1, p2, p3) where {M<:AbstractModel}
-    _closure_phasemap(visanalytic(M), m, p1, p2, p3)
+    return _closure_phasemap(visanalytic(M), m, p1, p2, p3)
 end
 
 # internal method used for trait dispatch for analytic visibilities
 @inline function _closure_phasemap(::IsAnalytic, m,
-                        p1::UnstructuredDomain,
-                        p2::UnstructuredDomain,
-                        p3::UnstructuredDomain
-                       )
+                                   p1::UnstructuredDomain,
+                                   p2::UnstructuredDomain,
+                                   p3::UnstructuredDomain)
     g1 = domainpoints(p1)
     g2 = domainpoints(p2)
     g3 = domainpoints(p3)
@@ -267,7 +251,7 @@ end
 end
 
 # internal method used for trait dispatch for non-analytic visibilities
-function _closure_phasemap(::NotAnalytic, m, p1,p2, p3)
+function _closure_phasemap(::NotAnalytic, m, p1, p2, p3)
     return angle.(bispectrummap(m, p1, p2, p3))
 end
 
@@ -283,24 +267,22 @@ Computes the log closure amplitudemap of the model `m` at the
 quadrangles p1, p2, p3, p4.
 """
 function logclosure_amplitudemap(m::AbstractModel,
-                               p1::T,
-                               p2::T,
-                               p3::T,
-                               p4::T
-                              ) where {T<:AbstractSingleDomain}
-    glc = UnstructuredDomain((;p1 = domainpoints(p1), p2 = domainpoints(p2), p3 = domainpoints(p3), p4 = domainpoints(p4)))
-    create_map(_logclosure_amplitudemap(m, p1, p2, p3, p4), glc)
+                                 p1::T,
+                                 p2::T,
+                                 p3::T,
+                                 p4::T) where {T<:AbstractSingleDomain}
+    glc = UnstructuredDomain((; p1=domainpoints(p1), p2=domainpoints(p2),
+                              p3=domainpoints(p3), p4=domainpoints(p4)))
+    return create_map(_logclosure_amplitudemap(m, p1, p2, p3, p4), glc)
 end
-
 
 # internal method used for trait dispatch
 @inline function _logclosure_amplitudemap(m::M,
-                        p1,
-                        p2,
-                        p3,
-                        p4
-                       ) where {M<:AbstractModel}
-    _logclosure_amplitudemap(visanalytic(M), m, p1, p2, p3, p4)
+                                          p1,
+                                          p2,
+                                          p3,
+                                          p4) where {M<:AbstractModel}
+    return _logclosure_amplitudemap(visanalytic(M), m, p1, p2, p3, p4)
 end
 
 # internal method used for trait dispatch for analytic visibilities
@@ -318,5 +300,5 @@ end
     amp2 = _amplitudemap(m, p2)
     amp3 = _amplitudemap(m, p3)
     amp4 = _amplitudemap(m, p4)
-    return @. log(amp1*amp2*inv(amp3*amp4))
+    return @. log(amp1 * amp2 * inv(amp3 * amp4))
 end

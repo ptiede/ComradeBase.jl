@@ -1,4 +1,4 @@
-function test_grid_interface(grid::ComradeBase.AbstractSingleDomain{D, E}) where {D,E}
+function test_grid_interface(grid::ComradeBase.AbstractSingleDomain{D,E}) where {D,E}
     @test typeof(executor(grid)) == E
     arr = zeros(size(grid))
     @inferred ComradeBase.create_map(arr, grid)
@@ -20,19 +20,19 @@ function test_grid_interface(grid::ComradeBase.AbstractSingleDomain{D, E}) where
     axes(grid)
     show(grid)
     show(IOBuffer(), MIME"text/plain"(), grid)
-    summary(grid)
+    return summary(grid)
 end
 
 @testset "AbstractSingleDomain" begin
     ex = Serial()
-    prect = (;X=range(-10.0, 10.0, length=128),
-                        Y=range(-10.0, 10.0, length=128),
-                        Fr = [230.0, 345.0],
-                        Ti = sort(rand(24)))
-    pustr = (;X=range(-10.0, 10.0, length=128),
-                    Y=range(-10.0, 10.0, length=128),
-                    Fr = fill(230e9, 128),
-                    Ti = sort(rand(128)))
+    prect = (; X=range(-10.0, 10.0; length=128),
+             Y=range(-10.0, 10.0; length=128),
+             Fr=[230.0, 345.0],
+             Ti=sort(rand(24)))
+    pustr = (; X=range(-10.0, 10.0; length=128),
+             Y=range(-10.0, 10.0; length=128),
+             Fr=fill(230e9, 128),
+             Ti=sort(rand(128)))
     grect = RectiGrid(prect)
     pc = phasecenter(grect)
     @test pc.X ≈ 0.0
@@ -45,23 +45,21 @@ end
     head = ComradeBase.MinimalHeader("M87", 90.0, 45, 21312, 230e9)
     g = RectiGrid(prect; header=head)
     @test header(g) == head
-
 end
 
 @testset "IntensityMap" begin
-    x = X(range(-10.0, 10.0, length=64))
-    y = Y(range(-10.0, 10.0, length=64))
+    x = X(range(-10.0, 10.0; length=64))
+    y = Y(range(-10.0, 10.0; length=64))
     t = Ti([0.0, 0.5, 0.8])
     f = Fr([86e9, 230e9, 345e9])
 
-    gsp = RectiGrid((x,y))
+    gsp = RectiGrid((x, y))
     g1 = RectiGrid((x, y, f, t))
     g2 = RectiGrid((x, y, t, f))
 
     imp = rand(64, 64, 3, 3)
 
-
-    img1 = IntensityMap(imp[:,:,1,1], gsp)
+    img1 = IntensityMap(imp[:, :, 1, 1], gsp)
     img2 = IntensityMap(imp, g1)
     img3 = IntensityMap(imp, g2)
     phasecenter(img2)
@@ -74,21 +72,16 @@ end
 
     @test_throws ArgumentError img1.Fr
 
-
     @testset "Slicing" begin
         @test img1[X=1:1, Y=1:10] isa IntensityMap
-        @test img1[X=5:10, Y=1:end-10] isa IntensityMap
+        @test img1[X=5:10, Y=1:(end - 10)] isa IntensityMap
         @test img2[X=1, Y=1] isa IntensityMap
 
-
-
-
-        @test img1[X=1, Y=1] ≈ imp[1,1,1,1]
-        @test img1[X=1, Y=1:10] ≈ imp[1,1:10,1,1]
-        @test img1[X=5:10, Y=1:end-10] ≈ imp[5:10,1:end-10,1,1]
-        @test img1[Y=1, X=1] ≈ imp[1,1,1,1]
-        @test img2[X=1, Y=1] ≈ imp[1,1,:,:]
-
+        @test img1[X=1, Y=1] ≈ imp[1, 1, 1, 1]
+        @test img1[X=1, Y=1:10] ≈ imp[1, 1:10, 1, 1]
+        @test img1[X=5:10, Y=1:(end - 10)] ≈ imp[5:10, 1:(end - 10), 1, 1]
+        @test img1[Y=1, X=1] ≈ imp[1, 1, 1, 1]
+        @test img2[X=1, Y=1] ≈ imp[1, 1, :, :]
 
         subimg1 = img1[X=5:10, Y=1:20]
         nk = named_dims(subimg1)
@@ -104,10 +97,10 @@ end
     end
 
     @testset "broadcast and map" begin
-        @test img1.^2 isa typeof(img1)
+        @test img1 .^ 2 isa typeof(img1)
         @test cos.(img1) isa typeof(img1)
         @test img1 .+ img1 isa typeof(img1)
-        @test cos.(img2[Fr=1,Ti=1]) isa IntensityMap
+        @test cos.(img2[Fr=1, Ti=1]) isa IntensityMap
     end
 
     @testset "polarized" begin
@@ -116,16 +109,15 @@ end
         imgU = rand(64, 64, 3, 3)
         imgV = rand(64, 64, 3, 3)
 
-        imgP = StructArray{StokesParams}(I=imgI, Q=imgQ, U=imgU, V=imgV)
-        img1 = IntensityMap(imgP[:,:,1,1], RectiGrid((;X=x,Y=y)))
+        imgP = StructArray{StokesParams}(; I=imgI, Q=imgQ, U=imgU, V=imgV)
+        img1 = IntensityMap(imgP[:, :, 1, 1], RectiGrid((; X=x, Y=y)))
         img2 = IntensityMap(imgP, RectiGrid((x, y, t, f)))
 
-        @test flux(img1) ≈ flux(img2)[1,1,1,1]
+        @test flux(img1) ≈ flux(img2)[1, 1, 1, 1]
         @test centroid(img1) == centroid(stokes(img1, :I))
         @test second_moment(img1) == second_moment(stokes(img1, :I))
     end
 end
-
 
 function FiniteDifferences.to_vec(k::IntensityMap)
     v, b = to_vec(DD.data(k))
@@ -140,7 +132,6 @@ function FiniteDifferences.to_vec(k::UnstructuredMap)
     return v, back
 end
 
-
 # @testset "ProjectTo" begin
 
 #     data = rand(32, 32)
@@ -148,7 +139,6 @@ end
 #     img = IntensityMap(data, g)
 
 #     # test_rrule(centroid, img)
-
 
 #     # pr = ProjectTo(img)
 #     # @test pr(data) == img
@@ -172,7 +162,6 @@ end
 #     test_rrule(UnstructuredMap, data, g⊢NoTangent())
 # end
 
-
 # @testset "rrule baseimage" begin
 #     data = rand(32, 24)
 #     g = imagepixels(5.0, 10.0, 32, 24)
@@ -182,16 +171,16 @@ end
 # end
 
 @testset "UnstructuredMap" begin
-    pustr = (;X=range(-10.0, 10.0, length=128),
-                    Y=range(-10.0, 10.0, length=128),
-                    Fr = fill(230e9, 128),
-                    Ti = sort(rand(128)))
+    pustr = (; X=range(-10.0, 10.0; length=128),
+             Y=range(-10.0, 10.0; length=128),
+             Fr=fill(230e9, 128),
+             Ti=sort(rand(128)))
 
     g = UnstructuredDomain(pustr)
     img = UnstructuredMap(rand(128), g)
-    @test typeof(img.^2) == typeof(img)
-    @test img[[1,4,6]] isa UnstructuredMap
-    @test view(img, [1,4,6]) isa UnstructuredMap
+    @test typeof(img .^ 2) == typeof(img)
+    @test img[[1, 4, 6]] isa UnstructuredMap
+    @test view(img, [1, 4, 6]) isa UnstructuredMap
 
     @test img[[6]][1] == img[6]
     @test @view(img[[6]])[1] == img[6]

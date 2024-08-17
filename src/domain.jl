@@ -3,9 +3,8 @@ export RectiGrid, UnstructuredDomain, domainpoints,
        named_dims, dims, header, axisdims, executor,
        Serial, ThreadsEx
 
-
 abstract type AbstractDomain end
-abstract type AbstractSingleDomain{D, E} <: AbstractDomain end
+abstract type AbstractSingleDomain{D,E} <: AbstractDomain end
 
 """
     create_map(array, g::AbstractSingleDomain)
@@ -45,7 +44,7 @@ Allocate the default map specialized by the grid `g`
 function allocate_vismap end
 
 function allocate_vismap(m::AbstractModel, g::AbstractDomain)
-    allocate_vismap(ispolarized(typeof(m)), m, g)
+    return allocate_vismap(ispolarized(typeof(m)), m, g)
 end
 
 function allocate_vismap(::IsPolarized, m::AbstractModel, g::AbstractDomain)
@@ -59,7 +58,7 @@ function allocate_vismap(::NotPolarized, m::AbstractModel, g::AbstractDomain)
 end
 
 function allocate_imgmap(m::AbstractModel, g::AbstractDomain)
-    allocate_imgmap(ispolarized(typeof(m)), m, g)
+    return allocate_imgmap(ispolarized(typeof(m)), m, g)
 end
 
 function allocate_imgmap(::IsPolarized, m::AbstractModel, g::AbstractDomain)
@@ -71,10 +70,6 @@ function allocate_imgmap(::NotPolarized, m::AbstractModel, g::AbstractDomain)
     M = Array{eltype(g)}
     return allocate_map(M, g)
 end
-
-
-
-
 
 """
     domainpoints(g::AbstractSingleDomain)
@@ -89,7 +84,6 @@ function domainpoints end
 # ChainRulesCore.@non_differentiable domainpoints(d::AbstractSingleDomain)
 # EnzymeRules.inactive(::typeof(domainpoints), args...) = nothing
 
-
 """
     executor(g::AbstractSingleDomain)
 
@@ -98,7 +92,6 @@ Returns the executor used to compute the intensitymap or visibilitymap
 executor(g::AbstractSingleDomain) = getfield(g, :executor)
 # ChainRulesCore.@non_differentiable executor(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(executor), args...) = nothing
-
 
 """
     dims(g::AbstractSingleDomain)
@@ -109,7 +102,6 @@ DD.dims(g::AbstractSingleDomain) = getfield(g, :dims)
 # ChainRulesCore.@non_differentiable DD.dims(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(DD.dims), x::AbstractSingleDomain) = nothing
 
-
 """
     named_dims(g::AbstractSingleDomain)
 
@@ -119,7 +111,6 @@ named_dims(g::AbstractSingleDomain) = NamedTuple{keys(g)}(dims(g))
 # ChainRulesCore.@non_differentiable named_dims(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(named_dims), args...) = nothing
 
-
 """
     header(g::AbstractSingleDomain)
 
@@ -128,7 +119,9 @@ Returns the headerinformation of the dimensions `g`
 header(g::AbstractSingleDomain) = getfield(g, :header)
 # ChainRulesCore.@non_differentiable header(::AbstractSingleDomain)
 EnzymeRules.inactive(::typeof(header), args...) = nothing
-Base.keys(g::AbstractSingleDomain) = throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
+function Base.keys(g::AbstractSingleDomain)
+    throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
+end
 
 """
     Serial()
@@ -156,10 +149,8 @@ else
     const schedulers = (:(:dynamic), :(:static))
 end
 
-
 # We index the dimensions not the grid itself
 Base.getindex(d::AbstractSingleDomain, i::Int) = getindex(dims(d), i)
-
 
 Base.ndims(d::AbstractSingleDomain) = length(dims(d))
 Base.size(d::AbstractSingleDomain) = map(length, dims(d))
@@ -167,7 +158,7 @@ Base.length(d::AbstractSingleDomain) = prod(size(d))
 Base.firstindex(d::AbstractSingleDomain) = 1
 Base.lastindex(d::AbstractSingleDomain) = length(d)
 Base.axes(d::AbstractSingleDomain) = axes(dims(d))
-Base.iterate(d::AbstractSingleDomain, i::Int = 1) = iterate(dims(d), i)
+Base.iterate(d::AbstractSingleDomain, i::Int=1) = iterate(dims(d), i)
 # Base.front(d::AbstractSingleDomain) = Base.front(dims(d))
 # We return the eltype of the dimensions. Should we change this?
 Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
@@ -176,7 +167,6 @@ Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 # Base.map(f, d::AbstractSingleDomain) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
 # Base.map(f, args, d::AbstractSingleDomain) = map(f, args, dims(d))
 # Base.map(f, d::AbstractSingleDomain, args) = rebuild(typeof(d), map(f, dims(d), args))
-
 
 abstract type AbstractHeader end
 
@@ -223,18 +213,18 @@ end
 """
 struct NoHeader <: AbstractHeader end
 
-
-abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
+abstract type AbstractRectiGrid{D,E} <: AbstractSingleDomain{D,E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
-allocate_map(M::Type{<:AbstractArray}, g::AbstractRectiGrid) = IntensityMap(similar(M, size(g)), g)
-
-function fieldofview(dims::AbstractRectiGrid)
-    (;X,Y) = dims
-    dx = step(X)
-    dy = step(Y)
-    (X=abs(last(X) - first(X))+dx, Y=abs(last(Y)-first(Y))+dy)
+function allocate_map(M::Type{<:AbstractArray}, g::AbstractRectiGrid)
+    return IntensityMap(similar(M, size(g)), g)
 end
 
+function fieldofview(dims::AbstractRectiGrid)
+    (; X, Y) = dims
+    dx = step(X)
+    dy = step(Y)
+    return (X=abs(last(X) - first(X)) + dx, Y=abs(last(Y) - first(Y)) + dy)
+end
 
 """
     pixelsizes(img::IntensityMap)
@@ -248,27 +238,24 @@ function pixelsizes(keys::AbstractRectiGrid)
     return (X=step(x), Y=step(y))
 end
 
-
-struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
+struct RectiGrid{D,E,Hd<:AbstractHeader} <: AbstractRectiGrid{D,E}
     dims::D
     executor::E
     header::Hd
-    @inline function RectiGrid(dims::Tuple; executor=Serial(), header::AbstractHeader=NoHeader())
+    @inline function RectiGrid(dims::Tuple; executor=Serial(),
+                               header::AbstractHeader=NoHeader())
         df = _format_dims(dims)
-        return new{typeof(df), typeof(executor), typeof(header)}(df, executor, header)
+        return new{typeof(df),typeof(executor),typeof(header)}(df, executor, header)
     end
-
 end
 
 EnzymeRules.inactive_type(::Type{<:RectiGrid}) = true
 
-
-function domainpoints(d::RectiGrid{D, Hd}) where {D, Hd}
+function domainpoints(d::RectiGrid{D,Hd}) where {D,Hd}
     g = map(basedim, dims(d))
     N = keys(d)
     return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
 end
-
 
 function _format_dims(dg::Tuple)
     return DD.format(dg, map(eachindex, dg))
@@ -278,33 +265,31 @@ Base.keys(g::RectiGrid) = map(name, dims(g))
 
 @inline RectiGrid(g::RectiGrid) = g
 
-
-function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D, E}) where {D, E}
+function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D,E}) where {D,E}
     println(io, "RectiGrid(")
     println(io, "executor: $(executor(x))")
     println(io, "Dimensions: ")
     show(io, mime, dims(x))
-    print(io, "\n)")
+    return print(io, "\n)")
 end
-
 
 Base.propertynames(d::RectiGrid) = keys(d)
 Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
 
-
-
 # This is needed to prevent doubling up on the dimension
-@inline function RectiGrid(dims::NamedTuple{Na, T}; executor=Serial(), header::AbstractHeader=NoHeader()) where {Na, N, T<:NTuple{N, DD.Dimension}}
+@inline function RectiGrid(dims::NamedTuple{Na,T}; executor=Serial(),
+                           header::AbstractHeader=NoHeader()) where {Na,N,
+                                                                     T<:NTuple{N,
+                                                                               DD.Dimension}}
     return RectiGrid(values(dims); executor, header)
 end
 
 @noinline function _make_dims(ks, vs)
     ds = DD.name2dim(ks)
-    return map(ds, vs) do d,v
-        DD.rebuild(d, v)
+    return map(ds, vs) do d, v
+        return DD.rebuild(d, v)
     end
 end
-
 
 """
     RectiGrid(dims::NamedTuple{Na}; executor=Serial(), header=ComradeBase.NoHeader())
@@ -338,32 +323,30 @@ dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([23
 dims = RectiGrid((X = -5.0:0.1:5.0, Y = -4.0:0.1:4.0, Ti = [1.0, 1.5, 1.75], Fr = [230, 345]); executor=ThreadsEx()))
 ```
 """
-@inline function RectiGrid(nt::NamedTuple; executor=Serial(), header::AbstractHeader=ComradeBase.NoHeader())
+@inline function RectiGrid(nt::NamedTuple; executor=Serial(),
+                           header::AbstractHeader=ComradeBase.NoHeader())
     dims = _make_dims(keys(nt), values(nt))
     return RectiGrid(dims; executor, header)
 end
 
-function DD.rebuild(::Type{<:RectiGrid}, g, executor=Serial(), header=ComradeBase.NoHeader())
-    RectiGrid(g; executor, header)
+function DD.rebuild(::Type{<:RectiGrid}, g, executor=Serial(),
+                    header=ComradeBase.NoHeader())
+    return RectiGrid(g; executor, header)
 end
 
-
 # Define some helpful names for ease typing
-const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)},
-                        <:NamedTuple{(:X, :Y, :T)}, <:NamedTuple{(:X, :Y, :F)},
-                        <:NamedTuple{(:X,:Y)}}
-
-
+const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)},<:NamedTuple{(:X, :Y, :F, :T)},
+                        <:NamedTuple{(:X, :Y, :T)},<:NamedTuple{(:X, :Y, :F)},
+                        <:NamedTuple{(:X, :Y)}}
 
 # TODO make this play nice with dimensional data
-struct UnstructuredDomain{D,E, H<:AbstractHeader} <: AbstractSingleDomain{D,E}
+struct UnstructuredDomain{D,E,H<:AbstractHeader} <: AbstractSingleDomain{D,E}
     dims::D
     executor::E
     header::H
 end
 
 EnzymeRules.inactive_type(::Type{<:UnstructuredDomain}) = true
-
 
 """
     UnstructuredDomain(dims::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader)
@@ -389,8 +372,9 @@ Base.lastindex(d::UnstructuredDomain) = lastindex(dims(d))
 # Base.front(d::UnstructuredDomain) = UnstructuredDomain(Base.front(StructArrays.components(dims(d))), executor=executor(d), header=header(d))
 # Base.eltype(d::UnstructuredDomain) = Base.eltype(dims(d))
 
-function DD.rebuild(::Type{<:UnstructuredDomain}, g, executor=Serial(), header=ComradeBase.NoHeader())
-    UnstructuredDomain(g, executor, header)
+function DD.rebuild(::Type{<:UnstructuredDomain}, g, executor=Serial(),
+                    header=ComradeBase.NoHeader())
+    return UnstructuredDomain(g, executor, header)
 end
 
 Base.propertynames(g::UnstructuredDomain) = propertynames(domainpoints(g))
@@ -419,7 +403,7 @@ end
 function Base.summary(io::IO, g::UnstructuredDomain)
     n = propertynames(domainpoints(g))
     printstyled(io, "│ "; color=:light_black)
-    print(io, "UnstructuredDomain with dims: $n")
+    return print(io, "UnstructuredDomain with dims: $n")
 end
 
 function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredDomain)
@@ -427,9 +411,10 @@ function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredDomain)
     println(io, "executor: $(executor(x))")
     println(io, "Dimensions: ")
     show(io, mime, dims(x))
-    print(io, "\n)")
+    return print(io, "\n)")
 end
 
-
 create_map(array, g::UnstructuredDomain) = UnstructuredMap(array, g)
-allocate_map(M::Type{<:A}, g::UnstructuredDomain) where {A<:AbstractArray} = UnstructuredMap(similar(M, size(g)), g)
+function allocate_map(M::Type{<:A}, g::UnstructuredDomain) where {A<:AbstractArray}
+    return UnstructuredMap(similar(M, size(g)), g)
+end
