@@ -19,10 +19,9 @@ function testexvis(img, m, ex)
     @test img ≈ img2
 end
 
-
 @testset "executors" begin
-    u = 0.1*randn(60)
-    v = 0.1*randn(60)
+    u = 0.1 * randn(60)
+    v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
     m = GaussTest()
@@ -30,7 +29,7 @@ end
     @test ThreadsEx() === ThreadsEx(:dynamic)
 
     @testset "RectiGrid" begin
-        pim = (;X=range(-10.0, 10.0, length=64), Y=range(-10.0, 10.0, length=64))
+        pim = (; X=range(-10.0, 10.0; length=64), Y=range(-10.0, 10.0; length=64))
         gim = RectiGrid(pim)
         img = intensitymap(m, gim)
         img0 = copy(img)
@@ -43,7 +42,7 @@ end
         testeximg(img, m, StaticScheduler())
         testeximg(img, m, SerialScheduler())
 
-        puv = (U=range(-2.0, 2.0, length=128), V=range(-2.0, 2.0, length=64))
+        puv = (U=range(-2.0, 2.0; length=128), V=range(-2.0, 2.0; length=64))
         vis = visibilitymap(m, RectiGrid(puv))
         vis0 = copy(vis)
         visibilitymap!(vis, m)
@@ -58,14 +57,13 @@ end
     end
 
     @testset "UnstructuredDomain" begin
-        pim = (;X=randn(64), Y=randn(64))
-        puv = (;U=u, V=v, Ti=ti, Fr=fr)
+        pim = (; X=randn(64), Y=randn(64))
+        puv = (; U=u, V=v, Ti=ti, Fr=fr)
         gim = UnstructuredDomain(pim)
         img = intensitymap(m, gim)
         img0 = copy(img)
         intensitymap!(img, m)
         @test img ≈ img0
-
 
         testeximg(img, m, ThreadsEx())
         testeximg(img, m, ThreadsEx(:static))
@@ -84,13 +82,11 @@ end
         testexvis(vis, m, StaticScheduler())
         testexvis(vis, m, SerialScheduler())
     end
-
 end
 
-
 @testset "executors NotAnalytic" begin
-    u = 0.1*randn(60)
-    v = 0.1*randn(60)
+    u = 0.1 * randn(60)
+    v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
     m = GaussTestNA()
@@ -98,7 +94,7 @@ end
     @test ThreadsEx() === ThreadsEx(:dynamic)
 
     @testset "RectiGrid" begin
-        pim = (;X=range(-10.0, 10.0, length=64), Y=range(-10.0, 10.0, length=64))
+        pim = (; X=range(-10.0, 10.0; length=64), Y=range(-10.0, 10.0; length=64))
         gim = RectiGrid(pim)
         img = intensitymap(m, gim)
 
@@ -108,7 +104,7 @@ end
         @test img ≈ intensitymap(m, RectiGrid(pim; executor=StaticScheduler()))
         @test img ≈ intensitymap(m, RectiGrid(pim; executor=SerialScheduler()))
 
-        puv = (U=range(-2.0, 2.0, length=128), V=range(-2.0, 2.0, length=64))
+        puv = (U=range(-2.0, 2.0; length=128), V=range(-2.0, 2.0; length=64))
         vis = visibilitymap(m, RectiGrid(puv))
         @test size(vis) == size(RectiGrid(puv))
         @test vis ≈ visibilitymap(m, RectiGrid(puv; executor=ThreadsEx()))
@@ -119,8 +115,8 @@ end
     end
 
     @testset "UnstructuredDomain" begin
-        pim = (;X=randn(64), Y=randn(64))
-        puv = (;U=u, V=v, Ti=ti, Fr=fr)
+        pim = (; X=randn(64), Y=randn(64))
+        puv = (; U=u, V=v, Ti=ti, Fr=fr)
         gim = UnstructuredDomain(pim)
         img = intensitymap(m, gim)
 
@@ -138,20 +134,19 @@ end
         @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=StaticScheduler()))
         @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor=SerialScheduler()))
     end
-
 end
 
 @testset "EnzymeExecutors" begin
-    u = 0.1*randn(60)
-    v = 0.1*randn(60)
+    u = 0.1 * randn(60)
+    v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
     m = GaussTest()
 
-    pim = (;X=range(-10.0, 10.0, length=64), Y=range(-10.0, 10.0, length=64))
+    pim = (; X=range(-10.0, 10.0; length=64), Y=range(-10.0, 10.0; length=64))
     gim = RectiGrid(pim)
-    guv = UnstructuredDomain((;U=u, V=v, Ti=ti, Fr=fr))
-    guvm = RectiGrid((;U=u, V=v))
+    guv = UnstructuredDomain((; U=u, V=v, Ti=ti, Fr=fr))
+    guvm = RectiGrid((; U=u, V=v))
 
     img = intensitymap(m, gim)
     vis = visibilitymap(m, guv)

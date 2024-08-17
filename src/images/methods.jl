@@ -7,19 +7,20 @@ This is useful for broadcasting a model across an abritrary grid.
 """
 domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
-
-struct LazySlice{T, N, A<:AbstractVector{T}} <: AbstractArray{T, N}
+struct LazySlice{T,N,A<:AbstractVector{T}} <: AbstractArray{T,N}
     slice::A
     dir::Int
     dims::Dims{N}
-    @inline function LazySlice(slice::AbstractVector{T}, dim::Int, dims::Dims{N}) where {T, N}
+    @inline function LazySlice(slice::AbstractVector{T}, dim::Int,
+                               dims::Dims{N}) where {T,N}
         @assert 1 ≤ dim ≤ N "Slice dimension is not valid. Must be ≤ $N and ≥ 1 and got $dim"
-        return new{T, N, typeof(slice)}(slice, dim, dims)
+        return new{T,N,typeof(slice)}(slice, dim, dims)
     end
 end
 
 @inline Base.size(A::LazySlice) = A.dims
-Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T, N}, I::Vararg{Int, N}) where {T, N}
+Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T,N},
+                                                        I::Vararg{Int,N}) where {T,N}
     i = I[A.dir]
     @boundscheck checkbounds(A.slice, i)
     return A.slice[i]
@@ -37,9 +38,6 @@ end
 @inline basedim(x::DD.LookupArrays.LookupArray) = basedim(parent(x))
 @inline basedim(x) = x
 
-
-
-
 """
     phasecenter(img::IntensityMap)
 
@@ -47,14 +45,12 @@ Computes the phase center of an intensity map. Note this is the pixels that is i
 the middle of the image.
 """
 function phasecenter(dims::AbstractRectiGrid)
-    (;X, Y) = dims
-    x0 = -(last(X) + first(X))/2
-    y0 = -(last(Y) + first(Y))/2
+    (; X, Y) = dims
+    x0 = -(last(X) + first(X)) / 2
+    y0 = -(last(Y) + first(Y)) / 2
     return (X=x0, Y=y0)
 end
 phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
-
-
 
 # ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
@@ -78,18 +74,18 @@ to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin ove
  - `executor=Serial()`: The executor to use for the grid, default is serial execution
  - `header=NoHeader()`: The header to use for the grid
 """
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real = 0, y0::Real = 0; executor=Serial(), header=NoHeader())
-    @assert (nx > 0)&&(ny > 0) "Number of pixels must be positive"
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real=0,
+                     y0::Real=0; executor=Serial(), header=NoHeader())
+    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
-    psizex=fovx/nx
-    psizey=fovy/ny
+    psizex = fovx / nx
+    psizey = fovy / ny
 
-    xitr = X(LinRange(-fovx/2 + psizex/2 - x0, fovx/2 - psizex/2 - x0, nx))
-    yitr = Y(LinRange(-fovy/2 + psizey/2 - y0, fovy/2 - psizey/2 - y0, ny))
+    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
+    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
     grid = RectiGrid((xitr, yitr); executor, header)
     return grid
 end
-
 
 """
     fieldofview(img::IntensityMap)
@@ -103,23 +99,16 @@ end
 
 pixelsizes(img::IntensityMap) = pixelsizes(axisdims(img))
 
-
-
 """
     flux(im::IntensityMap)
 
 Computes the flux of a intensity map
 """
 function flux(im::IntensityMap{T,N}) where {T,N}
-    return sum(im, dims=(:X, :Y))
+    return sum(im; dims=(:X, :Y))
 end
 
 flux(im::SpatialIntensityMap) = sum(parent(im))
-
-
-
-
-
 
 """
     centroid(im::AbstractIntensityMap)
@@ -129,19 +118,19 @@ Computes the image centroid aka the center of light of the image.
 For polarized maps we return the centroid for Stokes I only.
 """
 function centroid(im::IntensityMap{<:Number})
-    (;X, Y) = named_dims(im)
-    return mapslices(x->centroid(IntensityMap(x, RectiGrid((;X, Y)))), im; dims=(:X, :Y))
+    (; X, Y) = named_dims(im)
+    return mapslices(x -> centroid(IntensityMap(x, RectiGrid((; X, Y)))), im; dims=(:X, :Y))
 end
 centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
 
 function centroid(im::IntensityMap{T,2})::Tuple{T,T} where {T<:Real}
     f = flux(im)
     cent = sum(pairs(DimPoints(im)); init=SVector(zero(f), zero(f))) do (I, (x, y))
-        x0 = x.*im[I]
-        y0 = y.*im[I]
+        x0 = x .* im[I]
+        y0 = y .* im[I]
         return SVector(x0, y0)
     end
-    return cent[1]./f, cent[2]./f
+    return cent[1] ./ f, cent[2] ./ f
 end
 
 # function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMap{T,2}) where {T<:Real}
@@ -157,7 +146,6 @@ end
 #     return out, _centroid_pullback
 # end
 
-
 """
     second_moment(im::AbstractIntensityMap; center=true)
 
@@ -168,13 +156,15 @@ second moment, which is specified by the `center` argument.
 For polarized maps we return the second moment for Stokes I only.
 """
 function second_moment(im::IntensityMap{T,N}; center=true) where {T<:Real,N}
-    (;X, Y) = named_dims(im)
-    return mapslices(x->second_moment(IntensityMap(x, RectiGrid((;X, Y))); center), im; dims=(:X, :Y))
+    (; X, Y) = named_dims(im)
+    return mapslices(x -> second_moment(IntensityMap(x, RectiGrid((; X, Y))); center), im;
+                     dims=(:X, :Y))
 end
 
 # Only return the second moment for Stokes I
-second_moment(im::IntensityMap{<:StokesParams}; center=true) = second_moment(stokes(im, :I); center)
-
+function second_moment(im::IntensityMap{<:StokesParams}; center=true)
+    return second_moment(stokes(im, :I); center)
+end
 
 """
     second_moment(im::IntensityMap; center=true)
@@ -188,21 +178,21 @@ function second_moment(im::IntensityMap{T,2}; center=true) where {T<:Real}
     xy = zero(T)
     yy = zero(T)
     f = flux(im)
-    for (I, (x,y)) in pairs(DimPoints(im))
-        xx += x.^2*im[I]
-        yy += y.^2*im[I]
-        xy += x.*y.*im[I]
+    for (I, (x, y)) in pairs(DimPoints(im))
+        xx += x .^ 2 * im[I]
+        yy += y .^ 2 * im[I]
+        xy += x .* y .* im[I]
     end
 
     if center
         x0, y0 = centroid(im)
-        xx = xx./f - x0.^2
-        yy = yy./f - y0.^2
-        xy = xy./f - x0.*y0
+        xx = xx ./ f - x0 .^ 2
+        yy = yy ./ f - y0 .^ 2
+        xy = xy ./ f - x0 .* y0
     else
-        xx = xx./f
-        yy = yy./f
-        xy = xy./f
+        xx = xx ./ f
+        yy = yy ./ f
+        xy = xy ./ f
     end
 
     return @SMatrix [xx xy; xy yy]
