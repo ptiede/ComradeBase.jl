@@ -248,7 +248,6 @@ function pixelsizes(keys::AbstractRectiGrid)
     return (X=step(x), Y=step(y))
 end
 
-EnzymeRules.inactive_type(::Type{<:RectiGrid}) = true
 
 struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
     dims::D
@@ -260,6 +259,9 @@ struct RectiGrid{D, E, Hd<:AbstractHeader} <: AbstractRectiGrid{D, E}
     end
 
 end
+
+EnzymeRules.inactive_type(::Type{<:RectiGrid}) = true
+
 
 function domainpoints(d::RectiGrid{D, Hd}) where {D, Hd}
     g = map(basedim, dims(d))
@@ -400,8 +402,8 @@ function domainpoints(d::UnstructuredDomain)
     return getfield(d, :dims)
 end
 
-#This function helps us to lookup UnstructuredDomain at a particular Ti or Fr 
-#visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work. 
+#This function helps us to lookup UnstructuredDomain at a particular Ti or Fr
+#visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work.
 function Base.getindex(domain::UnstructuredDomain; Ti=nothing, Fr=nothing)
     points = domainpoints(domain)
     indices = if Ti !== nothing && Fr !== nothing
