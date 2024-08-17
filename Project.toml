@@ -1,7 +1,7 @@
 name = "ComradeBase"
 uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.8.0"
+version = "0.8.1"
 
 [deps]
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
@@ -26,7 +26,7 @@ DimensionalData = "0.27"
 DocStringExtensions = "0.8, 0.9"
 Enzyme = "0.12"
 EnzymeCore = "0.6, 0.7"
-OhMyThreads = "0.5"
+OhMyThreads = "0.5, 0.6"
 PolarizedTypes = "0.1"
 PrecompileTools = "1"
 Reexport = "1"
