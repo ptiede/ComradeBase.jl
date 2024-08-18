@@ -61,6 +61,9 @@ DD.name(img::IntensityMap) = getfield(img, :name)
 DD.metadata(img::IntensityMap) = header(axisdims(img))
 executor(img::IntensityMap) = executor(axisdims(img))
 
+# TODO add this to DimensionalData directly
+EnzymeRules.inactive(::typeof(DD.comparedims), args...) = nothing
+
 # For the `IntensityMap` nothing is AD-able except the data so
 # let's tell Enzyme this
 EnzymeRules.inactive(::typeof(DD.dims), ::IntensityMap) = nothing
