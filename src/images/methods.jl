@@ -1,8 +1,8 @@
 """
     domainpoints(k::IntensityMap)
 
-Returns the grid the `IntensityMap` is defined as. Note that this is unallocating
-since it lazily computes the grid. The grid is an example of a DimArray and works similarly.
+Returns the grid the `IntensityMap` is defined as. Note that this is nonallocating
+since it lazily computes the grid.
 This is useful for broadcasting a model across an abritrary grid.
 """
 domainpoints(img::IntensityMap) = domainpoints(axisdims(img))

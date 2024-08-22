@@ -64,6 +64,12 @@ executor(img::IntensityMap) = executor(axisdims(img))
 # TODO add this to DimensionalData directly
 EnzymeRules.inactive(::typeof(DD.comparedims), args...) = nothing
 
+# We need this to make sure IntensityMap works correctly on the GPU
+function Base.copyto!(dest::IntensityMap, bc::Broadcast.Broadcasted)
+    copyto!(baseimage(dest), bc)
+    return dest
+end
+
 # For the `IntensityMap` nothing is AD-able except the data so
 # let's tell Enzyme this
 EnzymeRules.inactive(::typeof(DD.dims), ::IntensityMap) = nothing
@@ -131,6 +137,7 @@ axisdims(img::IntensityMap) = getfield(img, :grid)
 axisdims(img::IntensityMap, p::Symbol) = getproperty(axisdims(img), p)
 EnzymeRules.inactive(::typeof(axisdims), args...) = nothing
 named_dims(img::IntensityMap) = named_dims(axisdims(img))
+
 
 """
     header(img::IntensityMap)
