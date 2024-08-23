@@ -65,7 +65,7 @@ executor(img::IntensityMap) = executor(axisdims(img))
 EnzymeRules.inactive(::typeof(DD.comparedims), args...) = nothing
 
 # We need this to make sure IntensityMap works correctly on the GPU
-function Base.copyto!(dest::IntensityMap, bc::Broadcast.Broadcasted)
+function Base.copyto!(dest::DimensionalData.AbstractDimArray, bc::Broadcast.Broadcasted)
     copyto!(baseimage(dest), bc)
     return dest
 end

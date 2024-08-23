@@ -15,12 +15,12 @@ function ComradeBase.allocate_map(::Type{<:StructArray{T}}, g::UnstructuredDomai
 end
 
 
-function allocate_map(::Type{<:AbstractArray{T}}, g::ComradeBase.AbstractRectiGrid{D, <: Backend}) where {T, D}
-    executor = executor(g)
-    return IntensityMap(allocate(executor, T, size(g)), g)
+function ComradeBase.allocate_map(::Type{<:AbstractArray{T}}, g::ComradeBase.AbstractRectiGrid{D, <: Backend}) where {T, D}
+    exec = executor(g)
+    return IntensityMap(allocate(exec, T, size(g)), g)
 end
 
-function allocate_map(::Type{<:StructArray{T}}, g::ComradeBase.AbstractRectiGrid{D, <: Backend}) where {T, D}
+function ComradeBase.allocate_map(::Type{<:StructArray{T}}, g::ComradeBase.AbstractRectiGrid{D, <: Backend}) where {T, D}
     exec = executor(g)
     arrs = StructArrays.buildfromschema(x->allocate(exec, x, size(g)), T)
     return IntensityMap(arrs, g)
