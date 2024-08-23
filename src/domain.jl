@@ -219,7 +219,6 @@ function allocate_map(M::Type{<:AbstractArray}, g::AbstractRectiGrid)
     return IntensityMap(similar(M, size(g)), g)
 end
 
-
 function fieldofview(dims::AbstractRectiGrid)
     (; X, Y) = dims
     dx = step(X)

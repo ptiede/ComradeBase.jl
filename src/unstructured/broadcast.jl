@@ -1,4 +1,5 @@
-using Base.Broadcast: Broadcasted, BroadcastStyle, AbstractArrayStyle, DefaultArrayStyle, Style
+using Base.Broadcast: Broadcasted, BroadcastStyle, AbstractArrayStyle, DefaultArrayStyle,
+                      Style
 
 Base.BroadcastStyle(::Type{<:UnstructuredMap}) = Broadcast.ArrayStyle{UnstructuredMap}()
 function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{UnstructuredMap}},
@@ -31,15 +32,10 @@ end
 # return UnstructuredMap(similar(parent(sarr), ElType), axisdims(sarr))
 # end
 
-
-
 function Base.copyto!(dest::UnstructuredMap, bc::Broadcast.Broadcasted)
     copyto!(baseimage(dest), bc)
     return dest
 end
-
-
-
 
 find_ustr(bc::Broadcasted) = find_ustr(bc.args)
 find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
