@@ -39,26 +39,6 @@ function Base.similar(m::UnstructuredMap, ::Type{S}) where {S}
     return UnstructuredMap(similar(parent(m), S), axisdims(m))
 end
 
-Base.BroadcastStyle(::Type{<:UnstructuredMap}) = Broadcast.ArrayStyle{UnstructuredMap}()
-function Base.similar(bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{UnstructuredMap}},
-                      ::Type{ElType}) where {ElType}
-    # Scan inputs for the time and sites
-    sarr = find_ustr(bc)
-    return UnstructuredMap(similar(parent(sarr), ElType), axisdims(sarr))
-end
-
-find_ustr(bc::Broadcast.Broadcasted) = find_ustr(bc.args)
-find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
-find_ustr(x) = x
-find_ustr(::Tuple{}) = nothing
-find_ustr(x::UnstructuredMap, rest) = x
-find_ustr(::Any, rest) = find_ustr(rest)
-
-domainpoints(x::UnstructuredMap) = domainpoints(axisdims(x))
-
-Base.propertynames(x::UnstructuredMap) = propertynames(axisdims(x))
-Base.getproperty(x::UnstructuredMap, s::Symbol) = getproperty(axisdims(x), s)
-
 function Base.view(x::UnstructuredMap, I)
     dims = axisdims(x)
     g = domainpoints(dims)
@@ -99,3 +79,5 @@ for s in schedulers
         end
     end
 end
+
+include("broadcast.jl")

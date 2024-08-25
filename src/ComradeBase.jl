@@ -20,7 +20,8 @@ export visibility,
 
 include("interface.jl")
 include("domain.jl")
-include("unstructured_map.jl")
+include("unstructured/domain.jl")
+include("unstructured/map.jl")
 include("images/images.jl")
 
 const FluxMap2{T,N,E} = Union{IntensityMap{T,N,<:Any,E},
