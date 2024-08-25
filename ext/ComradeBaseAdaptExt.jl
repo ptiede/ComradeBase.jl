@@ -5,13 +5,10 @@ using DimensionalData
 using Adapt
 
 function Adapt.adapt_structure(to, A::IntensityMap)
-    rebuild(A, 
-        Adapt.adapt_structure(to, parent(A)),
-        Adapt.adapt_structure(to, dims(A)),
-        Adapt.adapt_structure(to, refdims(A)),
-        DimensionalData.Name(name(A)),
-        Adapt.adapt_structure(to, metadata(A))
-    )
+    return IntensityMap(Adapt.adapt_structure(to, DimensionalData.data(A)),
+                        Adapt.adapt_structure(to, axisdims(A)),
+                        Adapt.adapt_structure(to, DimensionalData.refdims(A)),
+                        DimensionalData.Name(name(A)))
 end
 
 function Adapt.adapt_structure(to, A::UnstructuredMap)
@@ -19,11 +16,10 @@ function Adapt.adapt_structure(to, A::UnstructuredMap)
                            Adapt.adapt_structure(to, axisdims(A)))
 end
 
-function Adapt.adapt_structure(to, A::AbstractSingleDomain)
-    return UnstructuredDomain(Adapt.adapt_structure(to, dims(A)), 
-                              Adapt.adapt_structure(executor(A)), 
-                              Adapt.adapt_structure(header(A))
-                              )
+function Adapt.adapt_structure(to, A::ComradeBase.AbstractSingleDomain)
+    return rebuild(typeof(A), Adapt.adapt_structure(to, dims(A)),
+                   executor(A),
+                   header(A))
 end
 
 end
