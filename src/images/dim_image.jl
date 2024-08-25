@@ -66,11 +66,6 @@ EnzymeRules.inactive(::typeof(DD._broadcasted_dims), args...; kwargs...) = nothi
 EnzymeRules.inactive(::typeof(DD.Dimensions.comparedims), args...; kwargs...) = nothing
 EnzymeRules.inactive(::typeof(DD.Dimensions._comparedims), args...; kwargs...) = nothing
 
-# We need this to make sure IntensityMap works correctly on the GPU
-function Base.copyto!(dest::DimensionalData.AbstractDimArray, bc::Broadcast.Broadcasted)
-    copyto!(baseimage(dest), bc)
-    return dest
-end
 
 # For the `IntensityMap` nothing is AD-able except the data so
 # let's tell Enzyme this
