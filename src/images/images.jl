@@ -10,10 +10,10 @@ export flux, centroid, second_moment, named_axisdims, axisdims,
 include("methods.jl")
 
 """
-    intensitymap(model::AbstractModel, dims::AbstractSingleDomain)
+    intensitymap(model::AbstractModel, dims::AbstractDomain)
 
 Computes the intensity map or _image_ of the `model`. This returns an `IntensityMap` which
-is a `IntensityMap` with `dims` an [`AbstractSingleDomain`](@ref) as dimensions.
+is a `IntensityMap` with `dims` an [`AbstractDomain`](@ref) as dimensions.
 """
 @inline function intensitymap(s::M,
                               dims::AbstractDomain) where {M<:AbstractModel}
