@@ -125,8 +125,9 @@ centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
 
 function centroid(im::IntensityMap{T,2})::Tuple{T,T} where {T<:Real}
     f = flux(im)
+    d = domainpoints(im)
     # Grab the parent otherwise things don't work on the GPU (DD missing multiargument mapreduce)
-    cent = mapreduce(+, parent(im), DimPoints(im); init=SVector(zero(f), zero(f))) do I, (x,y)
+    cent = mapreduce(+, baseimage(im), d; init=SVector(zero(f), zero(f))) do I, (x,y)
         x0 = x .* I
         y0 = y .* I
         return SVector(x0, y0)
