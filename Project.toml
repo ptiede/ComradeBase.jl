@@ -27,7 +27,7 @@ ComradeBaseOhMyThreadsExt = "OhMyThreads"
 
 [compat]
 Adapt = "4"
-DimensionalData = "0.27"
+DimensionalData = "0.27, 0.28"
 DocStringExtensions = "0.8, 0.9"
 Enzyme = "0.12, 0.13"
 EnzymeCore = "0.6, 0.7"
