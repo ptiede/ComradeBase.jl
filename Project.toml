@@ -37,7 +37,7 @@ PolarizedTypes = "0.1"
 PrecompileTools = "1"
 Reexport = "1"
 StaticArrays = "1"
-StructArrays = "0.6"
+StructArrays = "0.6, 0.7"
 julia = "1.6"
 
 [extras]
