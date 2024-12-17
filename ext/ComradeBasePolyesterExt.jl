@@ -5,10 +5,9 @@ using Polyester: @batch
 const PolyThreads = ComradeBase.ThreadsEx{:Polyester}
 
 
-function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,
-                                                              <:ComradeBase.AbstractRectiGrid{D,
-                                                                                              <:PolyThreads}},
-                                            s::ComradeBase.AbstractModel) where {T,N,D}
+function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
+                                            s::ComradeBase.AbstractModel,
+                                            ::PolyThreads)
     dx, dy = ComradeBase.pixelsizes(img)
     g = ComradeBase.domainpoints(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
@@ -19,10 +18,9 @@ function ComradeBase.intensitymap_analytic!(img::IntensityMap{T,N,D,
     return nothing
 end
 
-function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,N,
-                                                                 <:ComradeBase.UnstructuredDomain{D,
-                                                                                                  <:PolyThreads}},
-                                            s::ComradeBase.AbstractModel) where {T,N,D}
+function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
+                                            s::ComradeBase.AbstractModel,
+                                            ::PolyThreads)
     g = ComradeBase.domainpoints(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     pimg = parent(img)
@@ -32,10 +30,9 @@ function ComradeBase.intensitymap_analytic!(img::UnstructuredMap{T,N,
     return nothing
 end
 
-function ComradeBase.visibilitymap_analytic!(vis::ComradeBase.FluxMap2{T,N,
-                                                                       <:ComradeBase.AbstractSingleDomain{<:Any,
-                                                                                                          <:PolyThreads}},
-                                             s::ComradeBase.AbstractModel) where {T,N}
+function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
+                                             s::ComradeBase.AbstractModel, 
+                                             ::PolyThreads)
     dims = axisdims(vis)
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
