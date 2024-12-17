@@ -29,7 +29,9 @@ function ComradeBase.allocate_map(::Type{<:StructArray{T}},
     return IntensityMap(arrs, g)
 end
 
-function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap, s::ComradeBase.AbstractModel, ::Backend)
+function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
+                                                     s::ComradeBase.AbstractModel,
+                                                     ::Backend)
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
     bimg = baseimage(img)
@@ -37,14 +39,18 @@ function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap, s::Comra
     return nothing
 end
 
-function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap, s::ComradeBase.AbstractModel, ::Backend)
+function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
+                                                     s::ComradeBase.AbstractModel,
+                                                     ::Backend)
     g = domainpoints(img)
     pvis = baseimage(vis)
     pvis .= intensity_point.(Ref(s), g)
     return nothing
 end
 
-function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2, s::ComradeBase.AbstractModel, ::Backend)
+function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
+                                                      s::ComradeBase.AbstractModel,
+                                                      ::Backend)
     g = domainpoints(vis)
     pvis = baseimage(vis)
     pvis .= visibility_point.(Ref(s), g)

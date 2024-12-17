@@ -45,4 +45,6 @@ end
 @inline intensitymap!(::IsAnalytic, img, m::AbstractModel) = intensitymap_analytic!(img, m)
 @inline intensitymap!(::NotAnalytic, img, m::AbstractModel) = intensitymap_numeric!(img, m)
 
-intensitymap_analytic!(img::IntensityMap, s::AbstractModel) = intensitymap_analytic_executor!(img, s, executor(img))
+function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
+    return intensitymap_analytic_executor!(img, s, executor(img))
+end

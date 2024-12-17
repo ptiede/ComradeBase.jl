@@ -173,7 +173,6 @@ end
     return rebuild(img, data, dims, refdims, name, metadata)
 end
 
-
 function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::Serial)
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
@@ -182,7 +181,8 @@ function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::
     return nothing
 end
 
-function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::ThreadsEx{S}) where {S}
+function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel,
+                                         ::ThreadsEx{S}) where {S}
     g = domainpoints(img)
     _threads_intensitymap!(img, s, g, Val(S))
     return nothing

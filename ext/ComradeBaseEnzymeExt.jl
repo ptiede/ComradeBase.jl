@@ -5,10 +5,9 @@ using Enzyme: @parallel
 
 const EnzymeThreads = ComradeBase.ThreadsEx{:Enzyme}
 
-function ComradeBase.intensitymap_analytic_executor!(
-                                            img::IntensityMap,
-                                            s::ComradeBase.AbstractModel, 
-                                            ::EnzymeThreads)
+function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
+                                                     s::ComradeBase.AbstractModel,
+                                                     ::EnzymeThreads)
     dx, dy = ComradeBase.pixelsizes(img)
     g = ComradeBase.domainpoints(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
@@ -20,8 +19,8 @@ function ComradeBase.intensitymap_analytic_executor!(
 end
 
 function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
-                                            s::ComradeBase.AbstractModel,
-                                            ::EnzymeThreads)
+                                                     s::ComradeBase.AbstractModel,
+                                                     ::EnzymeThreads)
     g = ComradeBase.domainpoints(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     pimg = parent(img)
@@ -32,8 +31,8 @@ function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
 end
 
 function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
-                                             s::ComradeBase.AbstractModel,
-                                             ::EnzymeThreads)
+                                                      s::ComradeBase.AbstractModel,
+                                                      ::EnzymeThreads)
     dims = axisdims(vis)
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)

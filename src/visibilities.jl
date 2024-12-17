@@ -37,7 +37,7 @@ function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
 end
 
 function visibilitymap_analytic!(vis, m::AbstractModel)
-    visibilitymap_analytic_executor!(vis, m, executor(vis))
+    return visibilitymap_analytic_executor!(vis, m, executor(vis))
 end
 
 function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
@@ -48,11 +48,9 @@ function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
     return nothing
 end
 
-
-
 function visibilitymap_analytic_executor!(vis::FluxMap2,
-                                 m::AbstractModel,
-                                 ::ThreadsEx{S}) where {S}
+                                          m::AbstractModel,
+                                          ::ThreadsEx{S}) where {S}
     d = axisdims(vis)
     g = domainpoints(d)
     _threads_visibilitymap!(parent(vis), m, g, Val(S))

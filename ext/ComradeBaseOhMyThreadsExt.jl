@@ -4,8 +4,8 @@ using ComradeBase
 using OhMyThreads
 
 function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
-                                            s::ComradeBase.AbstractModel,
-                                            executor::OhMyThreads.Scheduler)
+                                                     s::ComradeBase.AbstractModel,
+                                                     executor::OhMyThreads.Scheduler)
     dims = axisdims(img)
     dx = step(dims.X)
     dy = step(dims.Y)
@@ -19,8 +19,8 @@ function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
 end
 
 function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
-                                            s::ComradeBase.AbstractModel,
-                                            executor::OhMyThreads.Scheduler)
+                                                     s::ComradeBase.AbstractModel,
+                                                     executor::OhMyThreads.Scheduler)
     dims = axisdims(img)
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
@@ -32,8 +32,8 @@ function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
 end
 
 function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
-                                             s::ComradeBase.AbstractModel,
-                                             executor::OhMyThreads.Scheduler)
+                                                      s::ComradeBase.AbstractModel,
+                                                      executor::OhMyThreads.Scheduler)
     dims = axisdims(vis)
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
