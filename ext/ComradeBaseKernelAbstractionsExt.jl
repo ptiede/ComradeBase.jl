@@ -35,7 +35,7 @@ function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
     bimg = baseimage(img)
-    bimg .= intensity_point.(Ref(s), g) .* dx .* dy
+    bimg .= ComradeBase.intensity_point.(Ref(s), g) .* dx .* dy
     return nothing
 end
 
@@ -44,7 +44,7 @@ function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
                                                      ::Backend)
     g = domainpoints(img)
     pvis = baseimage(vis)
-    pvis .= intensity_point.(Ref(s), g)
+    pvis .= ComradeBase.intensity_point.(Ref(s), g)
     return nothing
 end
 
@@ -53,7 +53,7 @@ function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
                                                       ::Backend)
     g = domainpoints(vis)
     pvis = baseimage(vis)
-    pvis .= visibility_point.(Ref(s), g)
+    pvis .= ComradeBase.visibility_point.(Ref(s), g)
     return nothing
 end
 

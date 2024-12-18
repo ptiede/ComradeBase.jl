@@ -5,36 +5,33 @@ using Enzyme: @parallel
 
 const EnzymeThreads = ComradeBase.ThreadsEx{:Enzyme}
 
-function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
-                                                     s::ComradeBase.AbstractModel,
-                                                     ::EnzymeThreads)
+function ComradeBase._threads_intensitymap!(img::IntensityMap,
+                                                     s::ComradeBase.AbstractModel, g,
+                                                     ::Val{:Enzyme})
     dx, dy = ComradeBase.pixelsizes(img)
-    g = ComradeBase.domainpoints(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     pimg = parent(img)
-    @parallel for I in CartesianIndices(pimg)
+    @parallel for I in CartesianIndices(g)
         pimg[I] = f(g[I]) * dx * dy
     end
     return nothing
 end
 
-function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
-                                                     s::ComradeBase.AbstractModel,
-                                                     ::EnzymeThreads)
-    g = ComradeBase.domainpoints(img)
+function ComradeBase._threads_intensitymap!(img::UnstructuredMap,
+                                                     s::ComradeBase.AbstractModel, g,
+                                                     ::Val{:Enzyme})
     f = Base.Fix1(ComradeBase.intensity_point, s)
     pimg = parent(img)
-    @parallel for I in CartesianIndices(pimg)
+    @parallel for I in CartesianIndices(g)
         pimg[I] = f(g[I])
     end
     return nothing
 end
 
-function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
-                                                      s::ComradeBase.AbstractModel,
-                                                      ::EnzymeThreads)
-    dims = axisdims(vis)
-    g = domainpoints(dims)
+function ComradeBase._threads_visibilitymap!(vis,
+                                             s::ComradeBase.AbstractModel,
+                                             g,
+                                             ::Val{:Enzyme})
     f = Base.Fix1(ComradeBase.visibility_point, s)
     pvis = parent(vis)
     @parallel for I in CartesianIndices(g)
