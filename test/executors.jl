@@ -9,7 +9,6 @@ function testeximg(img, m, ex)
     @test img ≈ img2
 end
 
-
 function testexvis(img, m, ex)
     g = axisdims(img)
     d = DD.dims(g)
@@ -61,7 +60,6 @@ end
         testexvis(vis, m, CPU())
         testexvis(vis, m, ThreadsEx(:Enzyme))
         testexvis(vis, m, ThreadsEx(:Polyester))
-
     end
 
     @testset "UnstructuredDomain" begin
@@ -95,7 +93,6 @@ end
         testexvis(vis, m, CPU())
         testexvis(vis, m, ThreadsEx(:Enzyme))
         testexvis(vis, m, ThreadsEx(:Polyester))
-
     end
 end
 
