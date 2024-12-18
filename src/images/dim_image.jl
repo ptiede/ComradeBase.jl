@@ -173,17 +173,16 @@ end
     return rebuild(img, data, dims, refdims, name, metadata)
 end
 
-function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
+function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::Serial)
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
-    img .= intensity_point.(Ref(s), g) .* dx .* dy
+    bimg = baseimage(img)
+    bimg .= intensity_point.(Ref(s), g) .* dx .* dy
     return nothing
 end
 
-function intensitymap_analytic!(img::IntensityMap{T,N,D,
-                                                  <:ComradeBase.AbstractRectiGrid{D,
-                                                                                  <:ThreadsEx{S}}},
-                                s::AbstractModel) where {T,N,D,S}
+function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel,
+                                         ::ThreadsEx{S}) where {S}
     g = domainpoints(img)
     _threads_intensitymap!(img, s, g, Val(S))
     return nothing

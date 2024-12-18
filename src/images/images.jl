@@ -44,3 +44,7 @@ done. By default we use the `SequentialEx` which uses a single-core to construct
 end
 @inline intensitymap!(::IsAnalytic, img, m::AbstractModel) = intensitymap_analytic!(img, m)
 @inline intensitymap!(::NotAnalytic, img, m::AbstractModel) = intensitymap_numeric!(img, m)
+
+function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
+    return intensitymap_analytic_executor!(img, s, executor(img))
+end

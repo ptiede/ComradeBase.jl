@@ -41,6 +41,9 @@ end
         testeximg(img, m, DynamicScheduler())
         testeximg(img, m, StaticScheduler())
         testeximg(img, m, SerialScheduler())
+        testeximg(img, m, CPU())
+        testeximg(img, m, ThreadsEx(:Enzyme))
+        testeximg(img, m, ThreadsEx(:Polyester))
 
         puv = (U=range(-2.0, 2.0; length=128), V=range(-2.0, 2.0; length=64))
         vis = visibilitymap(m, RectiGrid(puv))
@@ -54,6 +57,9 @@ end
         testexvis(vis, m, DynamicScheduler())
         testexvis(vis, m, StaticScheduler())
         testexvis(vis, m, SerialScheduler())
+        testexvis(vis, m, CPU())
+        testexvis(vis, m, ThreadsEx(:Enzyme))
+        testexvis(vis, m, ThreadsEx(:Polyester))
     end
 
     @testset "UnstructuredDomain" begin
@@ -70,6 +76,9 @@ end
         testeximg(img, m, DynamicScheduler())
         testeximg(img, m, StaticScheduler())
         testeximg(img, m, SerialScheduler())
+        testeximg(img, m, CPU())
+        testeximg(img, m, ThreadsEx(:Enzyme))
+        testeximg(img, m, ThreadsEx(:Polyester))
 
         vis = visibilitymap(m, UnstructuredDomain(puv))
         vis0 = copy(vis)
@@ -81,6 +90,9 @@ end
         testexvis(vis, m, DynamicScheduler())
         testexvis(vis, m, StaticScheduler())
         testexvis(vis, m, SerialScheduler())
+        testexvis(vis, m, CPU())
+        testexvis(vis, m, ThreadsEx(:Enzyme))
+        testexvis(vis, m, ThreadsEx(:Polyester))
     end
 end
 

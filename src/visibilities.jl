@@ -37,17 +37,20 @@ function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
 end
 
 function visibilitymap_analytic!(vis, m::AbstractModel)
+    return visibilitymap_analytic_executor!(vis, m, executor(vis))
+end
+
+function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
     d = axisdims(vis)
     g = domainpoints(d)
-    pvis = parent(vis)
+    pvis = baseimage(vis)
     pvis .= visibility_point.(Ref(m), g)
     return nothing
 end
 
-function visibilitymap_analytic!(vis::FluxMap2{T,<:Any,
-                                               <:ComradeBase.AbstractSingleDomain{<:Any,
-                                                                                  <:ThreadsEx{S}}},
-                                 m::AbstractModel) where {T,S}
+function visibilitymap_analytic_executor!(vis::FluxMap2,
+                                          m::AbstractModel,
+                                          ::ThreadsEx{S}) where {S}
     d = axisdims(vis)
     g = domainpoints(d)
     _threads_visibilitymap!(parent(vis), m, g, Val(S))

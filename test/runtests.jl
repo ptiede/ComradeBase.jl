@@ -4,6 +4,8 @@ using Pyehtim
 using Test
 using OhMyThreads
 using Enzyme
+using KernelAbstractions
+using Polyester
 
 using FiniteDifferences
 # using ChainRulesCore
