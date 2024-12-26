@@ -257,9 +257,6 @@ function domainpoints(d::RectiGrid{D,Hd}) where {D,Hd}
     return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
 end
 
-function _format_dims(dg::Tuple)
-    return DD.format(dg)
-end
 
 Base.keys(g::RectiGrid) = map(name, dims(g))
 

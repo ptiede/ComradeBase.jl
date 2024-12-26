@@ -2,8 +2,6 @@ export ConstParam, TaylorSpectral, getparam, @unpack_params
 
 abstract type DomainParams end
 
-struct ConstParam <: DomainParams end
-
 abstract type FrequencyParams <: DomainParams end
 abstract type TimeParams <: DomainParams end
 
@@ -26,9 +24,6 @@ end
     return param
 end
 
-@inline function build_param(param::ConstParam, p)
-    return param
-end
 
 @inline function build_param(param::Any, p)
     return param
