@@ -1,5 +1,5 @@
 
-struct GaussTest{T} <: ComradeBase.AbstractModel 
+struct GaussTest{T} <: ComradeBase.AbstractModel
     a::T
 end
 # GaussTest() = GaussTest{Float64}()
@@ -10,8 +10,8 @@ ComradeBase.ispolarized(::Type{<:GaussTest}) = ComradeBase.NotPolarized()
 
 function ComradeBase.intensity_point(m::GaussTest, p)
     (; X, Y) = p
-    @unpack_params a = m(p) 
-    return exp(-(X^2 + Y^2)*inv(2*a^2)) / (2π*a)
+    @unpack_params a = m(p)
+    return exp(-(X^2 + Y^2) * inv(2 * a^2)) / (2π * a)
 end
 
 function ComradeBase.visibility_point(::GaussTest, p)
