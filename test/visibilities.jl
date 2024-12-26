@@ -15,7 +15,7 @@ function ComradeBase.intensity_point(m::GaussTest, p)
 end
 
 function ComradeBase.visibility_point(m::GaussTest, p)
-    (;U, V) = p 
+    (; U, V) = p
     @unpack_params a = m(p)
     return complex(exp(-2π^2 * a * (U^2 + V^2)))
 end
@@ -38,7 +38,7 @@ function ComradeBase.intensity_point(m::GaussTestNA, p)
 end
 
 function ComradeBase.visibility_point(m::GaussTestNA, p)
-    (;U, V) = p 
+    (; U, V) = p
     @unpack_params a = m(p)
     return complex(exp(-2π^2 * a * (U^2 + V^2)))
 end
@@ -97,14 +97,14 @@ end
 
 @testset "multidomain visibilities" begin
     m = GaussTest(TaylorSpectral(1.0, 1.0, 1.0))
-    x = range(-5.0, 5.0, length=512)
+    x = range(-5.0, 5.0; length=512)
     Fr = [1.0, 2.0]
-    g = RectiGrid((;X=x, Y=x, Fr=Fr))
+    g = RectiGrid((; X=x, Y=x, Fr=Fr))
     img = intensitymap(m, g)
 
     m2 = GaussTest(2.0)
-    img2 = intensitymap(m2, RectiGrid((;X=x, Y=x)))
-    @unpack_params a = m2((;Fr=2.0))
+    img2 = intensitymap(m2, RectiGrid((; X=x, Y=x)))
+    @unpack_params a = m2((; Fr=2.0))
     @test a ≈ 2.0
 
     @test img[Fr=2] ≈ img2
