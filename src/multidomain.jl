@@ -13,11 +13,11 @@ struct TaylorSpectral{P, T, F<:Real} <: FrequencyParams
     freq0::F
 end
 
-@inline function getparam(m::AbstractModel, s::Symbol, p)
+@inline function getparam(m, s::Symbol, p)
     ps = getproperty(m, s)
     return build_param(ps, p)
 end
-@inline function getparam(m::AbstractModel, ::Val{s}, p) where s
+@inline function getparam(m, ::Val{s}, p) where s
     return getparam(m, s, p)
 end
 
