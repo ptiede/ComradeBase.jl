@@ -80,12 +80,12 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     @test angle.(bispectrummap(m, g, g, g)) ≈ closure_phasemap(m, g, g, g)
 
     vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
-    @test vmappol  isa ComradeBase.UnstructuredMap
+    @test vmappol isa ComradeBase.UnstructuredMap
     @test eltype(vmappol) <: StokesParams
 
     gim = imagepixels(10.0, 10.0, 64, 64)
     imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
-    @test imgpol  isa ComradeBase.IntensityMap
+    @test imgpol isa ComradeBase.IntensityMap
     @test eltype(imgpol) <: StokesParams
 end
 
