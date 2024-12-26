@@ -22,8 +22,7 @@ end
 Computes the visibilities `vis` in place of the model `m` using the coordinates `p`. The coordinates `p`
 are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
 """
-@inline function visibilitymap!(vis,
-                                                            m::M) where {M<:AbstractModel}
+@inline function visibilitymap!(vis, m::M) where {M<:AbstractModel}
     return _visibilitymap!(visanalytic(M), vis, m)
 end
 @inline _visibilitymap!(::IsAnalytic, vis, m::AbstractModel) = visibilitymap_analytic!(vis,
