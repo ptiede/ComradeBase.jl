@@ -1,7 +1,7 @@
 name = "ComradeBase"
 uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.8.5"
+version = "0.8.6"
 
 [deps]
 DimensionalData = "0703355e-b756-11e9-17c0-8b28908087d0"
