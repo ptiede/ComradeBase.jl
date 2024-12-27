@@ -42,9 +42,9 @@ function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
     pvis = parent(vis)
-    @tasks for I in eachindex(pimg, g)
+    @tasks for I in eachindex(pvis, g)
         @set scheduler = executor
-        @inbounds pimg[I] = f(g[I])
+        @inbounds pvis[I] = f(g[I])
     end
     return nothing
 end
