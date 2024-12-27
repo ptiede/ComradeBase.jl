@@ -21,6 +21,10 @@ i.e. an expansion in log(Fr / freq0) where Fr is the frequency of the observatio
 
 The `N` in index defines the order of the Taylor expansion. If `index` is a `<:Real`
 then the expansion is of order 1.
+
+!!! warn
+    This feature is experimental and is not considered part of the public stable API.
+
 """
 TaylorSpectral(param, index::Real, freq0) = TaylorSpectral(param, (index,), freq0)
 
@@ -31,6 +35,10 @@ Gets the parameter value `s` from the model `m` evaluated at the domain `p`.
 This is similar to getproperty, but allows for the parameter to be a function of the 
 domain. Essentially is `m.s <: DomainParams` then `m.s` is evaluated at the parameter `p`.
 If `m.s` is not a subtype of `DomainParams` then `m.s` is returned.
+
+!!! warn
+    This feature is experimental and is not considered part of the public stable API.
+
 """
 @inline function getparam(m, s::Symbol, p)
     ps = getproperty(m, s)
@@ -63,6 +71,10 @@ b = getparam(m, :b, p)
 ```
 For any model that may depend on a `DomainParams` type this macro should be used to 
 extract the parameters. 
+
+!!! warn
+    This feature is experimental and is not considered part of the public stable API.
+
 """
 macro unpack_params(args)
     args.head != :(=) &&
