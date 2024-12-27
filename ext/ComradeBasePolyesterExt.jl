@@ -33,7 +33,7 @@ function ComradeBase._threads_visibilitymap!(vis,
                                              ::Val{:Polyester})
     f = Base.Fix1(ComradeBase.visibility_point, s)
     pvis = parent(vis)
-    @batch for I in eachindex(pimg)
+    @batch for I in eachindex(pvis)
         @inbounds pvis[I] = f(g[I])
     end
     return nothing
