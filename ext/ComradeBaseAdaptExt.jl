@@ -23,9 +23,9 @@ function Adapt.adapt_structure(to, A::ComradeBase.AbstractSingleDomain)
 end
 
 function Adapt.adapt_structure(to, A::ComradeBase.LazySlice)
-    return ComradeBase.LazySlice(Adapt.adapt_structure(to, A.slice), 
-                     A.dir,
-                     A.dims)
+    return ComradeBase.LazySlice(Adapt.adapt_structure(to, A.slice),
+                                 A.dir,
+                                 A.dims)
 end
 
 end

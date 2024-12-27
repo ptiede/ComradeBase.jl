@@ -5,7 +5,7 @@ abstract type DomainParams end
 abstract type FrequencyParams <: DomainParams end
 abstract type TimeParams <: DomainParams end
 
-struct TaylorSpectral{P,T,F<:Real} <: FrequencyParams
+struct TaylorSpectral{N,P,T<:NTuple{N},F<:Real} <: FrequencyParams
     param::P
     index::T
     freq0::F
@@ -19,8 +19,10 @@ end
     return getparam(m, s, p)
 end
 
-@fastmath @inline function build_param(model::TaylorSpectral, p)
-    param = model.param * (p.Fr / model.freq0)^model.index
+@fastmath @inline function build_param(model::TaylorSpectral{N}, p) where {N}
+    lf = log(p.Fr / model.freq0)
+    arg = reduce(+, ntuple(n -> @inbounds(model.index[n]) * lf^n, Val(N)))
+    param = model.param * exp(arg)
     return param
 end
 
