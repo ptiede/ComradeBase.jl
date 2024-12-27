@@ -10,6 +10,7 @@ struct TaylorSpectral{N,P,T<:NTuple{N},F<:Real} <: FrequencyParams
     index::T
     freq0::F
 end
+TaylorSpectral(param, index::Real, freq0) = TaylorSpectral(param, (index,), freq0)
 
 @inline function getparam(m, s::Symbol, p)
     ps = getproperty(m, s)
