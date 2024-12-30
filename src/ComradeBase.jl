@@ -20,7 +20,6 @@ export visibility,
 
 include("interface.jl")
 include("domain.jl")
-include("multidomain.jl")
 include("unstructured/domain.jl")
 include("unstructured/map.jl")
 include("images/images.jl")
