@@ -24,7 +24,7 @@ end
     v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
-    m = GaussTest(0.5)
+    m = GaussTest()
 
     @test ThreadsEx() === ThreadsEx(:dynamic)
 
@@ -101,7 +101,7 @@ end
     v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
-    m = GaussTestNA(0.5)
+    m = GaussTestNA()
 
     @test ThreadsEx() === ThreadsEx(:dynamic)
 
@@ -153,7 +153,7 @@ end
     v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
-    m = GaussTest(0.5)
+    m = GaussTest()
 
     pim = (; X=range(-10.0, 10.0; length=64), Y=range(-10.0, 10.0; length=64))
     gim = RectiGrid(pim)

@@ -1,8 +1,7 @@
 
 struct GaussTest{T} <: ComradeBase.AbstractModel
-    a::T
 end
-# GaussTest() = GaussTest{Float64}()
+GaussTest() = GaussTest{Float64}()
 
 ComradeBase.visanalytic(::Type{<:GaussTest}) = ComradeBase.IsAnalytic()
 ComradeBase.imanalytic(::Type{<:GaussTest}) = ComradeBase.IsAnalytic()
@@ -10,22 +9,20 @@ ComradeBase.ispolarized(::Type{<:GaussTest}) = ComradeBase.NotPolarized()
 
 function ComradeBase.intensity_point(m::GaussTest, p)
     (; X, Y) = p
-    @unpack_params a = m(p)
-    return exp(-(X^2 + Y^2) * inv(2 * a^2)) / (2π * a)
+    return exp(-(X^2 + Y^2) * inv(2)) / (2π)
 end
 
 function ComradeBase.visibility_point(m::GaussTest, p)
     (; U, V) = p
-    @unpack_params a = m(p)
-    return complex(exp(-2π^2 * a * (U^2 + V^2)))
+    return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
 ComradeBase.flux(::GaussTest{T}) where {T} = one(T)
 ComradeBase.radialextent(::GaussTest{T}) where {T} = 5 * one(T)
 
 struct GaussTestNA{T} <: ComradeBase.AbstractModel
-    a::T
 end
+GaussTestNA() = GaussTestNA{Float64}()
 
 ComradeBase.visanalytic(::Type{<:GaussTestNA}) = ComradeBase.NotAnalytic()
 ComradeBase.imanalytic(::Type{<:GaussTestNA}) = ComradeBase.NotAnalytic()
@@ -33,14 +30,12 @@ ComradeBase.ispolarized(::Type{<:GaussTestNA}) = ComradeBase.NotPolarized()
 
 function ComradeBase.intensity_point(m::GaussTestNA, p)
     (; X, Y) = p
-    @unpack_params a = m(p)
-    return exp(-(X^2 + Y^2) * inv(2 * a^2)) / (2π * a)
+    return exp(-(X^2 + Y^2) * inv(2)) / (2π)
 end
 
 function ComradeBase.visibility_point(m::GaussTestNA, p)
     (; U, V) = p
-    @unpack_params a = m(p)
-    return complex(exp(-2π^2 * a * (U^2 + V^2)))
+    return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
 # Fake it to for testing
@@ -70,7 +65,7 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
-    m = GaussTest(0.5)
+    m = GaussTest()
     p = (; U=u, V=v, Ti=ti, Fr=fr)
     g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
@@ -94,7 +89,7 @@ end
     v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
     fr = fill(230e9, 60)
-    m = GaussTestNA(0.5)
+    m = GaussTestNA()
     p = (; U=u, V=v, Ti=ti, Fr=fr)
     g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
