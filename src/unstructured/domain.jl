@@ -79,5 +79,5 @@ end
 
 create_map(array, g::UnstructuredDomain) = UnstructuredMap(array, g)
 function allocate_map(M::Type{<:AbstractArray{T}}, g::UnstructuredDomain) where {T}
-    return UnstructuredMap(similar(M, T, size(g)), g)
+    return UnstructuredMap(similar(M, size(g)), g)
 end

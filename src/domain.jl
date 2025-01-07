@@ -216,7 +216,7 @@ struct NoHeader <: AbstractHeader end
 abstract type AbstractRectiGrid{D,E} <: AbstractSingleDomain{D,E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
 function allocate_map(M::Type{<:AbstractArray{T}}, g::AbstractRectiGrid) where {T}
-    return IntensityMap(similar(M, T, size(g)), g)
+    return IntensityMap(similar(M, size(g)), g)
 end
 
 function fieldofview(dims::AbstractRectiGrid)
