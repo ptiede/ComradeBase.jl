@@ -168,7 +168,9 @@ Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 # Base.map(f, args, d::AbstractSingleDomain) = map(f, args, dims(d))
 # Base.map(f, d::AbstractSingleDomain, args) = rebuild(typeof(d), map(f, dims(d), args))
 
-abstract type AbstractHeader end
+const AMeta = DimensionalData.Dimension.Lookup.AbstractMetadata
+
+abstract type AbstractHeader{T,X} <: AMeta{T,X} end
 
 """
     MinimalHeader{T}
@@ -178,7 +180,7 @@ A minimal header type for ancillary image information.
 # Fields
 $(FIELDS)
 """
-struct MinimalHeader{T} <: AbstractHeader
+struct MinimalHeader{T} <: AbstractHeader{T, NamedTuple{(), Tuple{}}}
     """
     Common source name
     """
@@ -238,12 +240,12 @@ function pixelsizes(keys::AbstractRectiGrid)
     return (X=step(x), Y=step(y))
 end
 
-struct RectiGrid{D,E,Hd<:AbstractHeader} <: AbstractRectiGrid{D,E}
+struct RectiGrid{D,E,Hd<:AMeta} <: AbstractRectiGrid{D,E}
     dims::D
     executor::E
     header::Hd
     @inline function RectiGrid(dims::Tuple; executor=Serial(),
-                               header::AbstractHeader=NoHeader())
+                               header::AMeta=NoHeader())
         df = _format_dims(dims)
         return new{typeof(df),typeof(executor),typeof(header)}(df, executor, header)
     end
@@ -278,7 +280,7 @@ Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), key
 
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(dims::NamedTuple{Na,T}; executor=Serial(),
-                           header::AbstractHeader=NoHeader()) where {Na,N,
+                           header::AMeta=NoHeader()) where {Na,N,
                                                                      T<:NTuple{N,
                                                                                DD.Dimension}}
     return RectiGrid(values(dims); executor, header)
@@ -324,7 +326,7 @@ dims = RectiGrid((X = -5.0:0.1:5.0, Y = -4.0:0.1:4.0, Ti = [1.0, 1.5, 1.75], Fr 
 ```
 """
 @inline function RectiGrid(nt::NamedTuple; executor=Serial(),
-                           header::AbstractHeader=ComradeBase.NoHeader())
+                           header::AMeta=ComradeBase.NoHeader())
     dims = _make_dims(keys(nt), values(nt))
     return RectiGrid(dims; executor, header)
 end

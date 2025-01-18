@@ -3,7 +3,7 @@ const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)},<:NamedTuple{(:X, :Y, :F,
                         <:NamedTuple{(:X, :Y)}}
 
 # TODO make this play nice with dimensional data
-struct UnstructuredDomain{D,E,H<:AbstractHeader} <: AbstractSingleDomain{D,E}
+struct UnstructuredDomain{D,E,H<:AMeta} <: AbstractSingleDomain{D,E}
     dims::D
     executor::E
     header::H

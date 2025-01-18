@@ -7,7 +7,7 @@ function test_grid_interface(grid::ComradeBase.AbstractSingleDomain{D,E}) where 
     @inferred domainpoints(grid)
     @test typeof(DD.dims(grid)) == D
 
-    @test header(grid) isa ComradeBase.AbstractHeader
+    @test header(grid) isa ComradeBase.AMeta
     @test keys(grid) == propertynames(grid)
     @test ndims(grid) == ndims(domainpoints(grid))
 
