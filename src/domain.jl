@@ -168,7 +168,7 @@ Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 # Base.map(f, args, d::AbstractSingleDomain) = map(f, args, dims(d))
 # Base.map(f, d::AbstractSingleDomain, args) = rebuild(typeof(d), map(f, dims(d), args))
 
-const AMeta = DimensionalData.Dimension.Lookup.AbstractMetadata
+const AMeta = DimensionalData.Dimensions.Lookups.AbstractMetadata
 
 abstract type AbstractHeader{T,X} <: AMeta{T,X} end
 
@@ -213,7 +213,7 @@ end
 
 
 """
-struct NoHeader <: AbstractHeader end
+const NoHeader = DimensionalData.NoMetadata
 
 abstract type AbstractRectiGrid{D,E} <: AbstractSingleDomain{D,E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
