@@ -1,41 +1,41 @@
 
-struct GaussTest{T} <: ComradeBase.AbstractModel end
+struct GaussTest{T} <: ComradeBase.AbstractModel
+end
 GaussTest() = GaussTest{Float64}()
 
 ComradeBase.visanalytic(::Type{<:GaussTest}) = ComradeBase.IsAnalytic()
 ComradeBase.imanalytic(::Type{<:GaussTest}) = ComradeBase.IsAnalytic()
 ComradeBase.ispolarized(::Type{<:GaussTest}) = ComradeBase.NotPolarized()
 
-function ComradeBase.intensity_point(::GaussTest, p)
+function ComradeBase.intensity_point(m::GaussTest, p)
     (; X, Y) = p
-    return exp(-(X^2 + Y^2) / 2) / 2π
+    return exp(-(X^2 + Y^2) * inv(2)) / (2π)
 end
 
-function ComradeBase.visibility_point(::GaussTest, p)
-    u = p.U
-    v = p.V
-    return complex(exp(-2π^2 * (u^2 + v^2)))
+function ComradeBase.visibility_point(m::GaussTest, p)
+    (; U, V) = p
+    return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
 ComradeBase.flux(::GaussTest{T}) where {T} = one(T)
 ComradeBase.radialextent(::GaussTest{T}) where {T} = 5 * one(T)
 
-struct GaussTestNA{T} <: ComradeBase.AbstractModel end
+struct GaussTestNA{T} <: ComradeBase.AbstractModel
+end
 GaussTestNA() = GaussTestNA{Float64}()
 
 ComradeBase.visanalytic(::Type{<:GaussTestNA}) = ComradeBase.NotAnalytic()
 ComradeBase.imanalytic(::Type{<:GaussTestNA}) = ComradeBase.NotAnalytic()
 ComradeBase.ispolarized(::Type{<:GaussTestNA}) = ComradeBase.NotPolarized()
 
-function ComradeBase.intensity_point(::GaussTestNA, p)
+function ComradeBase.intensity_point(m::GaussTestNA, p)
     (; X, Y) = p
-    return exp(-(X^2 + Y^2) / 2) / 2π
+    return exp(-(X^2 + Y^2) * inv(2)) / (2π)
 end
 
-function ComradeBase.visibility_point(::GaussTestNA, p)
-    u = p.U
-    v = p.V
-    return complex(exp(-2π^2 * (u^2 + v^2)))
+function ComradeBase.visibility_point(m::GaussTestNA, p)
+    (; U, V) = p
+    return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
 # Fake it to for testing
@@ -73,6 +73,15 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     closure_phasemap(m, g, g, g)
     logclosure_amplitudemap(m, g, g, g, g)
     @test angle.(bispectrummap(m, g, g, g)) ≈ closure_phasemap(m, g, g, g)
+
+    vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
+    @test vmappol isa ComradeBase.UnstructuredMap
+    @test eltype(vmappol) <: StokesParams
+
+    gim = imagepixels(10.0, 10.0, 64, 64)
+    imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
+    @test imgpol isa ComradeBase.IntensityMap
+    @test eltype(imgpol) <: StokesParams
 end
 
 @testset "visibilities not analytic" begin

@@ -22,4 +22,10 @@ function Adapt.adapt_structure(to, A::ComradeBase.AbstractSingleDomain)
                    header(A))
 end
 
+function Adapt.adapt_structure(to, A::ComradeBase.LazySlice)
+    return ComradeBase.LazySlice(Adapt.adapt_structure(to, A.slice),
+                                 A.dir,
+                                 A.dims)
+end
+
 end

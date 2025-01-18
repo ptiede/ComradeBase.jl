@@ -217,7 +217,7 @@ struct NoHeader <: AbstractHeader end
 
 abstract type AbstractRectiGrid{D,E} <: AbstractSingleDomain{D,E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
-function allocate_map(M::Type{<:AbstractArray}, g::AbstractRectiGrid)
+function allocate_map(M::Type{<:AbstractArray{T}}, g::AbstractRectiGrid) where {T}
     return IntensityMap(similar(M, size(g)), g)
 end
 
@@ -246,7 +246,7 @@ struct RectiGrid{D,E,Hd<:AMeta} <: AbstractRectiGrid{D,E}
     header::Hd
     @inline function RectiGrid(dims::Tuple; executor=Serial(),
                                header::AMeta=NoHeader())
-        df = _format_dims(dims)
+        df = DD.format(dims)
         return new{typeof(df),typeof(executor),typeof(header)}(df, executor, header)
     end
 end
@@ -257,10 +257,6 @@ function domainpoints(d::RectiGrid{D,Hd}) where {D,Hd}
     g = map(basedim, dims(d))
     N = keys(d)
     return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
-end
-
-function _format_dims(dg::Tuple)
-    return DD.format(dg, map(eachindex, dg))
 end
 
 Base.keys(g::RectiGrid) = map(name, dims(g))

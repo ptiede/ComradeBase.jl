@@ -42,6 +42,8 @@ end
     test_grid_interface(grect)
     test_grid_interface(gustr)
 
+    @test fieldofview(grect) == (X=20.0 + step(prect.X), Y=20.0 + step(prect.Y))
+
     head = ComradeBase.MinimalHeader("M87", 90.0, 45, 21312, 230e9)
     g = RectiGrid(prect; header=head)
     @test header(g) == head

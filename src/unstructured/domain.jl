@@ -78,6 +78,6 @@ function Base.show(io::IO, mime::MIME"text/plain", x::UnstructuredDomain)
 end
 
 create_map(array, g::UnstructuredDomain) = UnstructuredMap(array, g)
-function allocate_map(M::Type{<:AbstractArray}, g::UnstructuredDomain)
+function allocate_map(M::Type{<:AbstractArray{T}}, g::UnstructuredDomain) where {T}
     return UnstructuredMap(similar(M, size(g)), g)
 end

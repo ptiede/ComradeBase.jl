@@ -18,12 +18,17 @@ struct LazySlice{T,N,A<:AbstractVector{T}} <: AbstractArray{T,N}
     end
 end
 
+@inline slice(A::LazySlice) = getfield(A, :slice)
 @inline Base.size(A::LazySlice) = A.dims
 Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T,N},
                                                         I::Vararg{Int,N}) where {T,N}
     i = I[A.dir]
-    @boundscheck checkbounds(A.slice, i)
-    return A.slice[i]
+    @boundscheck checkbounds(slice(A), i)
+    return @inline slice(A)[i]
+end
+
+function Base.Broadcast.BroadcastStyle(::Type{<:LazySlice{T,N,A}}) where {T,N,A}
+    return (Base.Broadcast.BroadcastStyle(A))
 end
 
 # The ntuple construction fails here (recursion limit?) so we use

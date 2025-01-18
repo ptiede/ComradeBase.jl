@@ -12,8 +12,11 @@ function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
     g = domainpoints(dims)
     pimg = parent(img)
     f = Base.Fix1(ComradeBase.intensity_point, s)
-    tforeach(CartesianIndices(pimg); scheduler=executor) do I
-        return pimg[I] = f(g[I]) * dx * dy
+
+    # TODO: Open issue on OhMyThreads to support CartesianIndices
+    @tasks for I in eachindex(pimg, g)
+        @set scheduler = executor
+        @inbounds pimg[I] = f(g[I]) * dx * dy
     end
     return nothing
 end
@@ -25,8 +28,9 @@ function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.intensity_point, s)
     pimg = parent(img)
-    tforeach(CartesianIndices(pimg); scheduler=executor) do I
-        return pimg[I] = f(g[I])
+    @tasks for I in eachindex(pimg, g)
+        @set scheduler = executor
+        @inbounds pimg[I] = f(g[I])
     end
     return nothing
 end
@@ -38,8 +42,9 @@ function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
     g = domainpoints(dims)
     f = Base.Fix1(ComradeBase.visibility_point, s)
     pvis = parent(vis)
-    tforeach(CartesianIndices(pvis); scheduler=executor) do I
-        return pvis[I] = f(g[I])
+    @tasks for I in eachindex(pvis, g)
+        @set scheduler = executor
+        @inbounds pvis[I] = f(g[I])
     end
     return nothing
 end
