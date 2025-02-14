@@ -1,4 +1,4 @@
-using ComradeBase, StaticArrays, JET
+using StokedBase, StaticArrays, JET
 using StructArrays
 using Pyehtim
 using Test
@@ -12,7 +12,7 @@ using FiniteDifferences
 # using ChainRulesTestUtils
 import DimensionalData as DD
 
-@testset "ComradeBase.jl" begin
+@testset "StokedBase.jl" begin
     include(joinpath(@__DIR__, "interface.jl"))
     include(joinpath(@__DIR__, "images.jl"))
     include(joinpath(@__DIR__, "visibilities.jl"))

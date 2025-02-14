@@ -22,7 +22,7 @@ Helper function that converts a model from something that compute polarized imag
 to just a single stokes parameter. This is useful if you just want to fit a single
 stokes parameter.
 """
-struct SingleStokes{M,S} <: ComradeBase.AbstractModel
+struct SingleStokes{M,S} <: StokedBase.AbstractModel
     model::M
 end
 SingleStokes(m::M, param::Symbol) where {M} = SingleStokes{M,param}(m)

@@ -12,7 +12,7 @@ export IntensityMap, Fr, X, Y, Ti, U, V
 """
     $(TYPEDEF)
 
-This type is the basic array type for all images and models that obey the `ComradeBase`
+This type is the basic array type for all images and models that obey the `StokedBase`
 interface. The type is a subtype of `DimensionalData.AbstractDimArray` however, we make
 a few changes to support the Comrade API.
 

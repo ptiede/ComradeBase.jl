@@ -247,7 +247,7 @@ function _visibilitymap! end
     visibilties_numeric(model, p)
 
 Computes the visibilties of a `model` using a numerical fourier transform. Note that
-none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
+none of these are implemented in `StokedBase`. For implementations please see `Comrade`.
 """
 function visibilitymap_numeric end
 
@@ -263,7 +263,7 @@ function visibilitymap_analytic end
     visibilties_numeric!(vis, model)
 
 Computes the visibilties of a `model` in-place using a numerical fourier transform. Note that
-none of these are implemented in `ComradeBase`. For implementations please see `Comrade`.
+none of these are implemented in `StokedBase`. For implementations please see `Comrade`.
 """
 function visibilitymap_numeric! end
 
