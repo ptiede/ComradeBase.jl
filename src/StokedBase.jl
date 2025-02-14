@@ -1,4 +1,4 @@
-module ComradeBase
+module StokedBase
 
 # using ChainRulesCore
 using EnzymeCore: EnzymeRules

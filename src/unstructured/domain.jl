@@ -12,7 +12,7 @@ end
 EnzymeRules.inactive_type(::Type{<:UnstructuredDomain}) = true
 
 """
-    UnstructuredDomain(dims::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader)
+    UnstructuredDomain(dims::NamedTuple; executor=Serial(), header=StokedBase.NoHeader)
 
 Builds an unstructured grid (really a vector of points) from the dimensions `dims`.
 The `executor` is used controls how the grid is computed when calling
@@ -36,7 +36,7 @@ Base.lastindex(d::UnstructuredDomain) = lastindex(dims(d))
 # Base.eltype(d::UnstructuredDomain) = Base.eltype(dims(d))
 
 function DD.rebuild(::Type{<:UnstructuredDomain}, g, executor=Serial(),
-                    header=ComradeBase.NoHeader())
+                    header=StokedBase.NoHeader())
     return UnstructuredDomain(g, executor, header)
 end
 

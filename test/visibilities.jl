@@ -1,64 +1,64 @@
 
-struct GaussTest{T} <: ComradeBase.AbstractModel
+struct GaussTest{T} <: StokedBase.AbstractModel
 end
 GaussTest() = GaussTest{Float64}()
 
-ComradeBase.visanalytic(::Type{<:GaussTest}) = ComradeBase.IsAnalytic()
-ComradeBase.imanalytic(::Type{<:GaussTest}) = ComradeBase.IsAnalytic()
-ComradeBase.ispolarized(::Type{<:GaussTest}) = ComradeBase.NotPolarized()
+StokedBase.visanalytic(::Type{<:GaussTest}) = StokedBase.IsAnalytic()
+StokedBase.imanalytic(::Type{<:GaussTest}) = StokedBase.IsAnalytic()
+StokedBase.ispolarized(::Type{<:GaussTest}) = StokedBase.NotPolarized()
 
-function ComradeBase.intensity_point(m::GaussTest, p)
+function StokedBase.intensity_point(m::GaussTest, p)
     (; X, Y) = p
     return exp(-(X^2 + Y^2) * inv(2)) / (2π)
 end
 
-function ComradeBase.visibility_point(m::GaussTest, p)
+function StokedBase.visibility_point(m::GaussTest, p)
     (; U, V) = p
     return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
-ComradeBase.flux(::GaussTest{T}) where {T} = one(T)
-ComradeBase.radialextent(::GaussTest{T}) where {T} = 5 * one(T)
+StokedBase.flux(::GaussTest{T}) where {T} = one(T)
+StokedBase.radialextent(::GaussTest{T}) where {T} = 5 * one(T)
 
-struct GaussTestNA{T} <: ComradeBase.AbstractModel
+struct GaussTestNA{T} <: StokedBase.AbstractModel
 end
 GaussTestNA() = GaussTestNA{Float64}()
 
-ComradeBase.visanalytic(::Type{<:GaussTestNA}) = ComradeBase.NotAnalytic()
-ComradeBase.imanalytic(::Type{<:GaussTestNA}) = ComradeBase.NotAnalytic()
-ComradeBase.ispolarized(::Type{<:GaussTestNA}) = ComradeBase.NotPolarized()
+StokedBase.visanalytic(::Type{<:GaussTestNA}) = StokedBase.NotAnalytic()
+StokedBase.imanalytic(::Type{<:GaussTestNA}) = StokedBase.NotAnalytic()
+StokedBase.ispolarized(::Type{<:GaussTestNA}) = StokedBase.NotPolarized()
 
-function ComradeBase.intensity_point(m::GaussTestNA, p)
+function StokedBase.intensity_point(m::GaussTestNA, p)
     (; X, Y) = p
     return exp(-(X^2 + Y^2) * inv(2)) / (2π)
 end
 
-function ComradeBase.visibility_point(m::GaussTestNA, p)
+function StokedBase.visibility_point(m::GaussTestNA, p)
     (; U, V) = p
     return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
 # Fake it to for testing
-function ComradeBase.intensitymap_numeric(m::GaussTestNA,
-                                          p::ComradeBase.AbstractSingleDomain)
-    return ComradeBase.intensitymap_analytic(m, p)
+function StokedBase.intensitymap_numeric(m::GaussTestNA,
+                                          p::StokedBase.AbstractSingleDomain)
+    return StokedBase.intensitymap_analytic(m, p)
 end
 
-function ComradeBase.intensitymap_numeric!(img, m::GaussTestNA)
-    return ComradeBase.intensitymap_analytic!(img, m)
+function StokedBase.intensitymap_numeric!(img, m::GaussTestNA)
+    return StokedBase.intensitymap_analytic!(img, m)
 end
 
-function ComradeBase.visibilitymap_numeric(m::GaussTestNA,
-                                           p::ComradeBase.AbstractSingleDomain)
-    return ComradeBase.visibilitymap_analytic(m, p)
+function StokedBase.visibilitymap_numeric(m::GaussTestNA,
+                                           p::StokedBase.AbstractSingleDomain)
+    return StokedBase.visibilitymap_analytic(m, p)
 end
 
-function ComradeBase.visibilitymap_numeric!(vis, m::GaussTestNA)
-    return ComradeBase.visibilitymap_analytic!(vis, m)
+function StokedBase.visibilitymap_numeric!(vis, m::GaussTestNA)
+    return StokedBase.visibilitymap_analytic!(vis, m)
 end
 
-ComradeBase.flux(::GaussTestNA{T}) where {T} = one(T)
-ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
+StokedBase.flux(::GaussTestNA{T}) where {T} = one(T)
+StokedBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
 
 @testset "visibilities" begin
     u = 0.1 * randn(60)
@@ -68,19 +68,19 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     m = GaussTest()
     p = (; U=u, V=v, Ti=ti, Fr=fr)
     g = UnstructuredDomain(p)
-    @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
-    @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
+    @test visibilitymap(m, g) ≈ StokedBase.visibilitymap_analytic(m, g)
+    @test amplitudemap(m, g) ≈ abs.(StokedBase.visibilitymap_analytic(m, g))
     closure_phasemap(m, g, g, g)
     logclosure_amplitudemap(m, g, g, g, g)
     @test angle.(bispectrummap(m, g, g, g)) ≈ closure_phasemap(m, g, g, g)
 
-    vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
-    @test vmappol isa ComradeBase.UnstructuredMap
+    vmappol = StokedBase.allocate_vismap(StokedBase.IsPolarized(), m, g)
+    @test vmappol isa StokedBase.UnstructuredMap
     @test eltype(vmappol) <: StokesParams
 
     gim = imagepixels(10.0, 10.0, 64, 64)
-    imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
-    @test imgpol isa ComradeBase.IntensityMap
+    imgpol = StokedBase.allocate_imgmap(StokedBase.IsPolarized(), m, gim)
+    @test imgpol isa StokedBase.IntensityMap
     @test eltype(imgpol) <: StokesParams
 end
 
@@ -92,8 +92,8 @@ end
     m = GaussTestNA()
     p = (; U=u, V=v, Ti=ti, Fr=fr)
     g = UnstructuredDomain(p)
-    @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
-    @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
+    @test visibilitymap(m, g) ≈ StokedBase.visibilitymap_analytic(m, g)
+    @test amplitudemap(m, g) ≈ abs.(StokedBase.visibilitymap_analytic(m, g))
     closure_phasemap(m, g, g, g)
     logclosure_amplitudemap(m, g, g, g, g)
     @test angle.(bispectrummap(m, g, g, g)) ≈ closure_phasemap(m, g, g, g)

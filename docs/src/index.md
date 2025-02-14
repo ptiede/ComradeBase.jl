@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = ComradeBase
+CurrentModule = StokedBase
 ```
 
-# ComradeBase
+# StokedBase
 
-Documentation for [ComradeBase](https://github.com/ptiede/ComradeBase.jl).
+Documentation for [StokedBase](https://github.com/ptiede/StokedBase.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [ComradeBase]
+Modules = [StokedBase]
 ```

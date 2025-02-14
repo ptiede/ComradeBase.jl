@@ -1,13 +1,13 @@
-function test_grid_interface(grid::ComradeBase.AbstractSingleDomain{D,E}) where {D,E}
+function test_grid_interface(grid::StokedBase.AbstractSingleDomain{D,E}) where {D,E}
     @test typeof(executor(grid)) == E
     arr = zeros(size(grid))
-    @inferred ComradeBase.create_map(arr, grid)
-    map = ComradeBase.create_map(arr, grid)
-    @test typeof(map) == typeof(ComradeBase.allocate_map(Array{eltype(arr)}, grid))
+    @inferred StokedBase.create_map(arr, grid)
+    map = StokedBase.create_map(arr, grid)
+    @test typeof(map) == typeof(StokedBase.allocate_map(Array{eltype(arr)}, grid))
     @inferred domainpoints(grid)
     @test typeof(DD.dims(grid)) == D
 
-    @test header(grid) isa ComradeBase.AMeta
+    @test header(grid) isa StokedBase.AMeta
     @test keys(grid) == propertynames(grid)
     @test ndims(grid) == ndims(domainpoints(grid))
 
@@ -44,7 +44,7 @@ end
 
     @test fieldofview(grect) == (X=20.0 + step(prect.X), Y=20.0 + step(prect.Y))
 
-    head = ComradeBase.MinimalHeader("M87", 90.0, 45, 21312, 230e9)
+    head = StokedBase.MinimalHeader("M87", 90.0, 45, 21312, 230e9)
     g = RectiGrid(prect; header=head)
     @test header(g) == head
 end
@@ -88,10 +88,10 @@ end
         subimg1 = img1[X=5:10, Y=1:20]
         nk = named_dims(subimg1)
         nnk = axisdims(subimg1)
-        @test nnk.X == ComradeBase.basedim(nk.X)
-        @test nnk.Y == ComradeBase.basedim(nk.Y)
-        @test ComradeBase.basedim(nk.X) == ComradeBase.basedim(x[5:10])
-        @test ComradeBase.basedim(nk.Y) == ComradeBase.basedim(y[1:20])
+        @test nnk.X == StokedBase.basedim(nk.X)
+        @test nnk.Y == StokedBase.basedim(nk.Y)
+        @test StokedBase.basedim(nk.X) == StokedBase.basedim(x[5:10])
+        @test StokedBase.basedim(nk.Y) == StokedBase.basedim(y[1:20])
     end
 
     @testset "keys" begin
@@ -169,7 +169,7 @@ end
 #     g = imagepixels(5.0, 10.0, 32, 24)
 #     img = IntensityMap(data, g)
 
-#     test_rrule(ComradeBase.baseimage, img)
+#     test_rrule(StokedBase.baseimage, img)
 # end
 
 @testset "UnstructuredMap" begin

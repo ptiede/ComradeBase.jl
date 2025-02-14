@@ -1,17 +1,17 @@
-module ComradeBaseOhMyThreadsExt
+module StokedBaseOhMyThreadsExt
 
-using ComradeBase
+using StokedBase
 using OhMyThreads
 
-function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
-                                                     s::ComradeBase.AbstractModel,
+function StokedBase.intensitymap_analytic_executor!(img::IntensityMap,
+                                                     s::StokedBase.AbstractModel,
                                                      executor::OhMyThreads.Scheduler)
     dims = axisdims(img)
     dx = step(dims.X)
     dy = step(dims.Y)
     g = domainpoints(dims)
     pimg = parent(img)
-    f = Base.Fix1(ComradeBase.intensity_point, s)
+    f = Base.Fix1(StokedBase.intensity_point, s)
 
     # TODO: Open issue on OhMyThreads to support CartesianIndices
     @tasks for I in eachindex(pimg, g)
@@ -21,12 +21,12 @@ function ComradeBase.intensitymap_analytic_executor!(img::IntensityMap,
     return nothing
 end
 
-function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
-                                                     s::ComradeBase.AbstractModel,
+function StokedBase.intensitymap_analytic_executor!(img::UnstructuredMap,
+                                                     s::StokedBase.AbstractModel,
                                                      executor::OhMyThreads.Scheduler)
     dims = axisdims(img)
     g = domainpoints(dims)
-    f = Base.Fix1(ComradeBase.intensity_point, s)
+    f = Base.Fix1(StokedBase.intensity_point, s)
     pimg = parent(img)
     @tasks for I in eachindex(pimg, g)
         @set scheduler = executor
@@ -35,12 +35,12 @@ function ComradeBase.intensitymap_analytic_executor!(img::UnstructuredMap,
     return nothing
 end
 
-function ComradeBase.visibilitymap_analytic_executor!(vis::ComradeBase.FluxMap2,
-                                                      s::ComradeBase.AbstractModel,
+function StokedBase.visibilitymap_analytic_executor!(vis::StokedBase.FluxMap2,
+                                                      s::StokedBase.AbstractModel,
                                                       executor::OhMyThreads.Scheduler)
     dims = axisdims(vis)
     g = domainpoints(dims)
-    f = Base.Fix1(ComradeBase.visibility_point, s)
+    f = Base.Fix1(StokedBase.visibility_point, s)
     pvis = parent(vis)
     @tasks for I in eachindex(pvis, g)
         @set scheduler = executor

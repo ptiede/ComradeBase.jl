@@ -96,7 +96,7 @@ EnzymeRules.inactive(::typeof(executor), args...) = nothing
 """
     dims(g::AbstractSingleDomain)
 
-Returns a tuple containing the dimensions of `g`. For a named version see [`ComradeBase.named_dims`](@ref)
+Returns a tuple containing the dimensions of `g`. For a named version see [`StokedBase.named_dims`](@ref)
 """
 DD.dims(g::AbstractSingleDomain) = getfield(g, :dims)
 # ChainRulesCore.@non_differentiable DD.dims(::AbstractSingleDomain)
@@ -290,8 +290,8 @@ end
 end
 
 """
-    RectiGrid(dims::NamedTuple{Na}; executor=Serial(), header=ComradeBase.NoHeader())
-    RectiGrid(dims::NTuple{N, <:DimensionalData.Dimension}; executor=Serial(), header=ComradeBase.NoHeader())
+    RectiGrid(dims::NamedTuple{Na}; executor=Serial(), header=StokedBase.NoHeader())
+    RectiGrid(dims::NTuple{N, <:DimensionalData.Dimension}; executor=Serial(), header=StokedBase.NoHeader())
 
 Creates a rectilinear grid of pixels with the dimensions `dims`. The dims can either be
 a named tuple of dimensions or a tuple of dimensions. The dimensions can be in any order
@@ -322,13 +322,13 @@ dims = RectiGrid((X = -5.0:0.1:5.0, Y = -4.0:0.1:4.0, Ti = [1.0, 1.5, 1.75], Fr 
 ```
 """
 @inline function RectiGrid(nt::NamedTuple; executor=Serial(),
-                           header::AMeta=ComradeBase.NoHeader())
+                           header::AMeta=StokedBase.NoHeader())
     dims = _make_dims(keys(nt), values(nt))
     return RectiGrid(dims; executor, header)
 end
 
 function DD.rebuild(::Type{<:RectiGrid}, g, executor=Serial(),
-                    header=ComradeBase.NoHeader())
+                    header=StokedBase.NoHeader())
     return RectiGrid(g; executor, header)
 end
 
