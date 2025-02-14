@@ -40,7 +40,7 @@ end
 
 # Fake it to for testing
 function StokedBase.intensitymap_numeric(m::GaussTestNA,
-                                          p::StokedBase.AbstractSingleDomain)
+                                         p::StokedBase.AbstractSingleDomain)
     return StokedBase.intensitymap_analytic(m, p)
 end
 
@@ -49,7 +49,7 @@ function StokedBase.intensitymap_numeric!(img, m::GaussTestNA)
 end
 
 function StokedBase.visibilitymap_numeric(m::GaussTestNA,
-                                           p::StokedBase.AbstractSingleDomain)
+                                          p::StokedBase.AbstractSingleDomain)
     return StokedBase.visibilitymap_analytic(m, p)
 end
 

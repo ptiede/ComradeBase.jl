@@ -180,7 +180,7 @@ A minimal header type for ancillary image information.
 # Fields
 $(FIELDS)
 """
-struct MinimalHeader{T} <: AbstractHeader{T, NamedTuple{(), Tuple{}}}
+struct MinimalHeader{T} <: AbstractHeader{T,NamedTuple{(),Tuple{}}}
     """
     Common source name
     """
@@ -277,8 +277,8 @@ Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), key
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(dims::NamedTuple{Na,T}; executor=Serial(),
                            header::AMeta=NoHeader()) where {Na,N,
-                                                                     T<:NTuple{N,
-                                                                               DD.Dimension}}
+                                                            T<:NTuple{N,
+                                                                      DD.Dimension}}
     return RectiGrid(values(dims); executor, header)
 end
 

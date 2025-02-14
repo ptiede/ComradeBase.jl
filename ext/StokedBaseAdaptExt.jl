@@ -24,8 +24,8 @@ end
 
 function Adapt.adapt_structure(to, A::StokedBase.LazySlice)
     return StokedBase.LazySlice(Adapt.adapt_structure(to, A.slice),
-                                 A.dir,
-                                 A.dims)
+                                A.dir,
+                                A.dims)
 end
 
 end

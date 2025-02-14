@@ -4,8 +4,8 @@ using StokedBase
 using OhMyThreads
 
 function StokedBase.intensitymap_analytic_executor!(img::IntensityMap,
-                                                     s::StokedBase.AbstractModel,
-                                                     executor::OhMyThreads.Scheduler)
+                                                    s::StokedBase.AbstractModel,
+                                                    executor::OhMyThreads.Scheduler)
     dims = axisdims(img)
     dx = step(dims.X)
     dy = step(dims.Y)
@@ -22,8 +22,8 @@ function StokedBase.intensitymap_analytic_executor!(img::IntensityMap,
 end
 
 function StokedBase.intensitymap_analytic_executor!(img::UnstructuredMap,
-                                                     s::StokedBase.AbstractModel,
-                                                     executor::OhMyThreads.Scheduler)
+                                                    s::StokedBase.AbstractModel,
+                                                    executor::OhMyThreads.Scheduler)
     dims = axisdims(img)
     g = domainpoints(dims)
     f = Base.Fix1(StokedBase.intensity_point, s)
@@ -36,8 +36,8 @@ function StokedBase.intensitymap_analytic_executor!(img::UnstructuredMap,
 end
 
 function StokedBase.visibilitymap_analytic_executor!(vis::StokedBase.FluxMap2,
-                                                      s::StokedBase.AbstractModel,
-                                                      executor::OhMyThreads.Scheduler)
+                                                     s::StokedBase.AbstractModel,
+                                                     executor::OhMyThreads.Scheduler)
     dims = axisdims(vis)
     g = domainpoints(dims)
     f = Base.Fix1(StokedBase.visibility_point, s)
