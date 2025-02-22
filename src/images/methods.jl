@@ -79,8 +79,10 @@ to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin ove
  - `executor=Serial()`: The executor to use for the grid, default is serial execution
  - `header=NoHeader()`: The header to use for the grid
 """
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real=0,
-                     y0::Real=0; executor=Serial(), header=NoHeader())
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer; 
+                     x0::Real=zero(fovx), y0::Real=zero(fovy), 
+                     posang::Real = zero(fovx),
+                     executor=Serial(), header=NoHeader())
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
     psizex = fovx / nx
@@ -88,7 +90,7 @@ function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer, x0::Real=
 
     xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
     yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
-    grid = RectiGrid((xitr, yitr); executor, header)
+    grid = RectiGrid((xitr, yitr); executor, header, posang)
     return grid
 end
 

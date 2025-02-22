@@ -8,6 +8,7 @@ using DocStringExtensions
 using StaticArrays
 using StructArrays
 using Reexport
+using Accessors: @set
 @reexport using PolarizedTypes
 using PrecompileTools
 
