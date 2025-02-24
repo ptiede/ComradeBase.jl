@@ -180,7 +180,7 @@ A minimal header type for ancillary image information.
 # Fields
 $(FIELDS)
 """
-struct MinimalHeader{T} <: AbstractHeader{T, NamedTuple{(), Tuple{}}}
+struct MinimalHeader{T} <: AbstractHeader{T,NamedTuple{(),Tuple{}}}
     """
     Common source name
     """
@@ -230,7 +230,6 @@ end
 
 @inline posang(d::AbstractRectiGrid) = getfield(d, :posang)
 
-
 """
     pixelsizes(img::IntensityMap)
     pixelsizes(img::AbstractRectiGrid)
@@ -251,7 +250,9 @@ struct RectiGrid{D,E,Hd<:AMeta,P} <: AbstractRectiGrid{D,E}
     @inline function RectiGrid(dims::Tuple; executor=Serial(),
                                header::AMeta=NoHeader(), posang=zero(eltype(first(dims))))
         df = DD.format(dims)
-        return new{typeof(df),typeof(executor),typeof(header), typeof(posang)}(df, executor, header, posang)
+        return new{typeof(df),typeof(executor),typeof(header),typeof(posang)}(df, executor,
+                                                                              header,
+                                                                              posang)
     end
 end
 
@@ -264,7 +265,7 @@ function domainpoints(d::RectiGrid{D,Hd}) where {D,Hd}
     return RotGrid(StructArray(NamedTuple{N}(_build_slices(g, size(d)))), s, c)
 end
 
-struct RotGrid{T, N, G<:AbstractArray{T,N}, P} <: AbstractArray{T,N}
+struct RotGrid{T,N,G<:AbstractArray{T,N},P} <: AbstractArray{T,N}
     grid::G
     pas::P
     pac::P
@@ -276,12 +277,11 @@ end
     return p2
 end
 
-
 Base.parent(g::RotGrid) = getfield(g, :grid)
 Base.getproperty(g::RotGrid, p::Symbol) = getproperty(parent(g), p)
 Base.propertynames(g::RotGrid) = propertynames(parent(g))
 Base.size(g::RotGrid) = size(parent(g))
-Base.IndexStyle(::Type{<:RotGrid{T, N, G}}) where {T,N,G}= Base.IndexStyle(G)
+Base.IndexStyle(::Type{<:RotGrid{T,N,G}}) where {T,N,G} = Base.IndexStyle(G)
 Base.firstindex(g::RotGrid) = firstindex(parent(g))
 Base.lastindex(g::RotGrid) = lastindex(parent(g))
 Base.axes(g::RotGrid) = axes(parent(g))
@@ -301,12 +301,10 @@ end
 # Use structarray broadcasting
 Base.BroadcastStyle(::Type{<:RotGrid{T,N,G}}) where {T,N,G} = Base.BroadcastStyle(G)
 
-
-
 @inline function _rotate(p, c, s)
-    X2 = c * p.X - s * p.Y
-    Y2 = s * p.X + c * p.Y
-    return update_xy(p, (;X=X2, Y=Y2))
+    X2 = c * p.X + s * p.Y
+    Y2 = -s * p.X + c * p.Y
+    return update_xy(p, (; X=X2, Y=Y2))
 end
 
 Base.keys(g::RectiGrid) = map(name, dims(g))
@@ -326,10 +324,11 @@ Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), key
 
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(dims::NamedTuple{Na,T}; executor=Serial(),
-                           header::AMeta=NoHeader()) where {Na,N,
-                                                                     T<:NTuple{N,
-                                                                               DD.Dimension}}
-    return RectiGrid(values(dims); executor, header)
+                           header::AMeta=NoHeader(),
+                           posang=zero(eltype(first(values(dims))))) where {Na,N,
+                                                                            T<:NTuple{N,
+                                                                                      DD.Dimension}}
+    return RectiGrid(values(dims); executor, header, posang)
 end
 
 @noinline function _make_dims(ks, vs)
@@ -372,14 +371,15 @@ dims = RectiGrid((X = -5.0:0.1:5.0, Y = -4.0:0.1:4.0, Ti = [1.0, 1.5, 1.75], Fr 
 ```
 """
 @inline function RectiGrid(nt::NamedTuple; executor=Serial(),
-                           header::AMeta=ComradeBase.NoHeader())
+                           header::AMeta=ComradeBase.NoHeader(),
+                           posang=zero(eltype(first(values(nt)))))
     dims = _make_dims(keys(nt), values(nt))
-    return RectiGrid(dims; executor, header)
+    return RectiGrid(dims; executor, header, posang)
 end
 
-function DD.rebuild(::Type{<:RectiGrid}, g, executor=Serial(),
-                    header=ComradeBase.NoHeader())
-    return RectiGrid(g; executor, header)
+function DD.rebuild(grid::RectiGrid, dims, executor=executor(grid),
+                    header=metadata(grid), posang=posang(grid))
+    return RectiGrid(dims; executor, header, posang)
 end
 
 # Define some helpful names for ease typing

@@ -60,7 +60,7 @@ phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
 # ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 """
-    imagepixels(fovx, fovy, nx, ny; x0=0, y0=0, executor=Serial(), header=NoHeader())
+    imagepixels(fovx, fovy, nx, ny; x0=0, y0=0, posang=0.0, executor=Serial(), header=NoHeader())
 
 Construct a grid of pixels with a field of view `fovx` and `fovy` and `nx` and `ny` pixels.
 This points are the pixel centers and the field of view goes from the edge of the first pixel
@@ -76,12 +76,13 @@ to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin ove
 ## Keyword Arguments:
  - `x0::Real=0`: The x-offset of the image
  - `y0::Real=0`: The y-offset of the image
+ - `posang::Real=0`: The position angle of the grid, relative to RA=0 axis.
  - `executor=Serial()`: The executor to use for the grid, default is serial execution
  - `header=NoHeader()`: The header to use for the grid
 """
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer; 
-                     x0::Real=zero(fovx), y0::Real=zero(fovy), 
-                     posang::Real = zero(fovx),
+function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer;
+                     x0::Real=zero(fovx), y0::Real=zero(fovy),
+                     posang::Real=zero(fovx),
                      executor=Serial(), header=NoHeader())
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
