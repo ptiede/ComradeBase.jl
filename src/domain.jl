@@ -1,7 +1,7 @@
 # In this file we will define our base image class. This is entirely based on
 export RectiGrid, UnstructuredDomain, domainpoints,
        named_dims, dims, header, axisdims, executor,
-       Serial, ThreadsEx, posang
+       posang, update_spat, rotmat
 
 abstract type AbstractDomain end
 abstract type AbstractSingleDomain{D,E} <: AbstractDomain end
