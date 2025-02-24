@@ -137,10 +137,6 @@ Base.iterate(d::AbstractSingleDomain, i::Int=1) = iterate(dims(d), i)
 # We return the eltype of the dimensions. Should we change this?
 Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 
-# These aren't needed and I am not sure if the semantics are what we actually want
-# Base.map(f, d::AbstractSingleDomain) = rebuild(typeof(d), map(f, dims(d)), executor(d), header(d))
-# Base.map(f, args, d::AbstractSingleDomain) = map(f, args, dims(d))
-# Base.map(f, d::AbstractSingleDomain, args) = rebuild(typeof(d), map(f, dims(d), args))
 
 const AMeta = DimensionalData.Dimensions.Lookups.AbstractMetadata
 

@@ -113,6 +113,12 @@ function DD.rebuild(grid::RectiGrid, dims, executor=executor(grid),
     return RectiGrid(dims; executor, header, posang)
 end
 
+function DD.rebuild(grid::RectiGrid; dims=dims(grid), executor=executor(grid),
+                    header=metadata(grid), posang=posang(grid))
+    return rebuild(grid, dims, executor, header, posang)
+end
+
+
 struct RotGrid{T,N,G<:AbstractArray{T,N},M} <: AbstractArray{T,N}
     grid::G
     rot::M

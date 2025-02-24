@@ -17,9 +17,7 @@ function Adapt.adapt_structure(to, A::UnstructuredMap)
 end
 
 function Adapt.adapt_structure(to, A::ComradeBase.AbstractSingleDomain)
-    return rebuild(typeof(A), Adapt.adapt_structure(to, dims(A)),
-                   executor(A),
-                   header(A))
+    return rebuild(A; dims=Adapt.adapt_structure(to, dims(A)))
 end
 
 function Adapt.adapt_structure(to, A::ComradeBase.LazySlice)
