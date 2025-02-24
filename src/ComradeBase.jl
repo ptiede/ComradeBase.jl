@@ -20,6 +20,7 @@ export visibility,
        named_dims
 
 include("interface.jl")
+include("executors.jl")
 include("domain.jl")
 include("unstructured/domain.jl")
 include("unstructured/map.jl")
