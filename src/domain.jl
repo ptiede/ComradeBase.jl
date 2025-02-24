@@ -123,8 +123,6 @@ function Base.keys(g::AbstractSingleDomain)
     throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
 end
 
-
-
 # We index the dimensions not the grid itself
 Base.getindex(d::AbstractSingleDomain, i::Int) = getindex(dims(d), i)
 
@@ -234,22 +232,28 @@ end
 
 EnzymeRules.inactive_type(::Type{<:RectiGrid}) = true
 
+function rotmat(d::RectiGrid)
+    s, c = sincos(posang(d))
+    r = (c, s, -s, c)
+    m = SMatrix{2,2,typeof(s),4}(r)
+    return m
+end
+
 function domainpoints(d::RectiGrid{D,Hd}) where {D,Hd}
     g = map(basedim, dims(d))
-    s, c = sincos(posang(d))
+    rot = rotmat(d)
     N = keys(d)
-    return RotGrid(StructArray(NamedTuple{N}(_build_slices(g, size(d)))), s, c)
+    return RotGrid(StructArray(NamedTuple{N}(_build_slices(g, size(d)))), rot)
 end
 
-struct RotGrid{T,N,G<:AbstractArray{T,N},P} <: AbstractArray{T,N}
+struct RotGrid{T,N,G<:AbstractArray{T,N},M} <: AbstractArray{T,N}
     grid::G
-    pas::P
-    pac::P
+    rot::M
 end
 
-@inline function update_xy(p::NamedTuple, xy)
-    p1 = @set p.X = xy.X
-    p2 = @set p1.Y = xy.Y
+@inline function update_spat(p::NamedTuple, x, y)
+    p1 = @set p[1] = x
+    p2 = @set p1[2] = y
     return p2
 end
 
@@ -261,27 +265,22 @@ Base.IndexStyle(::Type{<:RotGrid{T,N,G}}) where {T,N,G} = Base.IndexStyle(G)
 Base.firstindex(g::RotGrid) = firstindex(parent(g))
 Base.lastindex(g::RotGrid) = lastindex(parent(g))
 Base.axes(g::RotGrid) = axes(parent(g))
-@inline _pac(g) = getfield(g, :pac)
-@inline _pas(g) = getfield(g, :pas)
+rotmat(g::RotGrid) = getfield(g, :rot)
 
 Base.@propagate_inbounds function Base.getindex(g::RotGrid, i::Int)
     p = getindex(parent(g), i)
-    return _rotate(p, g.pac, g.pas)
+    pr = rotmat(g)*SVector(values(p)[1:2])
+    return update_spat(p, pr[1], pr[2])
 end
 
 Base.@propagate_inbounds function Base.getindex(g::RotGrid, I::Vararg{Int})
     p = getindex(parent(g), I...)
-    return _rotate(p, _pac(g), _pas(g))
+    pr = rotmat(g)*SVector(values(p)[1:2])
+    return update_spat(p, pr[1], pr[2])
 end
 
 # Use structarray broadcasting
 Base.BroadcastStyle(::Type{<:RotGrid{T,N,G}}) where {T,N,G} = Base.BroadcastStyle(G)
-
-@inline function _rotate(p, c, s)
-    X2 = c * p.X + s * p.Y
-    Y2 = -s * p.X + c * p.Y
-    return update_xy(p, (; X=X2, Y=Y2))
-end
 
 Base.keys(g::RectiGrid) = map(name, dims(g))
 

@@ -35,9 +35,9 @@ Base.lastindex(d::UnstructuredDomain) = lastindex(dims(d))
 # Base.front(d::UnstructuredDomain) = UnstructuredDomain(Base.front(StructArrays.components(dims(d))), executor=executor(d), header=header(d))
 # Base.eltype(d::UnstructuredDomain) = Base.eltype(dims(d))
 
-function DD.rebuild(::Type{<:UnstructuredDomain}, g, executor=Serial(),
-                    header=ComradeBase.NoHeader())
-    return UnstructuredDomain(g, executor, header)
+function DD.rebuild(grid::UnstructuredDomain, dims, executor=executor(grid),
+                    header=header(grid))
+    return UnstructuredDomain(dims, executor, header)
 end
 
 Base.propertynames(g::UnstructuredDomain) = propertynames(domainpoints(g))

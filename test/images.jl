@@ -46,7 +46,7 @@ end
 
     head = ComradeBase.MinimalHeader("M87", 90.0, 45, 21312, 230e9)
     g = RectiGrid(prect; header=head)
-    @test header(g) == head
+    @test header(g) === head
 end
 
 @testset "IntensityMap" begin

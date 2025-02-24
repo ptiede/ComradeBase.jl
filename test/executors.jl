@@ -2,7 +2,7 @@
 function testeximg(img, m, ex)
     g = axisdims(img)
     d = DD.dims(g)
-    gnew = DD.rebuild(typeof(g), d, ex)
+    gnew = DD.rebuild(g, d, ex)
     img2 = intensitymap(m, gnew)
     @test img ≈ img2
     intensitymap!(img2, m)
@@ -12,7 +12,7 @@ end
 function testexvis(img, m, ex)
     g = axisdims(img)
     d = DD.dims(g)
-    gnew = DD.rebuild(typeof(g), d, ex)
+    gnew = DD.rebuild(g, d, ex)
     img2 = visibilitymap(m, gnew)
     @test img ≈ img2
     visibilitymap!(img2, m)
