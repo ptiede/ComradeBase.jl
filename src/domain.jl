@@ -269,13 +269,13 @@ rotmat(g::RotGrid) = getfield(g, :rot)
 
 Base.@propagate_inbounds function Base.getindex(g::RotGrid, i::Int)
     p = getindex(parent(g), i)
-    pr = rotmat(g)*SVector(values(p)[1:2])
+    pr = rotmat(g) * SVector(values(p)[1:2])
     return update_spat(p, pr[1], pr[2])
 end
 
 Base.@propagate_inbounds function Base.getindex(g::RotGrid, I::Vararg{Int})
     p = getindex(parent(g), I...)
-    pr = rotmat(g)*SVector(values(p)[1:2])
+    pr = rotmat(g) * SVector(values(p)[1:2])
     return update_spat(p, pr[1], pr[2])
 end
 
@@ -314,12 +314,12 @@ end
 end
 
 """
-    RectiGrid(dims::NamedTuple{Na}; executor=Serial(), header=ComradeBase.NoHeader())
-    RectiGrid(dims::NTuple{N, <:DimensionalData.Dimension}; executor=Serial(), header=ComradeBase.NoHeader())
+    RectiGrid(dims::NamedTuple{Na}; executor=Serial(), header=ComradeBase.NoHeader(), posang=0.0)
+    RectiGrid(dims::NTuple{N, <:DimensionalData.Dimension}; executor=Serial(), header=ComradeBase.NoHeader(), posang=0.0)
 
-Creates a rectilinear grid of pixels with the dimensions `dims`. The dims can either be
-a named tuple of dimensions or a tuple of dimensions. The dimensions can be in any order
-however the standard orders are:
+Creates a rectilinear grid of pixels with the dimensions `dims`. The convention is that
+the first two dimension are the spatial dimensions `X` and `Y`. The remaining dimensions
+can be anything, for example:
   - (:X, :Y, :Ti, :Fr)
   - (:X, :Y, :Fr, :Ti)
   - (:X, :Y) # spatial only
@@ -337,6 +337,10 @@ a spatial grid.
     computations use [`ThreadsEx()`](@ref) or load `OhMyThreads.jl` to uses their schedulers.
  - `header`: specified underlying header information for the grid. This is used to store
     information about the image such as the source, RA and DEC, MJD.
+ - `posang`: specifies the position angle of the grid, relative to RA=0 axis. Note that when 
+             `posang != 0` the X and Y coordinate are relative to the rotated grid and not
+             the on sky RA and DEC orientation. To see the true on sky points you can access
+             them by calling `domainpoints(grid)`.
 
 ## Examples
 
