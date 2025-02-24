@@ -22,6 +22,7 @@ export visibility,
 include("interface.jl")
 include("executors.jl")
 include("domain.jl")
+include("rectigrid.jl")
 include("unstructured/domain.jl")
 include("unstructured/map.jl")
 include("images/images.jl")
