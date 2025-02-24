@@ -90,6 +90,10 @@ a spatial grid.
              the on sky RA and DEC orientation. To see the true on sky points you can access
              them by calling `domainpoints(grid)`.
 
+!!! warn
+    The `posang` argument and the overall rotation of the grid is currently experimental and
+    and may change abruptly in the future even on minor releases.
+
 ## Examples
 
 ```julia
