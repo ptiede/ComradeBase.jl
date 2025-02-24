@@ -1,7 +1,7 @@
 # In this file we will define our base image class. This is entirely based on
-export RectiGrid, UnstructuredDomain, domainpoints,
+export domainpoints,
        named_dims, dims, header, axisdims, executor,
-       Serial, ThreadsEx
+       posang, update_spat, rotmat
 
 abstract type AbstractDomain end
 abstract type AbstractSingleDomain{D,E} <: AbstractDomain end
@@ -123,32 +123,6 @@ function Base.keys(g::AbstractSingleDomain)
     throw(MethodError(Base.keys, "You must implement `Base.keys($(typeof(g)))`"))
 end
 
-"""
-    Serial()
-
-Uses serial execution when computing the intensitymap or visibilitymap
-"""
-struct Serial end
-
-"""
-    ThreadsEx(;scheduler::Symbol = :dynamic)
-
-Uses Julia's Threads @threads macro when computing the intensitymap or visibilitymap.
-You can choose from Julia's various schedulers by passing the scheduler as a parameter.
-The default is :dynamic, but it isn't considered part of the stable API and may change
-at any moment.
-"""
-struct ThreadsEx{S} end
-ThreadsEx() = ThreadsEx(:dynamic)
-ThreadsEx(s) = ThreadsEx{s}()
-
-#TODO can this be made nicer?
-@static if VERSION ≥ v"1.11"
-    const schedulers = (:(:dynamic), :(:static), :(:greedy))
-else
-    const schedulers = (:(:dynamic), :(:static))
-end
-
 # We index the dimensions not the grid itself
 Base.getindex(d::AbstractSingleDomain, i::Int) = getindex(dims(d), i)
 
@@ -180,7 +154,7 @@ A minimal header type for ancillary image information.
 # Fields
 $(FIELDS)
 """
-struct MinimalHeader{T} <: AbstractHeader{T, NamedTuple{(), Tuple{}}}
+struct MinimalHeader{T} <: AbstractHeader{T,NamedTuple{(),Tuple{}}}
     """
     Common source name
     """
@@ -228,6 +202,8 @@ function fieldofview(dims::AbstractRectiGrid)
     return (X=abs(last(X) - first(X)) + dx, Y=abs(last(Y) - first(Y)) + dy)
 end
 
+@inline posang(d::AbstractRectiGrid) = getfield(d, :posang)
+
 """
     pixelsizes(img::IntensityMap)
     pixelsizes(img::AbstractRectiGrid)
@@ -238,98 +214,6 @@ function pixelsizes(keys::AbstractRectiGrid)
     x = keys.X
     y = keys.Y
     return (X=step(x), Y=step(y))
-end
-
-struct RectiGrid{D,E,Hd<:AMeta} <: AbstractRectiGrid{D,E}
-    dims::D
-    executor::E
-    header::Hd
-    @inline function RectiGrid(dims::Tuple; executor=Serial(),
-                               header::AMeta=NoHeader())
-        df = DD.format(dims)
-        return new{typeof(df),typeof(executor),typeof(header)}(df, executor, header)
-    end
-end
-
-EnzymeRules.inactive_type(::Type{<:RectiGrid}) = true
-
-function domainpoints(d::RectiGrid{D,Hd}) where {D,Hd}
-    g = map(basedim, dims(d))
-    N = keys(d)
-    return StructArray(NamedTuple{N}(_build_slices(g, size(d))))
-end
-
-Base.keys(g::RectiGrid) = map(name, dims(g))
-
-@inline RectiGrid(g::RectiGrid) = g
-
-function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D,E}) where {D,E}
-    println(io, "RectiGrid(")
-    println(io, "executor: $(executor(x))")
-    println(io, "Dimensions: ")
-    show(io, mime, dims(x))
-    return print(io, "\n)")
-end
-
-Base.propertynames(d::RectiGrid) = keys(d)
-Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
-
-# This is needed to prevent doubling up on the dimension
-@inline function RectiGrid(dims::NamedTuple{Na,T}; executor=Serial(),
-                           header::AMeta=NoHeader()) where {Na,N,
-                                                                     T<:NTuple{N,
-                                                                               DD.Dimension}}
-    return RectiGrid(values(dims); executor, header)
-end
-
-@noinline function _make_dims(ks, vs)
-    ds = DD.name2dim(ks)
-    return map(ds, vs) do d, v
-        return DD.rebuild(d, v)
-    end
-end
-
-"""
-    RectiGrid(dims::NamedTuple{Na}; executor=Serial(), header=ComradeBase.NoHeader())
-    RectiGrid(dims::NTuple{N, <:DimensionalData.Dimension}; executor=Serial(), header=ComradeBase.NoHeader())
-
-Creates a rectilinear grid of pixels with the dimensions `dims`. The dims can either be
-a named tuple of dimensions or a tuple of dimensions. The dimensions can be in any order
-however the standard orders are:
-  - (:X, :Y, :Ti, :Fr)
-  - (:X, :Y, :Fr, :Ti)
-  - (:X, :Y) # spatial only
-
-where `X,Y` are the RA and DEC spatial dimensions respectively, `Ti` is the time dimension
-and `Fr` is the frequency dimension.
-
-Note that the majority of the time users should just call [`imagepixels`](@ref) to create
-a spatial grid.
-
-## Optional Arguments
-
- - `executor`: specifies how different models
-    are executed. The default is `Serial` which mean serial CPU computations. For threaded
-    computations use [`ThreadsEx()`](@ref) or load `OhMyThreads.jl` to uses their schedulers.
- - `header`: specified underlying header information for the grid. This is used to store
-    information about the image such as the source, RA and DEC, MJD.
-
-## Examples
-
-```julia
-dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([230, 345])); executor=ThreadsEx())
-dims = RectiGrid((X = -5.0:0.1:5.0, Y = -4.0:0.1:4.0, Ti = [1.0, 1.5, 1.75], Fr = [230, 345]); executor=ThreadsEx()))
-```
-"""
-@inline function RectiGrid(nt::NamedTuple; executor=Serial(),
-                           header::AMeta=ComradeBase.NoHeader())
-    dims = _make_dims(keys(nt), values(nt))
-    return RectiGrid(dims; executor, header)
-end
-
-function DD.rebuild(::Type{<:RectiGrid}, g, executor=Serial(),
-                    header=ComradeBase.NoHeader())
-    return RectiGrid(g; executor, header)
 end
 
 # Define some helpful names for ease typing
