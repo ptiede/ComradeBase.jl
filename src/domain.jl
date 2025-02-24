@@ -318,14 +318,14 @@ end
     RectiGrid(dims::NTuple{N, <:DimensionalData.Dimension}; executor=Serial(), header=ComradeBase.NoHeader(), posang=0.0)
 
 Creates a rectilinear grid of pixels with the dimensions `dims`. The convention is that
-the first two dimension are the spatial dimensions `X` and `Y`. The remaining dimensions
+the first two dimension are the spatial dimensions `X/U` and `Y/V`. The remaining dimensions
 can be anything, for example:
   - (:X, :Y, :Ti, :Fr)
   - (:X, :Y, :Fr, :Ti)
   - (:X, :Y) # spatial only
 
-where `X,Y` are the RA and DEC spatial dimensions respectively, `Ti` is the time dimension
-and `Fr` is the frequency dimension.
+where `X/U,Y/V` are the RA and DEC spatial dimensions in image/visibility space respectively, 
+`Ti` is the time dimension and `Fr` is the frequency dimension.
 
 Note that the majority of the time users should just call [`imagepixels`](@ref) to create
 a spatial grid.
