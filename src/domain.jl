@@ -216,7 +216,4 @@ function pixelsizes(keys::AbstractRectiGrid)
     return (X=step(x), Y=step(y))
 end
 
-
-
-
 # Define some helpful names for ease typing
