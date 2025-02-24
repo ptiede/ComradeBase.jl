@@ -1,3 +1,5 @@
+export UnstructuredDomain
+
 const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)},<:NamedTuple{(:X, :Y, :F, :T)},
                         <:NamedTuple{(:X, :Y, :T)},<:NamedTuple{(:X, :Y, :F)},
                         <:NamedTuple{(:X, :Y)}}
