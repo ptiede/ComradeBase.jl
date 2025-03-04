@@ -44,7 +44,10 @@ function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
     d = axisdims(vis)
     g = domainpoints(d)
     pvis = baseimage(vis)
-    pvis .= visibility_point.(Ref(m), g)
+    for i in eachindex(pvis, g)
+        pvis[i] = visibility_point(m, g[i])
+    end
+    # pvis .= visibility_point.(Ref(m), g)
     return nothing
 end
 
