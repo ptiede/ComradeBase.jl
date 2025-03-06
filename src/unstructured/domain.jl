@@ -43,10 +43,9 @@ function DD.rebuild(grid::UnstructuredDomain, dims, executor=executor(grid),
 end
 
 function DD.rebuild(grid::UnstructuredDomain; dims=dims(grid), executor=executor(grid),
-    header=header(grid))
+                    header=header(grid))
     return rebuild(grid, dims, executor, header)
 end
-
 
 Base.propertynames(g::UnstructuredDomain) = propertynames(domainpoints(g))
 Base.getproperty(g::UnstructuredDomain, p::Symbol) = getproperty(domainpoints(g), p)

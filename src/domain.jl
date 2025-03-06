@@ -137,7 +137,6 @@ Base.iterate(d::AbstractSingleDomain, i::Int=1) = iterate(dims(d), i)
 # We return the eltype of the dimensions. Should we change this?
 Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 
-
 const AMeta = DimensionalData.Dimensions.Lookups.AbstractMetadata
 
 abstract type AbstractHeader{T,X} <: AMeta{T,X} end
