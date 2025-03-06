@@ -177,7 +177,10 @@ function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
     bimg = baseimage(img)
-    bimg .= intensity_point.(Ref(s), g) .* dx .* dy
+    for I in eachindex(g, bimg)
+        bimg[I] = intensity_point(s, g[I]) * dx * dy
+    end
+    # bimg .= intensity_point.(Ref(s), g) .* dx .* dy
     return nothing
 end
 
