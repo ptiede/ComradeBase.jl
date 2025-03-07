@@ -82,7 +82,7 @@ function domainpoints end
 # We enforce that all grids are static for performance reasons
 # If this is not true please create a custom subtype
 # ChainRulesCore.@non_differentiable domainpoints(d::AbstractSingleDomain)
-# EnzymeRules.inactive(::typeof(domainpoints), args...) = nothing
+EnzymeRules.inactive(::typeof(domainpoints), args...) = nothing
 
 """
     executor(g::AbstractSingleDomain)
