@@ -1,4 +1,4 @@
-export RectiGrid
+export RectiGrid, refinespatial
 
 struct RectiGrid{D,E,Hd<:AMeta,P} <: AbstractRectiGrid{D,E}
     dims::D
@@ -117,6 +117,21 @@ function DD.rebuild(grid::RectiGrid; dims=dims(grid), executor=executor(grid),
                     header=metadata(grid), posang=posang(grid))
     return rebuild(grid, dims, executor, header, posang)
 end
+
+function refinespatial(g::RectiGrid, refac::NTuple{2})
+    ns = size(g)[1:2]
+    d = map(basedim, named_dims(g))
+    d2 = @set d.X.len = ceil(Int, ns[1]*refac[1])
+    d3 = @set d2.Y.len = ceil(Int, ns[2]*refac[2])
+    dn = dims(g)
+    dnn = @set dn[1] = X(d3.X)
+    dnn2 = @set dnn[2] = Y(d3.Y)
+    dnew = (dnn2[1:2]..., dn[3:end]...)
+    return rebuild(g; dims=dnew)
+end
+
+refinespatial(g::RectiGrid, refac::Number) = refinespatial(g, (refac,refac))
+
 
 struct RotGrid{T,N,G<:AbstractArray{T,N},M} <: AbstractArray{T,N}
     grid::G
