@@ -1,7 +1,7 @@
 function domain4d(N, Nt, Nf)
-    U_vals = range(-10e9, 10e9; length=N)
+    U_vals = range(-10.0e9, 10.0e9; length = N)
     U_vals = U_vals' .* ones(N)
-    V_vals = range(-10e9, 10e9; length=N)
+    V_vals = range(-10.0e9, 10.0e9; length = N)
     V_vals = V_vals' .* ones(N)
     U_vals = U_vals'
 
@@ -10,28 +10,36 @@ function domain4d(N, Nt, Nf)
     V_final = vec(V_vals)
 
     ti = sort(10 * rand(Nt))
-    fr = sort(1e11 * rand(Nf))
+    fr = sort(1.0e11 * rand(Nf))
 
     # Repeat U and V to match Ti dimensions
-    U_repeated = repeat(U_final; outer=(length(ti)))
-    V_repeated = repeat(V_final; outer=(length(ti)))
-    Ti_repeated = repeat(ti; inner=(Int(length(U_final))))
+    U_repeated = repeat(U_final; outer = (length(ti)))
+    V_repeated = repeat(V_final; outer = (length(ti)))
+    Ti_repeated = repeat(ti; inner = (Int(length(U_final))))
 
     # Repeat U and V and Ti to match Fr dimensions
-    U_repeated = repeat(U_repeated; outer=(length(fr)))
-    V_repeated = repeat(V_repeated; outer=(length(fr)))
-    Ti_repeated = repeat(Ti_repeated; outer=(length(fr)))
-    Fr_repeated = repeat(fr; inner=(Int(length(U_repeated) / length(fr))))
-    visdomain = UnstructuredDomain((; U=U_repeated, V=V_repeated, Ti=Ti_repeated,
-                                    Fr=Fr_repeated))
+    U_repeated = repeat(U_repeated; outer = (length(fr)))
+    V_repeated = repeat(V_repeated; outer = (length(fr)))
+    Ti_repeated = repeat(Ti_repeated; outer = (length(fr)))
+    Fr_repeated = repeat(fr; inner = (Int(length(U_repeated) / length(fr))))
+    visdomain = UnstructuredDomain(
+        (;
+            U = U_repeated, V = V_repeated, Ti = Ti_repeated,
+            Fr = Fr_repeated,
+        )
+    )
 
     C1 = true
     for ti_point in ti
         for fr_point in fr
-            f = visdomain[Ti=ti_point, Fr=fr_point]
-            g = UnstructuredDomain((; U=U_final, V=V_final,
-                                    Ti=vcat(fill(ti_point, length(U_final))),
-                                    Fr=vcat(fill(fr_point, length(U_final)))))
+            f = visdomain[Ti = ti_point, Fr = fr_point]
+            g = UnstructuredDomain(
+                (;
+                    U = U_final, V = V_final,
+                    Ti = vcat(fill(ti_point, length(U_final))),
+                    Fr = vcat(fill(fr_point, length(U_final))),
+                )
+            )
             C1 = C1 && (domainpoints(f) == domainpoints(g))
         end
     end
@@ -40,10 +48,14 @@ function domain4d(N, Nt, Nf)
     C2 = true
     for ti_point in ti
         for fr_point in fr
-            f = visdomain[Fr=fr_point, Ti=ti_point]
-            g = UnstructuredDomain((; U=U_final, V=V_final,
-                                    Ti=vcat(fill(ti_point, length(U_final))),
-                                    Fr=vcat(fill(fr_point, length(U_final)))))
+            f = visdomain[Fr = fr_point, Ti = ti_point]
+            g = UnstructuredDomain(
+                (;
+                    U = U_final, V = V_final,
+                    Ti = vcat(fill(ti_point, length(U_final))),
+                    Fr = vcat(fill(fr_point, length(U_final))),
+                )
+            )
             C2 = C2 && (domainpoints(f) == domainpoints(g))
         end
     end
@@ -52,9 +64,9 @@ function domain4d(N, Nt, Nf)
 end
 
 function domain3df(N, Nf)
-    U_vals = range(-10e9, 10e9; length=N)
+    U_vals = range(-10.0e9, 10.0e9; length = N)
     U_vals = U_vals' .* ones(N)
-    V_vals = range(-10e9, 10e9; length=N)
+    V_vals = range(-10.0e9, 10.0e9; length = N)
     V_vals = V_vals' .* ones(N)
     U_vals = U_vals'
 
@@ -62,20 +74,24 @@ function domain3df(N, Nf)
     U_final = vec(U_vals)
     V_final = vec(V_vals)
 
-    fr = sort(1e11 * rand(Nf))
+    fr = sort(1.0e11 * rand(Nf))
 
     # Repeat U and V to match Fr dimensions
-    U_repeated = repeat(U_final; outer=(length(fr)))
-    V_repeated = repeat(V_final; outer=(length(fr)))
-    Fr_repeated = repeat(fr; inner=(Int(length(U_final))))
+    U_repeated = repeat(U_final; outer = (length(fr)))
+    V_repeated = repeat(V_final; outer = (length(fr)))
+    Fr_repeated = repeat(fr; inner = (Int(length(U_final))))
 
-    visdomain = UnstructuredDomain((; U=U_repeated, V=V_repeated, Fr=Fr_repeated))
+    visdomain = UnstructuredDomain((; U = U_repeated, V = V_repeated, Fr = Fr_repeated))
 
     C = true
     for fr_point in fr
-        f = visdomain[Fr=fr_point]
-        g = UnstructuredDomain((; U=U_final, V=V_final,
-                                Fr=vcat(fill(fr_point, length(U_final)))))
+        f = visdomain[Fr = fr_point]
+        g = UnstructuredDomain(
+            (;
+                U = U_final, V = V_final,
+                Fr = vcat(fill(fr_point, length(U_final))),
+            )
+        )
         C = C && (domainpoints(f) == domainpoints(g))
     end
 
@@ -83,9 +99,9 @@ function domain3df(N, Nf)
 end
 
 function domain3dt(N, Nt)
-    U_vals = range(-10e9, 10e9; length=N)
+    U_vals = range(-10.0e9, 10.0e9; length = N)
     U_vals = U_vals' .* ones(N)
-    V_vals = range(-10e9, 10e9; length=N)
+    V_vals = range(-10.0e9, 10.0e9; length = N)
     V_vals = V_vals' .* ones(N)
     U_vals = U_vals'
 
@@ -96,17 +112,21 @@ function domain3dt(N, Nt)
     ti = sort(10 * rand(Nt))
 
     # Repeat U and V to match Ti dimensions
-    U_repeated = repeat(U_final; outer=(length(ti)))
-    V_repeated = repeat(V_final; outer=(length(ti)))
-    Ti_repeated = repeat(ti; inner=(Int(length(U_final))))
+    U_repeated = repeat(U_final; outer = (length(ti)))
+    V_repeated = repeat(V_final; outer = (length(ti)))
+    Ti_repeated = repeat(ti; inner = (Int(length(U_final))))
 
-    visdomain = UnstructuredDomain((; U=U_repeated, V=V_repeated, Ti=Ti_repeated))
+    visdomain = UnstructuredDomain((; U = U_repeated, V = V_repeated, Ti = Ti_repeated))
 
     C = true
     for ti_point in ti
-        f = visdomain[Ti=ti_point]
-        g = UnstructuredDomain((; U=U_final, V=V_final,
-                                Ti=vcat(fill(ti_point, length(U_final)))))
+        f = visdomain[Ti = ti_point]
+        g = UnstructuredDomain(
+            (;
+                U = U_final, V = V_final,
+                Ti = vcat(fill(ti_point, length(U_final))),
+            )
+        )
         C = C && (domainpoints(f) == domainpoints(g))
     end
 

@@ -1,4 +1,4 @@
-const StokesIntensityMap{T,N} = KeyedArray{StokesParams{T},N,<:DataArr} where {T,N}
+const StokesIntensityMap{T, N} = KeyedArray{StokesParams{T}, N, <:DataArr} where {T, N}
 
 baseimage(s::KeyedArray) = parent(parent(s))
 
@@ -8,11 +8,15 @@ baseimage(s::KeyedArray) = parent(parent(s))
 Create an array of full stokes parameters. The image is stored as a `StructArray` of
 @ref[StokesParams].
 """
-function StokesIntensityMap(I::IntensityMap{T}, Q::IntensityMap{T}, U::IntensityMap{T},
-                            V::IntensityMap{T}) where {T}
+function StokesIntensityMap(
+        I::IntensityMap{T}, Q::IntensityMap{T}, U::IntensityMap{T},
+        V::IntensityMap{T}
+    ) where {T}
     @assert check_grid(I, Q, U, V) "Intensity grids are not the same across the 4 stokes parameters"
-    polimg = StructArray{StokesParams{T}}(; I=baseimage(I), Q=baseimage(Q), U=baseimage(U),
-                                          V=baseimage(V))
+    polimg = StructArray{StokesParams{T}}(;
+        I = baseimage(I), Q = baseimage(Q), U = baseimage(U),
+        V = baseimage(V)
+    )
     return IntensityMap(polimg, named_axiskeys(I))
 end
 
@@ -22,17 +26,21 @@ Helper function that converts a model from something that compute polarized imag
 to just a single stokes parameter. This is useful if you just want to fit a single
 stokes parameter.
 """
-struct SingleStokes{M,S} <: ComradeBase.AbstractModel
+struct SingleStokes{M, S} <: ComradeBase.AbstractModel
     model::M
 end
-SingleStokes(m::M, param::Symbol) where {M} = SingleStokes{M,param}(m)
+SingleStokes(m::M, param::Symbol) where {M} = SingleStokes{M, param}(m)
 
-visanalytic(::Type{SingleStokes{M,S}}) where {M,S} = visanalytic(M)
-imanalytic(::Type{SingleStokes{M,S}}) where {M,S} = imanalytic(M)
-@inline intensity_point(s::SingleStokes{M,S}, x, y) where {M,S} = getproperty(intensity_point(s.model,
-                                                                                              x,
-                                                                                              y),
-                                                                              S)
+visanalytic(::Type{SingleStokes{M, S}}) where {M, S} = visanalytic(M)
+imanalytic(::Type{SingleStokes{M, S}}) where {M, S} = imanalytic(M)
+@inline intensity_point(s::SingleStokes{M, S}, x, y) where {M, S} = getproperty(
+    intensity_point(
+        s.model,
+        x,
+        y
+    ),
+    S
+)
 
 # # not type piracy because I own StokesParams
 # function Base.getproperty(s::StokesIntensityMap{T,N,Na}, v::Symbol) where {T,N,Na<:DataArr}
@@ -45,16 +53,20 @@ imanalytic(::Type{SingleStokes{M,S}}) where {M,S} = imanalytic(M)
 #     end
 # end
 
-function StokesIntensityMap(I::AbstractArray{T,N}, Q::AbstractArray{T,N},
-                            U::AbstractArray{T,N}, V::AbstractArray{T,N},
-                            dims::NamedTuple{Na,<:NTuple{N,Any}}) where {T,N,Na}
+function StokesIntensityMap(
+        I::AbstractArray{T, N}, Q::AbstractArray{T, N},
+        U::AbstractArray{T, N}, V::AbstractArray{T, N},
+        dims::NamedTuple{Na, <:NTuple{N, Any}}
+    ) where {T, N, Na}
     polimg = StructArray{StokesParams{T}}((; I, Q, U, V))
     return IntensityMap(polimg, dims)
 end
 
-function StokesIntensityMap(I::AbstractArray{T,N}, Q::AbstractArray{T,N},
-                            U::AbstractArray{T,N}, V::AbstractArray{T,N},
-                            args...) where {T,N}
+function StokesIntensityMap(
+        I::AbstractArray{T, N}, Q::AbstractArray{T, N},
+        U::AbstractArray{T, N}, V::AbstractArray{T, N},
+        args...
+    ) where {T, N}
     polimg = StructArray{StokesParams{T}}((; I, Q, U, V))
     return IntensityMap(polimg, args...)
 end
@@ -74,15 +86,17 @@ function Base.summary(io::IO, x::StokesIntensityMap)
     return _summary(io, x)
 end
 
-function _summary(io, x::StokesIntensityMap{T,N,Na}) where {T,N,Na}
+function _summary(io, x::StokesIntensityMap{T, N, Na}) where {T, N, Na}
     println(io, ndims(x), "-dimensional")
     println(io, "StokesIntensityMap{$T, $N, $Na}")
     for d in 1:ndims(x)
         print(io, d == 1 ? "↓" : d == 2 ? "→" : d == 3 ? "◪" : "▨", "   ")
         c = AxisKeys.colour(x, d)
-        AxisKeys.hasnames(x) && printstyled(io, AxisKeys.dimnames(x, d), " ∈ "; color=c)
-        printstyled(io, length(axiskeys(x, d)), "-element ",
-                    AxisKeys.shorttype(axiskeys(x, d)), "\n"; color=c)
+        AxisKeys.hasnames(x) && printstyled(io, AxisKeys.dimnames(x, d), " ∈ "; color = c)
+        printstyled(
+            io, length(axiskeys(x, d)), "-element ",
+            AxisKeys.shorttype(axiskeys(x, d)), "\n"; color = c
+        )
     end
     return println(io, "Polarizations ", propertynames(parent(x).data))
 end

@@ -1,4 +1,3 @@
-
 struct GaussTest{T} <: ComradeBase.AbstractModel
 end
 GaussTest() = GaussTest{Float64}()
@@ -39,8 +38,10 @@ function ComradeBase.visibility_point(m::GaussTestNA, p)
 end
 
 # Fake it to for testing
-function ComradeBase.intensitymap_numeric(m::GaussTestNA,
-                                          p::ComradeBase.AbstractSingleDomain)
+function ComradeBase.intensitymap_numeric(
+        m::GaussTestNA,
+        p::ComradeBase.AbstractSingleDomain
+    )
     return ComradeBase.intensitymap_analytic(m, p)
 end
 
@@ -48,8 +49,10 @@ function ComradeBase.intensitymap_numeric!(img, m::GaussTestNA)
     return ComradeBase.intensitymap_analytic!(img, m)
 end
 
-function ComradeBase.visibilitymap_numeric(m::GaussTestNA,
-                                           p::ComradeBase.AbstractSingleDomain)
+function ComradeBase.visibilitymap_numeric(
+        m::GaussTestNA,
+        p::ComradeBase.AbstractSingleDomain
+    )
     return ComradeBase.visibilitymap_analytic(m, p)
 end
 
@@ -64,9 +67,9 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     u = 0.1 * randn(60)
     v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
-    fr = fill(230e9, 60)
+    fr = fill(230.0e9, 60)
     m = GaussTest()
-    p = (; U=u, V=v, Ti=ti, Fr=fr)
+    p = (; U = u, V = v, Ti = ti, Fr = fr)
     g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
@@ -88,9 +91,9 @@ end
     u = 0.1 * randn(60)
     v = 0.1 * randn(60)
     ti = collect(Float64, 1:60)
-    fr = fill(230e9, 60)
+    fr = fill(230.0e9, 60)
     m = GaussTestNA()
-    p = (; U=u, V=v, Ti=ti, Fr=fr)
+    p = (; U = u, V = v, Ti = ti, Fr = fr)
     g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))

@@ -1,11 +1,13 @@
 export UnstructuredDomain
 
-const DataNames = Union{<:NamedTuple{(:X, :Y, :T, :F)},<:NamedTuple{(:X, :Y, :F, :T)},
-                        <:NamedTuple{(:X, :Y, :T)},<:NamedTuple{(:X, :Y, :F)},
-                        <:NamedTuple{(:X, :Y)}}
+const DataNames = Union{
+    <:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)},
+    <:NamedTuple{(:X, :Y, :T)}, <:NamedTuple{(:X, :Y, :F)},
+    <:NamedTuple{(:X, :Y)},
+}
 
 # TODO make this play nice with dimensional data
-struct UnstructuredDomain{D,E,H<:AMeta} <: AbstractSingleDomain{D,E}
+struct UnstructuredDomain{D, E, H <: AMeta} <: AbstractSingleDomain{D, E}
     dims::D
     executor::E
     header::H
@@ -24,7 +26,7 @@ For threaded execution use [`ThreadsEx()`](@ref) or load `OhMyThreads.jl` to use
 Note that unlike `RectiGrid` which assigns dimensions to the grid points, `UnstructuredDomain`
 does not. This is becuase the grid is unstructured the points are a cloud in a space
 """
-function UnstructuredDomain(nt::NamedTuple; executor=Serial(), header=NoHeader())
+function UnstructuredDomain(nt::NamedTuple; executor = Serial(), header = NoHeader())
     p = StructArray(nt)
     return UnstructuredDomain(p, executor, header)
 end
@@ -37,13 +39,17 @@ Base.lastindex(d::UnstructuredDomain) = lastindex(dims(d))
 # Base.front(d::UnstructuredDomain) = UnstructuredDomain(Base.front(StructArrays.components(dims(d))), executor=executor(d), header=header(d))
 # Base.eltype(d::UnstructuredDomain) = Base.eltype(dims(d))
 
-function DD.rebuild(grid::UnstructuredDomain, dims, executor=executor(grid),
-                    header=header(grid))
+function DD.rebuild(
+        grid::UnstructuredDomain, dims, executor = executor(grid),
+        header = header(grid)
+    )
     return UnstructuredDomain(dims, executor, header)
 end
 
-function DD.rebuild(grid::UnstructuredDomain; dims=dims(grid), executor=executor(grid),
-                    header=header(grid))
+function DD.rebuild(
+        grid::UnstructuredDomain; dims = dims(grid), executor = executor(grid),
+        header = header(grid)
+    )
     return rebuild(grid, dims, executor, header)
 end
 
@@ -58,7 +64,7 @@ end
 
 #This function helps us to lookup UnstructuredDomain at a particular Ti or Fr
 #visdomain[Ti=T,Fr=F] or visdomain[Ti=T] or visdomain[Fr=F] calls work.
-function Base.getindex(domain::UnstructuredDomain; Ti=nothing, Fr=nothing)
+function Base.getindex(domain::UnstructuredDomain; Ti = nothing, Fr = nothing)
     points = domainpoints(domain)
     indices = if Ti !== nothing && Fr !== nothing
         findall(p -> (p.Ti == Ti) && (p.Fr == Fr), points)
@@ -72,7 +78,7 @@ end
 
 function Base.summary(io::IO, g::UnstructuredDomain)
     n = propertynames(domainpoints(g))
-    printstyled(io, "│ "; color=:light_black)
+    printstyled(io, "│ "; color = :light_black)
     return print(io, "UnstructuredDomain with dims: $n")
 end
 

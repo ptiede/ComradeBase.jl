@@ -7,27 +7,31 @@ This is useful for broadcasting a model across an abritrary grid.
 """
 domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
-struct LazySlice{T,N,A<:AbstractVector{T}} <: AbstractArray{T,N}
+struct LazySlice{T, N, A <: AbstractVector{T}} <: AbstractArray{T, N}
     slice::A
     dir::Int
     dims::Dims{N}
-    @inline function LazySlice(slice::AbstractVector{T}, dim::Int,
-                               dims::Dims{N}) where {T,N}
+    @inline function LazySlice(
+            slice::AbstractVector{T}, dim::Int,
+            dims::Dims{N}
+        ) where {T, N}
         @assert 1 ≤ dim ≤ N "Slice dimension is not valid. Must be ≤ $N and ≥ 1 and got $dim"
-        return new{T,N,typeof(slice)}(slice, dim, dims)
+        return new{T, N, typeof(slice)}(slice, dim, dims)
     end
 end
 
 @inline slice(A::LazySlice) = getfield(A, :slice)
 @inline Base.size(A::LazySlice) = A.dims
-Base.@propagate_inbounds @inline function Base.getindex(A::LazySlice{T,N},
-                                                        I::Vararg{Int,N}) where {T,N}
+Base.@propagate_inbounds @inline function Base.getindex(
+        A::LazySlice{T, N},
+        I::Vararg{Int, N}
+    ) where {T, N}
     i = I[A.dir]
     @boundscheck checkbounds(slice(A), i)
     return @inline slice(A)[i]
 end
 
-function Base.Broadcast.BroadcastStyle(::Type{<:LazySlice{T,N,A}}) where {T,N,A}
+function Base.Broadcast.BroadcastStyle(::Type{<:LazySlice{T, N, A}}) where {T, N, A}
     return (Base.Broadcast.BroadcastStyle(A))
 end
 
@@ -53,7 +57,7 @@ function phasecenter(dims::AbstractRectiGrid)
     (; X, Y) = dims
     x0 = -(last(X) + first(X)) / 2
     y0 = -(last(Y) + first(Y)) / 2
-    return (X=x0, Y=y0)
+    return (X = x0, Y = y0)
 end
 phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
 
@@ -80,10 +84,12 @@ to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin ove
  - `executor=Serial()`: The executor to use for the grid, default is serial execution
  - `header=NoHeader()`: The header to use for the grid
 """
-function imagepixels(fovx::Real, fovy::Real, nx::Integer, ny::Integer,
-                     x0::Real=zero(fovx), y0::Real=zero(fovy);
-                     posang::Real=zero(fovx),
-                     executor=Serial(), header=NoHeader())
+function imagepixels(
+        fovx::Real, fovy::Real, nx::Integer, ny::Integer,
+        x0::Real = zero(fovx), y0::Real = zero(fovy);
+        posang::Real = zero(fovx),
+        executor = Serial(), header = NoHeader()
+    )
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
     psizex = fovx / nx
@@ -112,8 +118,8 @@ pixelsizes(img::IntensityMap) = pixelsizes(axisdims(img))
 
 Computes the flux of a intensity map
 """
-function flux(im::IntensityMap{T,N}) where {T,N}
-    return sum(im; dims=(:X, :Y))
+function flux(im::IntensityMap{T, N}) where {T, N}
+    return sum(im; dims = (:X, :Y))
 end
 
 flux(im::SpatialIntensityMap) = sum(parent(im))
@@ -127,15 +133,15 @@ For polarized maps we return the centroid for Stokes I only.
 """
 function centroid(im::IntensityMap{<:Number})
     (; X, Y) = named_dims(im)
-    return mapslices(x -> centroid(IntensityMap(x, RectiGrid((; X, Y)))), im; dims=(:X, :Y))
+    return mapslices(x -> centroid(IntensityMap(x, RectiGrid((; X, Y)))), im; dims = (:X, :Y))
 end
 centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMap{T,2})::Tuple{T,T} where {T<:Real}
+function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
     f = flux(im)
     d = domainpoints(im)
     # Grab the parent otherwise things don't work on the GPU (DD missing multiargument mapreduce)
-    cent = mapreduce(+, baseimage(im), d; init=SVector(zero(f), zero(f))) do I, (x, y)
+    cent = mapreduce(+, baseimage(im), d; init = SVector(zero(f), zero(f))) do I, (x, y)
         x0 = x .* I
         y0 = y .* I
         return SVector(x0, y0)
@@ -165,14 +171,16 @@ second moment, which is specified by the `center` argument.
 
 For polarized maps we return the second moment for Stokes I only.
 """
-function second_moment(im::IntensityMap{T,N}; center=true) where {T<:Real,N}
+function second_moment(im::IntensityMap{T, N}; center = true) where {T <: Real, N}
     (; X, Y) = named_dims(im)
-    return mapslices(x -> second_moment(IntensityMap(x, RectiGrid((; X, Y))); center), im;
-                     dims=(:X, :Y))
+    return mapslices(
+        x -> second_moment(IntensityMap(x, RectiGrid((; X, Y))); center), im;
+        dims = (:X, :Y)
+    )
 end
 
 # Only return the second moment for Stokes I
-function second_moment(im::IntensityMap{<:StokesParams}; center=true)
+function second_moment(im::IntensityMap{<:StokesParams}; center = true)
     return second_moment(stokes(im, :I); center)
 end
 
@@ -183,7 +191,7 @@ Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered
 second moment, which is specified by the `center` argument.
 """
-function second_moment(im::IntensityMap{T,2}; center=true) where {T<:Real}
+function second_moment(im::IntensityMap{T, 2}; center = true) where {T <: Real}
     xx = zero(T)
     xy = zero(T)
     yy = zero(T)

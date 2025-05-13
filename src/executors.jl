@@ -34,19 +34,21 @@ Threads the for-loop expression `expr` using the specified `executor`. The execu
 a regular for-loop to prevent overhead.
 """
 macro threaded(executor, expr)
-    esc(quote
-        if Threads.nthreads() > 1 && $(executor) != Serial()
-            if $(executor) == ThreadsEx{:static}()
-                Threads.@threads :static $(expr)
-            elseif $(executor) == ThreadsEx{:dynamic}()
-                Threads.@threads :dynamic $(expr)
+    return esc(
+        quote
+            if Threads.nthreads() > 1 && $(executor) != Serial()
+                if $(executor) == ThreadsEx{:static}()
+                    Threads.@threads :static $(expr)
+                elseif $(executor) == ThreadsEx{:dynamic}()
+                    Threads.@threads :dynamic $(expr)
+                end
+            else
+                $(expr)
             end
-        else
-            $(expr)
         end
-    end)
+    )
 end
 
 macro threaded(expr)
-    threaded(ThreadsEx(:dyanmic), expr)
+    return threaded(ThreadsEx(:dyanmic), expr)
 end

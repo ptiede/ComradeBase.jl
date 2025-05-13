@@ -13,11 +13,11 @@ using Accessors: @set
 using PrecompileTools
 
 export visibility,
-       intensitymap, intensitymap!,
-       visibilitymap, visibilitymap!,
-       StokesParams, CoherencyMatrix,
-       flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
-       named_dims
+    intensitymap, intensitymap!,
+    visibilitymap, visibilitymap!,
+    StokesParams, CoherencyMatrix,
+    flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
+    named_dims
 
 include("interface.jl")
 include("executors.jl")
@@ -27,8 +27,10 @@ include("unstructured/domain.jl")
 include("unstructured/map.jl")
 include("images/images.jl")
 
-const FluxMap2{T,N,E} = Union{IntensityMap{T,N,<:Any,E},
-                              UnstructuredMap{T,<:AbstractVector,E}}
+const FluxMap2{T, N, E} = Union{
+    IntensityMap{T, N, <:Any, E},
+    UnstructuredMap{T, <:AbstractVector, E},
+}
 
 include("visibilities.jl")
 # include("rrules.jl")

@@ -1,16 +1,20 @@
 export RectiGrid, refinespatial
 
-struct RectiGrid{D,E,Hd<:AMeta,P} <: AbstractRectiGrid{D,E}
+struct RectiGrid{D, E, Hd <: AMeta, P} <: AbstractRectiGrid{D, E}
     dims::D
     executor::E
     header::Hd
     posang::P
-    @inline function RectiGrid(dims::Tuple; executor=Serial(),
-                               header::AMeta=NoHeader(), posang=zero(eltype(first(dims))))
+    @inline function RectiGrid(
+            dims::Tuple; executor = Serial(),
+            header::AMeta = NoHeader(), posang = zero(eltype(first(dims)))
+        )
         df = DD.format(dims)
-        return new{typeof(df),typeof(executor),typeof(header),typeof(posang)}(df, executor,
-                                                                              header,
-                                                                              posang)
+        return new{typeof(df), typeof(executor), typeof(header), typeof(posang)}(
+            df, executor,
+            header,
+            posang
+        )
     end
 end
 
@@ -19,11 +23,11 @@ EnzymeRules.inactive_type(::Type{<:RectiGrid}) = true
 function rotmat(d::RectiGrid)
     s, c = sincos(posang(d))
     r = (c, -s, s, c)
-    m = SMatrix{2,2,typeof(s),4}(r)
+    m = SMatrix{2, 2, typeof(s), 4}(r)
     return m
 end
 
-function domainpoints(d::RectiGrid{D,Hd}) where {D,Hd}
+function domainpoints(d::RectiGrid{D, Hd}) where {D, Hd}
     g = map(basedim, dims(d))
     rot = rotmat(d)
     N = keys(d)
@@ -34,7 +38,7 @@ Base.keys(g::RectiGrid) = map(name, dims(g))
 
 @inline RectiGrid(g::RectiGrid) = g
 
-function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D,E}) where {D,E}
+function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D, E}) where {D, E}
     println(io, "RectiGrid(")
     println(io, "executor: $(executor(x))")
     println(io, "Dimensions: ")
@@ -46,11 +50,17 @@ Base.propertynames(d::RectiGrid) = keys(d)
 Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
 
 # This is needed to prevent doubling up on the dimension
-@inline function RectiGrid(dims::NamedTuple{Na,T}; executor=Serial(),
-                           header::AMeta=NoHeader(),
-                           posang=zero(eltype(first(values(dims))))) where {Na,N,
-                                                                            T<:NTuple{N,
-                                                                                      DD.Dimension}}
+@inline function RectiGrid(
+        dims::NamedTuple{Na, T}; executor = Serial(),
+        header::AMeta = NoHeader(),
+        posang = zero(eltype(first(values(dims))))
+    ) where {
+        Na, N,
+        T <: NTuple{
+            N,
+            DD.Dimension,
+        },
+    }
     return RectiGrid(values(dims); executor, header, posang)
 end
 
@@ -101,39 +111,45 @@ dims = RectiGrid((X(-5.0:0.1:5.0), Y(-4.0:0.1:4.0), Ti([1.0, 1.5, 1.75]), Fr([23
 dims = RectiGrid((X = -5.0:0.1:5.0, Y = -4.0:0.1:4.0, Ti = [1.0, 1.5, 1.75], Fr = [230, 345]); executor=ThreadsEx()))
 ```
 """
-@inline function RectiGrid(nt::NamedTuple; executor=Serial(),
-                           header::AMeta=ComradeBase.NoHeader(),
-                           posang=zero(eltype(first(values(nt)))))
+@inline function RectiGrid(
+        nt::NamedTuple; executor = Serial(),
+        header::AMeta = ComradeBase.NoHeader(),
+        posang = zero(eltype(first(values(nt))))
+    )
     dims = _make_dims(keys(nt), values(nt))
     return RectiGrid(dims; executor, header, posang)
 end
 
-function DD.rebuild(grid::RectiGrid, dims, executor=executor(grid),
-                    header=metadata(grid), posang=posang(grid))
+function DD.rebuild(
+        grid::RectiGrid, dims, executor = executor(grid),
+        header = metadata(grid), posang = posang(grid)
+    )
     return RectiGrid(dims; executor, header, posang)
 end
 
-function DD.rebuild(grid::RectiGrid; dims=dims(grid), executor=executor(grid),
-                    header=metadata(grid), posang=posang(grid))
+function DD.rebuild(
+        grid::RectiGrid; dims = dims(grid), executor = executor(grid),
+        header = metadata(grid), posang = posang(grid)
+    )
     return rebuild(grid, dims, executor, header, posang)
 end
 
 function refinespatial(g::RectiGrid, refac::NTuple{2})
     ns = size(g)[1:2]
     d = map(basedim, named_dims(g))
-    d2 = @set d.X.len = ceil(Int, ns[1]*refac[1])
-    d3 = @set d2.Y.len = ceil(Int, ns[2]*refac[2])
+    d2 = @set d.X.len = ceil(Int, ns[1] * refac[1])
+    d3 = @set d2.Y.len = ceil(Int, ns[2] * refac[2])
     dn = dims(g)
     dnn = @set dn[1] = X(d3.X)
     dnn2 = @set dnn[2] = Y(d3.Y)
     dnew = (dnn2[1:2]..., dn[3:end]...)
-    return rebuild(g; dims=dnew)
+    return rebuild(g; dims = dnew)
 end
 
-refinespatial(g::RectiGrid, refac::Number) = refinespatial(g, (refac,refac))
+refinespatial(g::RectiGrid, refac::Number) = refinespatial(g, (refac, refac))
 
 
-struct RotGrid{T,N,G<:AbstractArray{T,N},M} <: AbstractArray{T,N}
+struct RotGrid{T, N, G <: AbstractArray{T, N}, M} <: AbstractArray{T, N}
     grid::G
     rot::M
 end
@@ -148,7 +164,7 @@ Base.parent(g::RotGrid) = getfield(g, :grid)
 Base.getproperty(g::RotGrid, p::Symbol) = getproperty(parent(g), p)
 Base.propertynames(g::RotGrid) = propertynames(parent(g))
 Base.size(g::RotGrid) = size(parent(g))
-Base.IndexStyle(::Type{<:RotGrid{T,N,G}}) where {T,N,G} = Base.IndexStyle(G)
+Base.IndexStyle(::Type{<:RotGrid{T, N, G}}) where {T, N, G} = Base.IndexStyle(G)
 Base.firstindex(g::RotGrid) = firstindex(parent(g))
 Base.lastindex(g::RotGrid) = lastindex(parent(g))
 Base.axes(g::RotGrid) = axes(parent(g))
@@ -167,4 +183,4 @@ Base.@propagate_inbounds function Base.getindex(g::RotGrid, I::Vararg{Int})
 end
 
 # Use structarray broadcasting
-Base.BroadcastStyle(::Type{<:RotGrid{T,N,G}}) where {T,N,G} = Base.BroadcastStyle(G)
+Base.BroadcastStyle(::Type{<:RotGrid{T, N, G}}) where {T, N, G} = Base.BroadcastStyle(G)

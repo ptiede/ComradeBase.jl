@@ -1,10 +1,10 @@
 # In this file we will define our base image class. This is entirely based on
 export domainpoints,
-       named_dims, dims, header, axisdims, executor,
-       posang, update_spat, rotmat
+    named_dims, dims, header, axisdims, executor,
+    posang, update_spat, rotmat
 
 abstract type AbstractDomain end
-abstract type AbstractSingleDomain{D,E} <: AbstractDomain end
+abstract type AbstractSingleDomain{D, E} <: AbstractDomain end
 
 """
     create_map(array, g::AbstractSingleDomain)
@@ -132,14 +132,14 @@ Base.length(d::AbstractSingleDomain) = prod(size(d))
 Base.firstindex(d::AbstractSingleDomain) = 1
 Base.lastindex(d::AbstractSingleDomain) = length(d)
 Base.axes(d::AbstractSingleDomain) = axes(dims(d))
-Base.iterate(d::AbstractSingleDomain, i::Int=1) = iterate(dims(d), i)
+Base.iterate(d::AbstractSingleDomain, i::Int = 1) = iterate(dims(d), i)
 # Base.front(d::AbstractSingleDomain) = Base.front(dims(d))
 # We return the eltype of the dimensions. Should we change this?
 Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 
 const AMeta = DimensionalData.Dimensions.Lookups.AbstractMetadata
 
-abstract type AbstractHeader{T,X} <: AMeta{T,X} end
+abstract type AbstractHeader{T, X} <: AMeta{T, X} end
 
 """
     MinimalHeader{T}
@@ -149,7 +149,7 @@ A minimal header type for ancillary image information.
 # Fields
 $(FIELDS)
 """
-struct MinimalHeader{T} <: AbstractHeader{T,NamedTuple{(),Tuple{}}}
+struct MinimalHeader{T} <: AbstractHeader{T, NamedTuple{(), Tuple{}}}
     """
     Common source name
     """
@@ -184,7 +184,7 @@ end
 """
 const NoHeader = DimensionalData.NoMetadata
 
-abstract type AbstractRectiGrid{D,E} <: AbstractSingleDomain{D,E} end
+abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
 function allocate_map(M::Type{<:AbstractArray{T}}, g::AbstractRectiGrid) where {T}
     return IntensityMap(similar(M, size(g)), g)
@@ -194,7 +194,7 @@ function fieldofview(dims::AbstractRectiGrid)
     (; X, Y) = dims
     dx = step(X)
     dy = step(Y)
-    return (X=abs(last(X) - first(X)) + dx, Y=abs(last(Y) - first(Y)) + dy)
+    return (X = abs(last(X) - first(X)) + dx, Y = abs(last(Y) - first(Y)) + dy)
 end
 
 @inline posang(d::AbstractRectiGrid) = getfield(d, :posang)
@@ -208,7 +208,7 @@ Returns a named tuple with the spatial pixel sizes of the image.
 function pixelsizes(keys::AbstractRectiGrid)
     x = keys.X
     y = keys.Y
-    return (X=step(x), Y=step(y))
+    return (X = step(x), Y = step(y))
 end
 
 # Define some helpful names for ease typing
