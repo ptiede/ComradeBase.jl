@@ -67,20 +67,24 @@ function intensitymap_analytic!(img::UnstructuredMap{T,<:Any,
                                                      <:UnstructuredDomain{D,<:ThreadsEx{S}}},
                                 s::AbstractModel) where {T,D,S}
     g = domainpoints(img)
-    _threads_intensitymap!(img, s, g, Val(S))
+    e = executor(img)
+    @threaded e for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I])
+    end
     return nothing
 end
 
-for s in schedulers
-    @eval begin
-        function _threads_intensitymap!(img::UnstructuredMap, s::AbstractModel, g,
-                                        ::Val{$s})
-            Threads.@threads $s for I in CartesianIndices(g)
-                img[I] = intensity_point(s, g[I])
-            end
-            return nothing
-        end
-    end
-end
+
+# for s in schedulers
+#     @eval begin
+#         function _threads_intensitymap!(img::UnstructuredMap, s::AbstractModel, g,
+#                                         ::Val{$s})
+#             Threads.@threads $s for I in CartesianIndices(g)
+#                 img[I] = intensity_point(s, g[I])
+#             end
+#             return nothing
+#         end
+#     end
+# end
 
 include("broadcast.jl")

@@ -52,24 +52,31 @@ function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
 end
 
 function visibilitymap_analytic_executor!(vis::FluxMap2,
-                                          m::AbstractModel,
+                                          s::AbstractModel,
                                           ::ThreadsEx{S}) where {S}
     d = axisdims(vis)
     g = domainpoints(d)
-    _threads_visibilitymap!(parent(vis), m, g, Val(S))
+    e = executor(vis)
+    @threaded e for I in CartesianIndices(g)
+        vis[I] = visibility_point(s, g[I])
+    end    
     return nothing
 end
 
-for s in schedulers
-    @eval begin
-        function _threads_visibilitymap!(vis, s::AbstractModel, g, ::Val{$s})
-            Threads.@threads $s for I in CartesianIndices(g)
-                vis[I] = visibility_point(s, g[I])
-            end
-        end
-        return nothing
-    end
-end
+function _threads_visibilitymap! end
+
+# for s in schedulers
+#     @eval begin
+#         function _threads_visibilitymap!(vis, s::AbstractModel, g, ::Val{$s})
+#             Threads.@threads $s for I in CartesianIndices(g)
+#                 vis[I] = visibility_point(s, g[I])
+#             end
+#         end
+#         return nothing
+#     end
+# end
+
+
 
 """
     visibility(mimg, p)

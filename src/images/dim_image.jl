@@ -187,17 +187,12 @@ end
 function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel,
                                          ::ThreadsEx{S}) where {S}
     g = domainpoints(img)
-    _threads_intensitymap!(img, s, g, Val(S))
+    e = executor(img)
+    dx, dy = pixelsizes(img)
+    @threaded e for I in CartesianIndices(g)
+        img[I] = intensity_point(s, g[I]) * dx * dy
+    end
     return nothing
 end
 
-for s in schedulers
-    @eval begin
-        function _threads_intensitymap!(img::IntensityMap, s::AbstractModel, g, ::Val{$s})
-            dx, dy = pixelsizes(img)
-            Threads.@threads $s for I in CartesianIndices(g)
-                img[I] = intensity_point(s, g[I]) * dx * dy
-            end
-        end
-    end
-end
+function _threads_intensitymap! end
