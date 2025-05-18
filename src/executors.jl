@@ -50,5 +50,5 @@ macro threaded(executor, expr)
 end
 
 macro threaded(expr)
-    return threaded(ThreadsEx(:dyanmic), expr)
+    return :(@threaded(ThreadsEx(), $(expr)))
 end
