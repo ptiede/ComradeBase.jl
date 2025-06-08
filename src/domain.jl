@@ -177,6 +177,12 @@ function MinimalHeader(source, ra, dec, mjd, freq)
     return MinimalHeader(source, raT, decT, mjdT, freqT)
 end
 
+function DimensionalData.val(m::AbstractHeader)
+    n = propertynames(m)
+    pm = Base.Fix1(getproperty, m)
+    return NamedTuple{n}(map(pm, n))
+end
+
 """
     NoHeader
 
