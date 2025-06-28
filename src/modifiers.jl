@@ -142,23 +142,54 @@ end
     return ModifiedModel(model, (t0..., t))
 end
 
+"""
+    Base.:∘(m::AbstractModel, t::ModelModifier)
+
+Modifiers act as transformations on the inputs plus a jacobian term to ensure the 
+transform is an isometry. Therefore we provide the syntactic sugar of using the
+`∘` operator to apply a modifier to a model. This is equivalent to calling `modify(m, t)`.
+
+## Example
+```julia-repl
+julia> m = Gaussian()
+julia> t = Shift(1.0, 2.0)
+julia> m ∘ t == modify(m, t)
+true
+```
+
+Note that because this is composition the order is reversed. So `m ∘ t1 ∘ t2` is equivalent to
+`modify(m, t2, t1)`.
+
+```julia-repl
+julia> m ∘ Shift(1.0, 2.0) ∘ Rotate(π/4) == modify(m, Rotate(π/4), Shift(1.0, 2.0))
+true
+```
+
+"""
+@inline Base.:∘(m::AbstractModel, t::ModelModifier) = modify(m, t)
+@inline function Base.:∘(m::ModifiedModel, t::ModelModifier)
+    trf = m.transform
+    return ModifiedModel(m.model, (t, trf...))
+end
+
+
 @inline doesnot_uv_modify(t::Tuple) = doesnot_uv_modify(Base.front(t)) *
     doesnot_uv_modify(last(t))
 @inline doesnot_uv_modify(::Tuple{}) = true
 
-function modify_uv(model, t::Tuple, p, scale)
+@inline function modify_uv(model, t::Tuple, p, scale)
     pt = transform_uv(model, last(t), p)
     scalet = scale_uv(model, last(t), p)
     return modify_uv(model, Base.front(t), pt, scalet * scale)
 end
-modify_uv(model, ::Tuple{}, p, scale) = p, scale
+@inline modify_uv(model, ::Tuple{}, p, scale) = p, scale
 
-function modify_image(model, t::Tuple, p, scale)
+@inline function modify_image(model, t::Tuple, p, scale)
     pt = transform_image(model, last(t), p)
     scalet = scale_image(model, last(t), p)
     return modify_image(model, Base.front(t), pt, scalet * scale)
 end
-modify_image(model, ::Tuple{}, p, scale) = p, scale
+@inline modify_image(model, ::Tuple{}, p, scale) = p, scale
 
 
 @inline radialextent_modified(r::Real, t::Tuple) = radialextent_modified(
@@ -520,20 +551,3 @@ end
     return spinor2_rotate(c, s)
 end
 @inline radialextent_modified(r::Real, ::Rotate) = r
-
-"""
-    Base.:∘(m::AbstractModel, t::ModelModifier)
-
-Modifiers act as transformations on the inputs plus a jacobian term to ensure the 
-transform is an isometry. Therefore we provide the syntactic sugar of using the
-`∘` operator to apply a modifier to a model. This is equivalent to calling `modify(m, t)`.
-
-## Example
-```julia-repl
-julia> m = Gaussian()
-julia> t = Shift(1.0, 2.0)
-julia> m ∘ t == modify(m, t)
-true
-```
-"""
-Base.:∘(m::AbstractModel, t::ModelModifier) = modify(m, t)
