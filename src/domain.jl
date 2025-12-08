@@ -60,7 +60,7 @@ end
 end
 
 function allocate_vismap(p, m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
-    M = similartype(p, E, Complex{eltype(g)})
+    M = similartype(p, E, complex(eltype(g)))
     return allocate_map(M, g)
 end
 
