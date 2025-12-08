@@ -43,33 +43,33 @@ Allocate the default map specialized by the grid `g`
 """
 function allocate_vismap end
 
-function allocate_vismap(m::AbstractModel, g::AbstractDomain)
+function allocate_vismap(m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
     return allocate_vismap(ispolarized(typeof(m)), m, g)
 end
 
-function allocate_vismap(::IsPolarized, m::AbstractModel, g::AbstractDomain)
-    M = StructArray{StokesParams{Complex{eltype(g)}}}
-    return allocate_map(M, g)
-end
-
-function allocate_vismap(::NotPolarized, m::AbstractModel, g::AbstractDomain)
-    M = Array{Complex{eltype(g)}}
-    return allocate_map(M, g)
-end
-
-function allocate_imgmap(m::AbstractModel, g::AbstractDomain)
+function allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
     return allocate_imgmap(ispolarized(typeof(m)), m, g)
 end
 
-function allocate_imgmap(::IsPolarized, m::AbstractModel, g::AbstractDomain)
-    M = StructArray{StokesParams{eltype(g)}}
+@inline function similartype(::IsPolarized, E, T)
+    return StructArray{StokesParams{T}}
+end
+
+@inline function similartype(::NotPolarized, E, T)
+    return Array{T}
+end
+
+function allocate_vismap(p, m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
+    M = similartype(p, E, Complex{eltype(g)})
     return allocate_map(M, g)
 end
 
-function allocate_imgmap(::NotPolarized, m::AbstractModel, g::AbstractDomain)
-    M = Array{eltype(g)}
+
+function allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
+    M = similartype(p, E, eltype(g))
     return allocate_map(M, g)
 end
+
 
 """
     domainpoints(g::AbstractSingleDomain)
