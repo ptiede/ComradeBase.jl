@@ -7,9 +7,10 @@ using Reactant
 import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
 import Reactant: TracedRArray, unwrapped_eltype
 
-struct ReactantBackend; end
+struct ReactantBackend
+end
 
-Base.eltype(d::AbstractSingleDomain{D, E}) where {D, E<:ReactantBackend} = Reactant.allowscalar() do
+Base.eltype(d::AbstractSingleDomain{D, E}) where {D, E <: ReactantBackend} = Reactant.allowscalar() do
     eltype(basedim(first(dims(d))))
 end
 
