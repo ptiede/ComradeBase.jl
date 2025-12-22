@@ -163,5 +163,5 @@ ComradeBase.build_param(param::ExpParams, p) = exp(param.scale) * p.Fr
 
     @test p((; Fr = 3.0)) ≈ ComradeBase.build_param(p, (; Fr = 3.0))
 
-    @test build_param(4.0, (; Fr = 3.0)) ≈ 4.0
+    @test ComradeBase.build_param(4.0, (; Fr = 3.0)) ≈ 4.0
 end
