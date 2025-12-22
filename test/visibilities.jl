@@ -123,3 +123,16 @@ end
     logclosure_amplitudemap(m, g, g, g, g)
     @test angle.(bispectrummap(m, g, g, g)) ≈ closure_phasemap(m, g, g, g)
 end
+
+@testset "Methods" begin
+    gim = imagepixels(10.0, 10.0, 64, 64)
+    m = GaussTest()
+    img = intensitymap(m, gim)
+    @test all(x->isapprox(x[1], x[2]), zip(centroid(img), centroid(m, gim)))
+    @test flux(img) ≈ flux(m, gim)
+    @test second_moment(img) ≈ second_moment(m, gim)
+
+    display(img)
+    show(img)
+
+end
