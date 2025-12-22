@@ -188,7 +188,6 @@ domain(dm::DualMap) = dm.dims
 include("executors.jl")
 include("headers.jl")
 include("rectigrid.jl")
-include("multidomain.jl")
 include("unstructured/unstructured.jl")
 
 
