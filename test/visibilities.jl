@@ -158,10 +158,10 @@ ComradeBase.build_param(param::ExpParams, p) = exp(param.scale) * p.Fr
 
     pt = (ExpParams(0.1), ExpParams(0.2))
     @test reduce(*, ComradeBase.build_param(pt, (; Fr = 2.0)) .≈ (exp(0.1) * 2.0, exp(0.2) * 2.0))
-     pa = [ExpParams(0.1), ExpParams(0.2)]
+    pa = [ExpParams(0.1), ExpParams(0.2)]
     @test ComradeBase.build_param(pa, (; Fr = 2.0)) ≈ [exp(0.1) * 2.0, exp(0.2) * 2.0]
 
-    @test p((;Fr = 3.0)) ≈ ComradeBase.build_param(p, (;Fr = 3.0))
+    @test p((; Fr = 3.0)) ≈ ComradeBase.build_param(p, (; Fr = 3.0))
 
-    @test build_param(4.0, (;Fr = 3.0)) ≈ 4.0
+    @test build_param(4.0, (; Fr = 3.0)) ≈ 4.0
 end
