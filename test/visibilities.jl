@@ -19,6 +19,7 @@ end
 ComradeBase.flux(::GaussTest{T}) where {T} = one(T)
 ComradeBase.radialextent(::GaussTest{T}) where {T} = 5 * one(T)
 
+
 struct GaussTestNA{T} <: ComradeBase.AbstractModel
 end
 GaussTestNA() = GaussTestNA{Float64}()
@@ -135,4 +136,32 @@ end
     display(img)
     show(img)
 
+end
+
+struct ExpParams{P} <: ComradeBase.DomainParams{P}
+    scale::P
+end
+
+ComradeBase.build_param(param::ExpParams, p) = exp(param.scale) * p.Fr
+
+
+@testset "Multi domain" begin
+    p = ExpParams(0.1)
+    @test ComradeBase.paramtype(typeof(p)) == Float64
+    @test ComradeBase.paramtype(typeof(1.0)) == Float64
+
+    @test ComradeBase.build_param(p, (; Fr = 2.0)) ≈ exp(0.1) * 2.0
+    @test ComradeBase.build_param(p, (; Fr = 2.0)) ≈ getparam(ExpParams(p), :scale, (; Fr = 2.0))
+    pp = ExpParams(p)
+    @unpack_params scale = pp((; Fr = 2.0))
+    @test scale ≈ exp(0.1) * 2.0
+
+    pt = (ExpParams(0.1), ExpParams(0.2))
+    @test reduce(*, ComradeBase.build_param(pt, (; Fr = 2.0)) .≈ (exp(0.1) * 2.0, exp(0.2) * 2.0))
+    pa = [ExpParams(0.1), ExpParams(0.2)]
+    @test ComradeBase.build_param(pa, (; Fr = 2.0)) ≈ [exp(0.1) * 2.0, exp(0.2) * 2.0]
+
+    @test p((; Fr = 3.0)) ≈ ComradeBase.build_param(p, (; Fr = 3.0))
+
+    @test ComradeBase.build_param(4.0, (; Fr = 3.0)) ≈ 4.0
 end
