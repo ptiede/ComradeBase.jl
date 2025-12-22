@@ -85,7 +85,7 @@ function build_param(param::AbstractArray, p)
     return map(x -> build_param(x, p), param)
 end
 
-function (m::DomainParams)(p)
+function (m::DomainParams{T})(p) where {T}
     return build_param(m, p)
 end
 
