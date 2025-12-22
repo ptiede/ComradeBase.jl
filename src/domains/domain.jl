@@ -186,7 +186,7 @@ imgmap(dm::DualMap) = dm.img
 vismap(dm::DualMap) = dm.vis
 domain(dm::DualMap) = dm.dims
 
-function dualmap!(map::DualMap{I, V}, m::AbstractModel)
+function dualmap!(map::DualMap, m::AbstractModel)
     intensitymap!(imgmap(map), m)
     visibilitymap!(vismap(map), m)
     return nothing
