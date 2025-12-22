@@ -89,8 +89,6 @@ function (m::DomainParams)(p)
     return build_param(m, p)
 end
 
-export @unpack_params
-
 """
     @unpack_params a,b,c,... = m(p)
 
