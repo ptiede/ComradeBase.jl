@@ -37,6 +37,19 @@ function ComradeBase.visibility_point(m::GaussTestNA, p)
     return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
+struct DualDomain{D1<:ComradeBase.AbstractSingleDomain, D2<:ComradeBase.AbstractSingleDomain} <: ComradeBase.AbstractDualDomain
+    imgdomain::D1
+    visdomain::D2
+end
+
+function ComradeBase.intensitymap(m::ComradeBase.AbstractModel, p::DualDomain)
+    return ComradeBase.intensitymap(m, imgdomain(p))
+end
+
+function ComradeBase.visibilitymap(m::ComradeBase.AbstractModel, p::DualDomain)
+    return ComradeBase.visibilitymap(m, visdomain(p))
+end
+
 # Fake it to for testing
 function ComradeBase.intensitymap_numeric(
         m::GaussTestNA,
@@ -85,6 +98,15 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
     @test imgpol isa ComradeBase.IntensityMap
     @test eltype(imgpol) <: StokesParams
+
+    img = intensitymap(m, gim)
+    vis = visibilitymap(m, g)
+
+    dd = DualDomain(gim, g)
+    dmap = ComradeBase.dualmap(m, dd)
+    @test ComradeBase.imgmap(dmap) ≈ img
+    @test ComradeBase.vismap(dmap) ≈ vis
+
 end
 
 @testset "visibilities not analytic" begin

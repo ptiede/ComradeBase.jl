@@ -15,6 +15,8 @@ There are two methods that must be implemented for this domain:
     - `visdomain(d::AbstractDualDomain)` which returns the visibility domain
 """
 abstract type AbstractDualDomain <: AbstractDomain end
+imgdomain(d::AbstractDualDomain) = getfield(d, :imgdomain)
+visdomain(d::AbstractDualDomain) = getfield(d, :visdomain)
 
 
 """
@@ -151,17 +153,15 @@ Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 
 """
     dualmap(m::AbstractModel, dims::AbstractDualDomain)
-    dualmap!(map::DualMap, m::AbstractModel)
 
 Computes both the intensity map and visibility map of the `model`. This can be faster
 than computing them separately as some intermediate results can be reused.
 This returns a `DualMap` which holds the intensity map and visibility map.
 """
 function dualmap(m::AbstractModel, dims::AbstractDualDomain)
-    img = allocate_imgmap(m, imgdomain(dims))
-    vis = allocate_vismap(m, visdomain(dims))
+    img = intensitymap(m, dims)
+    vis = visibilitymap(m, dims)
     map = DualMap(img, vis, dims)
-    dualmap!(map, m)
     return map
 end
 
@@ -183,12 +183,6 @@ end
 imgmap(dm::DualMap) = dm.img
 vismap(dm::DualMap) = dm.vis
 domain(dm::DualMap) = dm.dims
-
-function dualmap!(map::DualMap, m::AbstractModel)
-    intensitymap!(imgmap(map), m)
-    visibilitymap!(vismap(map), m)
-    return nothing
-end
 
 
 include("executors.jl")
