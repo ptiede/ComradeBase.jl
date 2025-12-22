@@ -151,6 +151,49 @@ Base.iterate(d::AbstractSingleDomain, i::Int = 1) = iterate(dims(d), i)
 Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 
 
+"""
+    dualmap(m::AbstractModel, dims::AbstractDualDomain)
+    dualmap!(map::DualMap, m::AbstractModel)
+
+Computes both the intensity map and visibility map of the `model`. This can be faster
+than computing them separately as some intermediate results can be reused.
+This returns a `DualMap` which holds the intensity map and visibility map.
+"""
+function dualmap(m::AbstractModel, dims::AbstractDualDomain)
+    img = allocate_imgmap(m, imgdomain(dims))
+    vis = allocate_vismap(m, visdomain(dims))
+    map = DualMap(img, vis, dims)
+    dualmap!(map, m)
+    return map
+end
+
+"""
+    DualMap(img, vis, dims)
+
+A structure that holds both an image map and a visibility map along with their dual domain.
+
+To access the image map use `imgmap(dm)`.
+To access the visibility map use `vismap(dm)`.
+To access the dual domain use `domain(dm)`.
+"""
+struct DualMap{I, V, D <: AbstractDualDomain}
+    img::I
+    vis::V
+    dims::D
+end
+
+imgmap(dm::DualMap) = dm.img
+vismap(dm::DualMap) = dm.vis
+domain(dm::DualMap) = dm.dims
+
+function dualmap!(map::DualMap{I, V}, m::AbstractModel)
+    intensitymap!(imgmap(map), m)
+    visibilitymap!(vismap(map), m)
+    return nothing
+end
+
+
+
 include("executors.jl")
 include("headers.jl")
 include("rectigrid.jl")
