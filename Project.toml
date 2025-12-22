@@ -1,7 +1,7 @@
 name = "ComradeBase"
 uuid = "6d8c423b-a35f-4ef1-850c-862fe21f82c4"
 authors = ["Paul Tiede <ptiede91@gmail.com> and contributors"]
-version = "0.9.6"
+version = "0.9.7"
 
 [deps]
 Accessors = "7d9f7c33-5ae7-4f3b-8dc6-eff91059b697"

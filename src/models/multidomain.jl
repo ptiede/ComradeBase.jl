@@ -17,8 +17,7 @@ function build_param(param::MyDomainParam{Float64}, p)
 end
 ```
 
-where `p` is the point where the model will be evaluated at. For an
-example see the [`TaylorSpectral`](@ref).
+where `p` is the point where the model will be evaluated at.
 
 To evaluate the parameter family at a point `p` in the frequency and time 
 domain use `build_param(param, p)` or just `param(p)`.
