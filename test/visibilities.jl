@@ -37,7 +37,7 @@ function ComradeBase.visibility_point(m::GaussTestNA, p)
     return complex(exp(-2π^2 * (U^2 + V^2)))
 end
 
-struct DualDomain{D1<:ComradeBase.AbstractSingleDomain, D2<:ComradeBase.AbstractSingleDomain} <: ComradeBase.AbstractDualDomain
+struct DualDomain{D1 <: ComradeBase.AbstractSingleDomain, D2 <: ComradeBase.AbstractSingleDomain} <: ComradeBase.AbstractDualDomain
     imgdomain::D1
     visdomain::D2
 end
