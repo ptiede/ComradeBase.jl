@@ -122,6 +122,19 @@ end
         @test flux(img1) ≈ flux(img2)[1, 1, 1, 1]
         @test centroid(img1) == centroid(stokes(img1, :I))
         @test second_moment(img1) == second_moment(stokes(img1, :I))
+
+        img1 = IntensityMap(imgP[:, :, 1, 1], RectiGrid((; X = x, Y = y)))
+        img2 = IntensityMap(Array(imgP[:, :, 1, 1]), RectiGrid((; X = x, Y = y)))
+
+        @test stokes(img1, :I) ≈ stokes(img2, :I)
+        @test stokes(img1, :Q) ≈ stokes(img2, :Q)
+        @test stokes(img1, :U) ≈ stokes(img2, :U)
+        @test stokes(img1, :V) ≈ stokes(img2, :V)
+
+        @test stokes(first(imgP), :I) ≈ first(stokes(imgP, :I))
+        @test stokes(last(imgP), :I) ≈ last(stokes(imgP, :I))
+
+
     end
 end
 
@@ -195,4 +208,7 @@ end
 
     @test header(img) == header(g)
     @test executor(img) == executor(g)
+
+    @test propertynames(img) == propertynames(g)
+    @test img.X == g.X
 end

@@ -1,5 +1,33 @@
 export RectiGrid, refinespatial
 
+abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
+create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
+function allocate_map(M::Type{<:AbstractArray{T}}, g::AbstractRectiGrid) where {T}
+    return IntensityMap(similar(M, size(g)), g)
+end
+
+function fieldofview(dims::AbstractRectiGrid)
+    (; X, Y) = dims
+    dx = step(X)
+    dy = step(Y)
+    return (X = abs(last(X) - first(X)) + dx, Y = abs(last(Y) - first(Y)) + dy)
+end
+
+@inline posang(d::AbstractRectiGrid) = getfield(d, :posang)
+
+"""
+    pixelsizes(img::IntensityMap)
+    pixelsizes(img::AbstractRectiGrid)
+
+Returns a named tuple with the spatial pixel sizes of the image.
+"""
+function pixelsizes(keys::AbstractRectiGrid)
+    x = keys.X
+    y = keys.Y
+    return (X = step(x), Y = step(y))
+end
+
+
 struct RectiGrid{D, E, Hd <: AMeta, P} <: AbstractRectiGrid{D, E}
     dims::D
     executor::E

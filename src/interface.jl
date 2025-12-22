@@ -273,21 +273,3 @@ Computes the visibilties of a `model` in-place, using using the analytic visibil
 `visibility_point`.
 """
 function visibilitymap_analytic! end
-
-"""
-    stokes(m::AbstractArray{<:StokesParams}, p::Symbol)
-
-Extract the specific stokes component `p` from the polarized image `m`.
-"""
-function stokes(m::AbstractArray{<:StokesParams}, p::Symbol)
-    return getproperty.(m, p)
-end
-
-function stokes(m::StructArray{<:StokesParams}, p::Symbol)
-    return getproperty(m, p)
-end
-
-"""
-    Returns the base image of a intensity map type object
-"""
-baseimage(m::AbstractArray) = m

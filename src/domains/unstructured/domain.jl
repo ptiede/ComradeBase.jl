@@ -70,7 +70,7 @@ function Base.getindex(domain::UnstructuredDomain; Ti = nothing, Fr = nothing)
         findall(p -> (p.Ti == Ti) && (p.Fr == Fr), points)
     elseif Ti !== nothing
         findall(p -> (p.Ti == Ti), points)
-    else
+    elseif Fr !== nothing
         findall(p -> (p.Fr == Fr), points)
     end
     return UnstructuredDomain(points[indices], executor(domain), header(domain))
