@@ -1,10 +1,23 @@
 # In this file we will define our base image class. This is entirely based on
 export domainpoints,
     named_dims, dims, header, axisdims, executor,
-    posang, update_spat, rotmat
+    posang, update_spat, rotmat, imgdomain, visdomain
 
 abstract type AbstractDomain end
 abstract type AbstractSingleDomain{D, E} <: AbstractDomain end
+
+"""
+    AbstractDualDomain
+
+Defines a domain that is a combination of a image and visibility domain.
+There are two methods that must be implemented for this domain:
+    - `imgdomain(d::AbstractDualDomain)` which returns the image domain
+    - `visdomain(d::AbstractDualDomain)` which returns the visibility domain
+"""
+abstract type AbstractDualDomain <: AbstractDomain end
+
+
+
 
 """
     create_map(array, g::AbstractSingleDomain)
@@ -137,84 +150,12 @@ Base.iterate(d::AbstractSingleDomain, i::Int = 1) = iterate(dims(d), i)
 # We return the eltype of the dimensions. Should we change this?
 Base.eltype(d::AbstractSingleDomain) = eltype(basedim(first(dims(d))))
 
-const AMeta = DimensionalData.Dimensions.Lookups.AbstractMetadata
 
-abstract type AbstractHeader{T, X} <: AMeta{T, X} end
+include("executors.jl")
+include("headers.jl")
+include("rectigrid.jl")
+include("multidomain.jl")
+include("unstructured/unstructured.jl")
 
-"""
-    MinimalHeader{T}
-
-A minimal header type for ancillary image information.
-
-# Fields
-$(FIELDS)
-"""
-struct MinimalHeader{T} <: AbstractHeader{T, NamedTuple{(), Tuple{}}}
-    """
-    Common source name
-    """
-    source::String
-    """
-    Right ascension of the image in degrees (J2000)
-    """
-    ra::T
-    """
-    Declination of the image in degrees (J2000)
-    """
-    dec::T
-    """
-    Modified Julian Date in days
-    """
-    mjd::T
-    """
-    Frequency of the image in Hz
-    """
-    frequency::T
-end
-
-function MinimalHeader(source, ra, dec, mjd, freq)
-    raT, decT, mjdT, freqT = promote(ra, dec, mjd, freq)
-    return MinimalHeader(source, raT, decT, mjdT, freqT)
-end
-
-function DimensionalData.val(m::AbstractHeader)
-    n = propertynames(m)
-    pm = Base.Fix1(getproperty, m)
-    return NamedTuple{n}(map(pm, n))
-end
-
-"""
-    NoHeader
-
-
-"""
-const NoHeader = DimensionalData.NoMetadata
-
-abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
-create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
-function allocate_map(M::Type{<:AbstractArray{T}}, g::AbstractRectiGrid) where {T}
-    return IntensityMap(similar(M, size(g)), g)
-end
-
-function fieldofview(dims::AbstractRectiGrid)
-    (; X, Y) = dims
-    dx = step(X)
-    dy = step(Y)
-    return (X = abs(last(X) - first(X)) + dx, Y = abs(last(Y) - first(Y)) + dy)
-end
-
-@inline posang(d::AbstractRectiGrid) = getfield(d, :posang)
-
-"""
-    pixelsizes(img::IntensityMap)
-    pixelsizes(img::AbstractRectiGrid)
-
-Returns a named tuple with the spatial pixel sizes of the image.
-"""
-function pixelsizes(keys::AbstractRectiGrid)
-    x = keys.X
-    y = keys.Y
-    return (X = step(x), Y = step(y))
-end
 
 # Define some helpful names for ease typing

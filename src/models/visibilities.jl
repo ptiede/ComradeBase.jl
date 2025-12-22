@@ -56,7 +56,7 @@ function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
 end
 
 function visibilitymap_analytic_executor!(
-        vis::FluxMap2,
+        vis,
         s::AbstractModel,
         ::ThreadsEx{S}
     ) where {S}

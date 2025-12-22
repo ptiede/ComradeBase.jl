@@ -149,19 +149,6 @@ function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
     return cent[1] / f, cent[2] / f
 end
 
-# function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMap{T,2}) where {T<:Real}
-#     out = centroid(img)
-#     x0, y0 = out
-#     pr = ProjectTo(img)
-#     function _centroid_pullback(Δ)
-#         f = flux(img)
-#         Δf = NoTangent()
-#         Δimg = Δ[1].*(img.X./f .- x0/f) .+ Δ[2].*(img.Y'./f .- y0/f)
-#         return Δf, pr(Δimg)
-#     end
-#     return out, _centroid_pullback
-# end
-
 """
     second_moment(im::AbstractIntensityMap; center=true)
 
