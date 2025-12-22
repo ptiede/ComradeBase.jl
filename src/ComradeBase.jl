@@ -31,7 +31,6 @@ const FluxMap2{T, N, E} = Union{
 }
 
 
-
 @setup_workload begin
     fovx = 10.0
     fovy = 12.0

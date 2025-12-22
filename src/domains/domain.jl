@@ -17,8 +17,6 @@ There are two methods that must be implemented for this domain:
 abstract type AbstractDualDomain <: AbstractDomain end
 
 
-
-
 """
     create_map(array, g::AbstractSingleDomain)
 
@@ -191,7 +189,6 @@ function dualmap!(map::DualMap, m::AbstractModel)
     visibilitymap!(vismap(map), m)
     return nothing
 end
-
 
 
 include("executors.jl")

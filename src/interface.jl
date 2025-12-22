@@ -273,4 +273,3 @@ Computes the visibilties of a `model` in-place, using using the analytic visibil
 `visibility_point`.
 """
 function visibilitymap_analytic! end
-

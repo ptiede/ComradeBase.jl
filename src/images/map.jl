@@ -138,8 +138,6 @@ function intensitymap_analytic!(
 end
 
 
-
-
 # for s in schedulers
 #     @eval begin
 #         function _threads_intensitymap!(img::UnstructuredMap, s::AbstractModel, g,
@@ -151,5 +149,3 @@ end
 #         end
 #     end
 # end
-
-
