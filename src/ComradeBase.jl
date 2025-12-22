@@ -19,9 +19,11 @@ export visibility,
     flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
     named_dims
 
+
 include("interface.jl")
 include("executors.jl")
 include("domain.jl")
+include("multidomain.jl")
 include("rectigrid.jl")
 include("unstructured/domain.jl")
 include("unstructured/map.jl")
@@ -32,7 +34,9 @@ const FluxMap2{T, N, E} = Union{
     UnstructuredMap{T, <:AbstractVector, E},
 }
 
+
 include("visibilities.jl")
+include("modifiers.jl")
 # include("rrules.jl")
 
 @setup_workload begin
