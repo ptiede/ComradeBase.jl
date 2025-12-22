@@ -62,7 +62,8 @@ end
 Extract the specific stokes component `p` from the polarized image `m`.
 """
 function stokes(m::AbstractArray{<:StokesParams}, p::Symbol)
-    return getproperty.(m, p)
+    fm = Base.Fix2(stokes, p)
+    return map(fm, m)
 end
 
 function stokes(m::StructArray{<:StokesParams}, p::Symbol)
