@@ -29,6 +29,21 @@ Base.@propagate_inbounds Base.setindex!(a::UnstructuredMap, v, i::Int) = setinde
     v, i
 )
 
+Base.@propagate_inbounds function Base.getindex(x::UnstructuredMap, I::AbstractArray)
+    dims = axisdims(x)
+    g = domainpoints(dims)
+    newdims = UnstructuredDomain((g[I]), executor(dims), header(dims))
+    return UnstructuredMap(parent(x)[I], newdims)
+end
+
+Base.@propogate_inbounds function Base.view(x::UnstructuredMap, I::AbstractArray)
+    dims = axisdims(x)
+    g = domainpoints(dims)
+    newdims = UnstructuredDomain(@view(g[I]), executor(dims), header(dims))
+    return UnstructuredMap(view(parent(x), I), newdims)
+end
+
+
 function UnstructuredMap(data::UnstructuredMap, dims::UnstructuredDomain)
     return UnstructuredMap(parent(data), dims)
 end
@@ -39,20 +54,6 @@ end
 
 function Base.similar(m::UnstructuredMap, ::Type{S}) where {S}
     return UnstructuredMap(similar(parent(m), S), axisdims(m))
-end
-
-function Base.view(x::UnstructuredMap, I)
-    dims = axisdims(x)
-    g = domainpoints(dims)
-    newdims = UnstructuredDomain(@view(g[I]), executor(dims), header(dims))
-    return UnstructuredMap(view(parent(x), I), newdims)
-end
-
-Base.@propagate_inbounds function Base.getindex(x::UnstructuredMap, I)
-    dims = axisdims(x)
-    g = domainpoints(dims)
-    newdims = UnstructuredDomain((g[I]), executor(dims), header(dims))
-    return UnstructuredMap(parent(x)[I], newdims)
 end
 
 function intensitymap_analytic!(
