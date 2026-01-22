@@ -186,29 +186,3 @@ end
     )
     return rebuild(img, data, dims, refdims, name, metadata)
 end
-
-function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::Serial)
-    dx, dy = pixelsizes(img)
-    g = domainpoints(img)
-    bimg = baseimage(img)
-    for I in eachindex(g, bimg)
-        bimg[I] = intensity_point(s, g[I]) * dx * dy
-    end
-    # bimg .= intensity_point.(Ref(s), g) .* dx .* dy
-    return nothing
-end
-
-function intensitymap_analytic_executor!(
-        img::IntensityMap, s::AbstractModel,
-        ::ThreadsEx{S}
-    ) where {S}
-    g = domainpoints(img)
-    e = executor(img)
-    dx, dy = pixelsizes(img)
-    @threaded e for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I]) * dx * dy
-    end
-    return nothing
-end
-
-function _threads_intensitymap! end

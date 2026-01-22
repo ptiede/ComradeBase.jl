@@ -137,7 +137,7 @@ function centroid(im::IntensityMap{<:Number})
 end
 centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
+function centroid(im::IntensityMap{T, 2}) where {T <: Real}
     f = flux(im)
     d = domainpoints(im)
     # Grab the parent otherwise things don't work on the GPU (DD missing multiargument mapreduce)
@@ -146,7 +146,7 @@ function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
         y0 = y .* I
         return SVector(x0, y0)
     end
-    return cent[1] / f, cent[2] / f
+    return cent ./ 2
 end
 
 # function ChainRulesCore.rrule(::typeof(centroid), img::IntensityMap{T,2}) where {T<:Real}

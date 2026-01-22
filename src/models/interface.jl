@@ -291,3 +291,31 @@ end
     Returns the base image of a intensity map type object
 """
 baseimage(m::AbstractArray) = m
+
+
+"""
+    centroid(m::AbstractModel, g::AbstractDomain)
+Computes the centroid of the model `m` over the domain `g`.
+"""
+function centroid(m::AbstractModel, g::AbstractDomain)
+    img = intensitymap(m, g)
+    return centroid(img)
+end
+
+"""
+    flux(m::AbstractModel, g::AbstractDomain)
+Computes the flux density of the model `m` over the domain `g`.
+"""
+function flux(m::AbstractModel, g::AbstractDomain)
+    img = intensitymap(m, g)
+    return flux(img)
+end
+
+"""
+    second_moment(m::AbstractModel, g; center=true)
+Computes the second moment of the model `m` over the domain `g`.
+"""
+function second_moment(m::AbstractModel, g::AbstractDomain; center = true)
+    img = intensitymap(m, g)
+    return second_moment(img; center = center)
+end
