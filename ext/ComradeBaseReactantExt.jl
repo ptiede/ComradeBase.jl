@@ -12,14 +12,18 @@ import Reactant: TracedRArray, unwrapped_eltype
 # If inside tracing land we automatically switch the backend to Reactant
 Base.@nospecializeinfer function Reactant.make_tracer(
     seen,
-    @nospecialize(prev::Type{<:ComradeBase.Serial}),
+    @nospecialize(prev::Union{ComradeBase.Serial, ComradeBase.ThreadsEx}),
     @nospecialize(path),
-    mode; kwargs...)
+    mode; 
+    @nospecialize(track_numbers::Type = Union{}),
+    @nospecialize(sharding = Reactant.Sharding.NoSharding()),
+    @nospecialize(runtime),
+    kwargs...)
     return Reactant.traced_type(typeof(prev), Val(mode), track_numbers, sharding, runtime)()
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(T::Type{<:AbstractFFTs.Plan}),
+    @nospecialize(T::Type{<:Union{ComradeBase.Serial, ComradeBase.ThreadsEx}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
