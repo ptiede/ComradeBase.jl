@@ -31,6 +31,11 @@ const FluxMap2{T, N, E} = Union{
 }
 
 
+Base.@propagate_inbounds function rgetindex(I, i...)
+    return I[i...]
+end
+
+
 @setup_workload begin
     fovx = 10.0
     fovy = 12.0

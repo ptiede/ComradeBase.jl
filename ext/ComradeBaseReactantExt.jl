@@ -6,7 +6,11 @@ using Reactant
 
 import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
 using ComradeBase: ReactantEx
-import Reactant: TracedRArray, unwrapped_eltype
+import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
+
+Base.@propagate_inbounds function ComradeBase.rgetindex(I::Reactant.AnyTracedRArray, i...)
+    return @allowscalar I[i...]
+end
 
 
 # If inside tracing land we automatically switch the backend to Reactant
