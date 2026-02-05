@@ -35,6 +35,10 @@ Base.@propagate_inbounds function rgetindex(I, i...)
     return I[i...]
 end
 
+Base.@propagate_inbounds function rsetindex!(I, v, i...)
+    I[i...] = v
+end
+
 
 @setup_workload begin
     fovx = 10.0

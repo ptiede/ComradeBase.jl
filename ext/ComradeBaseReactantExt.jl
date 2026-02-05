@@ -12,6 +12,10 @@ Base.@propagate_inbounds function ComradeBase.rgetindex(I::Reactant.AnyTracedRAr
     return @allowscalar I[i...]
 end
 
+Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRArray, v, i...)
+    return @allowscalar I[i...] = v
+end
+
 
 # If inside tracing land we automatically switch the backend to Reactant
 Base.@nospecializeinfer function Reactant.make_tracer(
