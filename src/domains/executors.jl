@@ -19,6 +19,15 @@ struct ThreadsEx{S} end
 ThreadsEx() = ThreadsEx(:dynamic)
 ThreadsEx(s) = ThreadsEx{s}()
 
+"""
+    ReactantEx
+Uses Reactant.jl for execution when computing the intensitymap or visibilitymap. Note that specifying
+this should be unnecessary as ComradeBase will automatically switch to this backend when
+it detects that it is inside a Reactant tracing context.
+"""
+struct ReactantEx end
+
+
 #TODO can this be made nicer?
 @static if VERSION ≥ v"1.11"
     const schedulers = (:(:dynamic), :(:static), :(:greedy))
