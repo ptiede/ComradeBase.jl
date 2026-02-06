@@ -8,11 +8,13 @@ import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
 using ComradeBase: ReactantEx
 import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
-Base.@propagate_inbounds function ComradeBase.rgetindex(I::Reactant.AnyTracedRArray, i...)
+const RInt = Union{Integer, Reactant.TracedRNumber{<:Integer}}
+
+Base.@propagate_inbounds function ComradeBase.rgetindex(I::Reactant.AnyTracedRArray, i::RInt...)
     return @allowscalar I[i...]
 end
 
-Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRArray, v, i...)
+Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRArray, v, i::RInt...)
     return @allowscalar I[i...] = v
 end
 
