@@ -54,7 +54,7 @@ function DD.rebuild(
 end
 
 Base.propertynames(g::UnstructuredDomain) = propertynames(domainpoints(g))
-Base.getproperty(g::UnstructuredDomain, p::Symbol) = getproperty(domainpoints(g), p)
+@inline Base.getproperty(g::UnstructuredDomain, p::Symbol) = getproperty(domainpoints(g), p)
 Base.keys(g::UnstructuredDomain) = propertynames(g)
 named_dims(g::UnstructuredDomain) = StructArrays.components(dims(g))
 

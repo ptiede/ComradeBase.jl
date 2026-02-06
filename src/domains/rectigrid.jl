@@ -75,7 +75,8 @@ function Base.show(io::IO, mime::MIME"text/plain", x::RectiGrid{D, E}) where {D,
 end
 
 Base.propertynames(d::RectiGrid) = keys(d)
-Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
+# This needs to be inlined to avoid performance issues
+@inline Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
 
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(

@@ -95,12 +95,8 @@ function Base.propertynames(img::IntensityMap)
     return keys(axisdims(img))
 end
 
-function Base.getproperty(img::IntensityMap, p::Symbol)
-    if p ∈ propertynames(img)
-        return basedim(getproperty(axisdims(img), p))
-    else
-        throw(ArgumentError("$p not a valid dimension of `IntensityMap`"))
-    end
+@inline Base.@constprop :aggressive function Base.getproperty(img::IntensityMap, p::Symbol)
+    return getproperty(axisdims(img), p)
 end
 
 const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
@@ -145,7 +141,7 @@ end
 Returns the keys of the `IntensityMap` as the actual internal `AbstractRectiGrid` object.
 Optionall the user can ask for a specific dimension with `p`
 """
-axisdims(img::IntensityMap) = getfield(img, :grid)
+@inline axisdims(img::IntensityMap) = getfield(img, :grid)
 axisdims(img::IntensityMap, p::Symbol) = getproperty(axisdims(img), p)
 EnzymeRules.inactive(::typeof(axisdims), args...) = nothing
 named_dims(img::IntensityMap) = named_dims(axisdims(img))

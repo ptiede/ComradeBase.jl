@@ -76,7 +76,7 @@ end
     @test header(img1) == header(gsp)
     @test executor(img1) == executor(gsp)
 
-    @test_throws ArgumentError img1.Fr
+    @test_throws MethodError img1.Fr
 
     @testset "Slicing" begin
         @test img1[X = 1:1, Y = 1:10] isa IntensityMap
