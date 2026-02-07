@@ -36,7 +36,7 @@ function Adapt.parent_type(::Type{<:IntensityMap{T, N, D, G, A}}) where {T, N, D
     return A
 end
 
-function Adapt.parent_type(::Type{<:UnstructuredMap{T, D, G, A}}) where {T, D, G, A}
+function Adapt.parent_type(::Type{<:UnstructuredMap{T, A}}) where {T, A}
     return A
 end
 
