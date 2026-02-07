@@ -33,7 +33,7 @@ function Adapt.adapt_structure(to, A::ComradeBase.LazySlice)
 end
 
 function Adapt.parent_type(::Type{<:IntensityMap{T, N, D, G, A}}) where {T, N, D, G, A}
-    return Adapt.parent_type(A)
+    return A
 end
 
 end
