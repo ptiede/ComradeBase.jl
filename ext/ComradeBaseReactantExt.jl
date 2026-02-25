@@ -74,7 +74,7 @@ end
 # end
 
 @inline function ComradeBase.similartype(::IsPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
-    return StructArray{StokesParams{TracedRNumber{T}}}
+    return StructArray{StokesParams{Reactant.TracedRNumber{T}}}
 end
 
 @inline function ComradeBase.similartype(::NotPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
@@ -87,14 +87,14 @@ end
 # Copied from ComradeBaseKernelAbstractionsExt, these
 # probably will need to be modified still:
 
-# function ComradeBase.allocate_map(
-#         ::Type{<:StructArray{T}},
-#         g::UnstructuredDomain{D, <:ReactantEx}
-#     ) where {T, D}
-#     exec = executor(g)
-#     arrs = StructArrays.buildfromschema(x -> allocate(exec, x, size(g)), T)
-#     return UnstructuredMap(arrs, g)
-# end
+function ComradeBase.allocate_map(
+        ::Type{<:StructArray{T}},
+        g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
+    ) where {T<:StokesParams, D}
+    
+    arrs = StructArrays.buildfromschema(x -> similar(Reactant.TracedRArray{unwrapped_eltype(x)}, size(g)), T)
+    return IntensityMap(arrs, g)
+end
 
 # function ComradeBase.allocate_map(
 #         ::Type{<:AbstractArray{T}},
