@@ -3,7 +3,8 @@ export RectiGrid, refinespatial
 abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
 create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
 function allocate_map(M::Type{<:AbstractArray{T}}, g::AbstractRectiGrid) where {T}
-    return IntensityMap(similar(M, size(g)), g)
+    arr = similar(M, size(g))
+    return IntensityMap(arr, g)
 end
 
 function fieldofview(dims::AbstractRectiGrid)

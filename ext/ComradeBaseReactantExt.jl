@@ -49,13 +49,40 @@ Base.eltype(d::AbstractSingleDomain{D, E}) where {D, E <: ReactantEx} = Reactant
     eltype(basedim(first(dims(d))))
 end
 
-function ComradeBase.allocate_map(
-        ::Type{<:AbstractArray{T}},
-        g::UnstructuredDomain{D, <:ReactantEx}
-    ) where {T, D}
-    result = UnstructuredMap(similar(TracedRArray{unwrapped_eltype(T)}, size(g)), g)
-    return result
+# function ComradeBase.allocate_map(
+#         ::Type{<:AbstractArray{T}},
+#         g::UnstructuredDomain{D, <:ReactantEx}
+#     ) where {T, D}
+#     result = UnstructuredMap(similar(TracedRArray{unwrapped_eltype(T)}, size(g)), g)
+#     return result
+# end
+
+# function ComradeBase.allocate_map(
+#         ::Type{<:AbstractArray{Reactant.TracedRNumber{T}}},
+#         g::ComradeBase.AbstractRectiGrid
+#     ) where {T}
+#     arr = similar(Reactant.TracedRArray{T}, size(g))
+#     return IntensityMap(arr, g)
+# end
+
+# function ComradeBase.allocate_map(
+#         ::Type{<:AbstractArray{T}},
+#         g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
+#     ) where {T, D}
+#     arr = similar(ConcreteRArray{T}, size(g))
+#     return IntensityMap(arr, g)
+# end
+
+@inline function ComradeBase.similartype(::IsPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
+    return StructArray{StokesParams{TracedRNumber{T}}}
 end
+
+@inline function ComradeBase.similartype(::NotPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
+    return TracedRArray{T}
+end
+
+
+
 
 # Copied from ComradeBaseKernelAbstractionsExt, these
 # probably will need to be modified still:
@@ -94,7 +121,8 @@ function ComradeBase.intensitymap_analytic_executor!(
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
     bimg = baseimage(img)
-    bimg .= ComradeBase.intensity_point.(Ref(s), g) .* dx .* dy
+    tmp = ComradeBase.intensity_point.(Ref(s), g) .* dx .* dy
+    copyto!(bimg, tmp)
     return nothing
 end
 
@@ -105,7 +133,8 @@ function ComradeBase.intensitymap_analytic_executor!(
     )
     g = domainpoints(img)
     pvis = baseimage(vis)
-    pvis .= ComradeBase.intensity_point.(Ref(s), g)
+    tmp = ComradeBase.intensity_point.(Ref(s), g)
+    copyto!(pvis, tmp)
     return nothing
 end
 
@@ -116,7 +145,8 @@ function ComradeBase.visibilitymap_analytic_executor!(
     )
     g = domainpoints(vis)
     pvis = baseimage(vis)
-    pvis .= ComradeBase.visibility_point.(Ref(s), g)
+    tmp = ComradeBase.visibility_point.(Ref(s), g)
+    copyto!(pvis, tmp)
     return nothing
 end
 
