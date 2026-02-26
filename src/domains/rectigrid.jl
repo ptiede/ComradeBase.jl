@@ -201,13 +201,13 @@ Base.axes(g::RotGrid) = axes(parent(g))
 rotmat(g::RotGrid) = getfield(g, :rot)
 
 Base.@propagate_inbounds function Base.getindex(g::RotGrid, i::Int)
-    p = getindex(parent(g), i)
+    p = rgetindex(parent(g), i)
     pr = rotmat(g) * SVector(values(p)[1:2])
     return update_spat(p, pr[1], pr[2])
 end
 
 Base.@propagate_inbounds function Base.getindex(g::RotGrid, I::Vararg{Int})
-    p = getindex(parent(g), I...)
+    p = rgetindex(parent(g), I...)
     pr = rotmat(g) * SVector(values(p)[1:2])
     return update_spat(p, pr[1], pr[2])
 end

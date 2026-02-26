@@ -110,9 +110,14 @@ Base.@propagate_inbounds function Base.getindex(x::UnstructuredMap, I::AbstractA
     return UnstructuredMap(parent(x)[I], newdims)
 end
 
-function intensitymap_analytic!(
-        img::UnstructuredMap{T, <:Any, <:AbstractSingleDomain},
-        s::AbstractModel
+function intensitymap_analytic!(img::UnstructuredMap, s::AbstractModel)
+    return intensitymap_analytic_executor!(img, s, executor(img))
+end
+
+function intensitymap_analytic_executor!(
+        img::UnstructuredMap{T},
+        s::AbstractModel,
+        ::Serial
     ) where {T}
     g = domainpoints(img)
     for i in eachindex(img, g)
@@ -122,13 +127,11 @@ function intensitymap_analytic!(
     return nothing
 end
 
-function intensitymap_analytic!(
-        img::UnstructuredMap{
-            T, <:Any,
-            <:UnstructuredDomain{D, <:ThreadsEx{S}},
-        },
-        s::AbstractModel
-    ) where {T, D, S}
+function intensitymap_analytic_executor!(
+        img::UnstructuredMap{T},
+        s::AbstractModel,
+        ::ThreadsEx{S}
+    ) where {T, S}
     g = domainpoints(img)
     e = executor(img)
     @threaded e for I in CartesianIndices(g)

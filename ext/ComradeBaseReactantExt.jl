@@ -3,6 +3,7 @@ module ComradeBaseReactantExt
 using ComradeBase
 using StructArrays
 using Reactant
+using StaticArrays
 
 import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
 using ComradeBase: ReactantEx
@@ -74,11 +75,11 @@ end
 # end
 
 @inline function ComradeBase.similartype(::IsPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
-    return StructArray{StokesParams{Reactant.TracedRNumber{T}}}
+    return StructArray{StokesParams{Reactant.TracedRNumber{unwrapped_eltype(T)}}}
 end
 
 @inline function ComradeBase.similartype(::NotPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
-    return TracedRArray{T}
+    return TracedRArray{unwrapped_eltype(T)}
 end
 
 
@@ -95,6 +96,14 @@ function ComradeBase.allocate_map(
     arrs = StructArrays.buildfromschema(x -> similar(Reactant.TracedRArray{unwrapped_eltype(x)}, size(g)), T)
     return IntensityMap(arrs, g)
 end
+
+function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) where {D}
+    g = Reactant.materialize_traced_array.(map(basedim, dims(d)))
+    rot = rotmat(d)
+    N = keys(d)
+    return ComradeBase.RotGrid(StructArray(NamedTuple{N}(ComradeBase._build_slices(g, size(d)))), rot)
+end
+
 
 # function ComradeBase.allocate_map(
 #         ::Type{<:AbstractArray{T}},
@@ -113,16 +122,25 @@ end
 #     return IntensityMap(arrs, g)
 # end
 
+function foo(p, rm, K, ps...)
+    psn = NamedTuple{K}(ps)
+    pr = rm * SVector((psn.X, psn.Y))
+    psnr = update_spat(psn, pr[1], pr[2])
+     return ComradeBase.intensity_point(p, psnr)
+end
+
 function ComradeBase.intensitymap_analytic_executor!(
-        img::IntensityMap,
+        img::IntensityMap{T, N},
         s::ComradeBase.AbstractModel,
         ::ReactantEx
-    )
+    ) where {T, N}
     dx, dy = pixelsizes(img)
-    g = domainpoints(img)
+    dms = Reactant.materialize_traced_array.(map(basedim, dims(img)))
+    ddims = ntuple(k -> reshape(dms[k], ntuple(i -> i == k ? Base.Colon() : 1, Val(N))), Val(N))
+    rm = rotmat(axisdims(img))
     bimg = baseimage(img)
-    tmp = ComradeBase.intensity_point.(Ref(s), g) .* dx .* dy
-    copyto!(bimg, tmp)
+    K = keys(axisdims(img))
+    bimg .= foo.(Ref(s), Ref(rm), Ref(K), ddims...) .* dx .* dy
     return nothing
 end
 
@@ -132,9 +150,10 @@ function ComradeBase.intensitymap_analytic_executor!(
         ::ReactantEx
     )
     g = domainpoints(img)
-    pvis = baseimage(vis)
-    tmp = ComradeBase.intensity_point.(Ref(s), g)
-    copyto!(pvis, tmp)
+    bimg = baseimage(img)
+    fa = Base.Fix1(ComradeBase.intensity_point, s)
+    tmp = fa.(g)
+    copyto!(bimg, tmp)
     return nothing
 end
 
@@ -145,7 +164,8 @@ function ComradeBase.visibilitymap_analytic_executor!(
     )
     g = domainpoints(vis)
     pvis = baseimage(vis)
-    tmp = ComradeBase.visibility_point.(Ref(s), g)
+    vp = Base.Fix1(ComradeBase.visibility_point, s)
+    tmp = vp.(g)
     copyto!(pvis, tmp)
     return nothing
 end
