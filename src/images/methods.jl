@@ -32,7 +32,9 @@ Base.@propagate_inbounds @inline function Base.getindex(
 end
 
 function Base.Broadcast.BroadcastStyle(::Type{<:LazySlice{T, N, A}}) where {T, N, A}
-    return (Base.Broadcast.BroadcastStyle(A))
+    inner_style = Base.Broadcast.BroadcastStyle(A)
+    style = Base.Broadcast.result_style(inner_style, Base.Broadcast.DefaultArrayStyle{N}())
+    return style
 end
 
 # The ntuple construction fails here (recursion limit?) so we use
@@ -72,22 +74,22 @@ to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin ove
 (`x0`, `y0`) in the image plane.
 
 ## Arguments:
- - `fovx::Real`: The field of view in the x-direction
- - `fovy::Real`: The field of view in the y-direction
+ - `fovx::Number`: The field of view in the x-direction
+ - `fovy::Number`: The field of view in the y-direction
  - `nx::Integer`: The number of pixels in the x-direction
  - `ny::Integer`: The number of pixels in the y-direction
 
 ## Keyword Arguments:
- - `x0::Real=0`: The x-offset of the image
- - `y0::Real=0`: The y-offset of the image
- - `posang::Real=0`: The position angle of the grid, relative to RA=0 axis.
+ - `x0::Number=0`: The x-offset of the image
+ - `y0::Number=0`: The y-offset of the image
+ - `posang::Number=0`: The position angle of the grid, relative to RA=0 axis.
  - `executor=Serial()`: The executor to use for the grid, default is serial execution
  - `header=NoHeader()`: The header to use for the grid
 """
 function imagepixels(
-        fovx::Real, fovy::Real, nx::Integer, ny::Integer,
-        x0::Real = zero(fovx), y0::Real = zero(fovy);
-        posang::Real = zero(fovx),
+        fovx::Number, fovy::Number, nx::Integer, ny::Integer,
+        x0::Number = zero(fovx), y0::Number = zero(fovy);
+        posang::Number = zero(fovx),
         executor = Serial(), header = NoHeader()
     )
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
@@ -137,7 +139,7 @@ function centroid(im::IntensityMap{<:Number})
 end
 centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
+function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Number}
     f = flux(im)
     d = domainpoints(im)
     # Grab the parent otherwise things don't work on the GPU (DD missing multiargument mapreduce)
@@ -158,7 +160,7 @@ second moment, which is specified by the `center` argument.
 
 For polarized maps we return the second moment for Stokes I only.
 """
-function second_moment(im::IntensityMap{T, N}; center = true) where {T <: Real, N}
+function second_moment(im::IntensityMap{T, N}; center = true) where {T <: Number, N}
     (; X, Y) = named_dims(im)
     return mapslices(
         x -> second_moment(IntensityMap(x, RectiGrid((; X, Y))); center), im;
@@ -178,7 +180,7 @@ Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered
 second moment, which is specified by the `center` argument.
 """
-function second_moment(im::IntensityMap{T, 2}; center = true) where {T <: Real}
+function second_moment(im::IntensityMap{T, 2}; center = true) where {T <: Number}
     xx = zero(T)
     xy = zero(T)
     yy = zero(T)
