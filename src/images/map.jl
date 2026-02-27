@@ -23,8 +23,8 @@ baseimage(x::UnstructuredMap) = baseimage(parent(x))
 Base.parent(x::UnstructuredMap) = getfield(x, :data)
 Base.length(x::UnstructuredMap) = length(parent(x))
 Base.IndexStyle(::Type{<:UnstructuredMap{T, A}}) where {T, A} = IndexStyle(A)
-Base.@propagate_inbounds Base.getindex(a::UnstructuredMap, i::Integer) = getindex(parent(a), i)
-Base.@propagate_inbounds Base.setindex!(a::UnstructuredMap, v, i::Integer) = setindex!(
+Base.@propagate_inbounds Base.getindex(a::UnstructuredMap, i::Integer) = rgetindex(parent(a), i)
+Base.@propagate_inbounds Base.setindex!(a::UnstructuredMap, v, i::Integer) = rsetindex!(
     parent(a),
     v, i
 )
