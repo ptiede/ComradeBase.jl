@@ -32,6 +32,8 @@ methods to satify the interface:
 """
 abstract type AbstractModel end
 
+Base.broadcastable(o::AbstractModel) = Ref(o)
+
 export stokes, IsPolarized, NotPolarized
 
 # Trait to signal whether a model is polarized or not

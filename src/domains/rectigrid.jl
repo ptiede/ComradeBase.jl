@@ -60,7 +60,7 @@ function domainpoints(d::RectiGrid{D, Hd}) where {D, Hd}
     g = map(basedim, dims(d))
     rot = rotmat(d)
     N = keys(d)
-    return RotGrid(StructArray(NamedTuple{N}(_build_slices(g, size(d)))), rot)
+    return LazyGrid(NamedTuple{N}(g), rot)
 end
 
 Base.keys(g::RectiGrid) = map(name, dims(g))
@@ -77,7 +77,9 @@ end
 
 Base.propertynames(d::RectiGrid) = keys(d)
 # This needs to be inlined to avoid performance issues
-@inline Base.getproperty(g::RectiGrid, p::Symbol) = basedim(dims(g)[findfirst(==(p), keys(g))])
+@inline function Base.getproperty(g::RectiGrid, p::Symbol)
+    return basedim(getproperty(named_dims(g), p))
+end
 
 # This is needed to prevent doubling up on the dimension
 @inline function RectiGrid(
@@ -177,40 +179,3 @@ function refinespatial(g::RectiGrid, refac::NTuple{2})
 end
 
 refinespatial(g::RectiGrid, refac::Number) = refinespatial(g, (refac, refac))
-
-
-struct RotGrid{T, N, G <: AbstractArray{T, N}, M} <: AbstractArray{T, N}
-    grid::G
-    rot::M
-end
-
-@inline function update_spat(p::NamedTuple, x, y)
-    p1 = @set p[1] = x
-    p2 = @set p1[2] = y
-    return p2
-end
-
-Base.parent(g::RotGrid) = getfield(g, :grid)
-Base.getproperty(g::RotGrid, p::Symbol) = getproperty(parent(g), p)
-Base.propertynames(g::RotGrid) = propertynames(parent(g))
-Base.size(g::RotGrid) = size(parent(g))
-Base.IndexStyle(::Type{<:RotGrid{T, N, G}}) where {T, N, G} = Base.IndexStyle(G)
-Base.firstindex(g::RotGrid) = firstindex(parent(g))
-Base.lastindex(g::RotGrid) = lastindex(parent(g))
-Base.axes(g::RotGrid) = axes(parent(g))
-rotmat(g::RotGrid) = getfield(g, :rot)
-
-Base.@propagate_inbounds function Base.getindex(g::RotGrid, i::Int)
-    p = rgetindex(parent(g), i)
-    pr = rotmat(g) * SVector(values(p)[1:2])
-    return update_spat(p, pr[1], pr[2])
-end
-
-Base.@propagate_inbounds function Base.getindex(g::RotGrid, I::Vararg{Int})
-    p = rgetindex(parent(g), I...)
-    pr = rotmat(g) * SVector(values(p)[1:2])
-    return update_spat(p, pr[1], pr[2])
-end
-
-# Use structarray broadcasting
-Base.BroadcastStyle(::Type{<:RotGrid{T, N, G}}) where {T, N, G} = Base.BroadcastStyle(G)

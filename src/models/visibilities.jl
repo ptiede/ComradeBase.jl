@@ -41,7 +41,8 @@ function visibilitymap_analytic(m::AbstractModel, p::AbstractSingleDomain)
 end
 
 function visibilitymap_analytic!(vis, m::AbstractModel)
-    return visibilitymap_analytic_executor!(vis, m, executor(vis))
+    visibilitymap_analytic_executor!(vis, m, executor(vis))
+    return nothing
 end
 
 function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
