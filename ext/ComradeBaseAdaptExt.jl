@@ -24,11 +24,11 @@ function Adapt.adapt_structure(to, A::ComradeBase.AbstractSingleDomain)
     return rebuild(A; dims = Adapt.adapt_structure(to, dims(A)))
 end
 
-function Adapt.adapt_structure(to, A::ComradeBase.LazySlice)
-    return ComradeBase.LazySlice(
-        Adapt.adapt_structure(to, A.slice),
-        A.dir,
-        A.dims
+function Adapt.adapt_structure(to, A::ComradeBase.LazyGrid)
+    adirs = Adapt.adapt_structure(to, A.dirs)
+    return ComradeBase.LazyGrid(
+        adirs,
+        Adapt.adapt_structure(to, A.transform)
     )
 end
 

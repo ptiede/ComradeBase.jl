@@ -101,7 +101,7 @@ function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) whe
     g = Reactant.materialize_traced_array.(map(basedim, dims(d)))
     rot = rotmat(d)
     N = keys(d)
-    return ComradeBase.RotGrid(StructArray(NamedTuple{N}(ComradeBase._build_slices(g, size(d)))), rot)
+    return ComradeBase.LazyGrid()
 end
 
 
@@ -122,11 +122,9 @@ end
 #     return IntensityMap(arrs, g)
 # end
 
-function foo(p, rm, K, ps...)
-    psn = NamedTuple{K}(ps)
-    pr = rm * SVector((psn.X, psn.Y))
-    psnr = update_spat(psn, pr[1], pr[2])
-     return ComradeBase.intensity_point(p, psnr)
+function img_point(p, rm, K, ps...)
+    psnr = ComradeBase.apply_transform(rm, ps)
+    return ComradeBase.intensity_point(p, NamedTuple{K}(psnr))
 end
 
 function ComradeBase.intensitymap_analytic_executor!(
@@ -140,9 +138,29 @@ function ComradeBase.intensitymap_analytic_executor!(
     rm = rotmat(axisdims(img))
     bimg = baseimage(img)
     K = keys(axisdims(img))
-    bimg .= foo.(Ref(s), Ref(rm), Ref(K), ddims...) .* dx .* dy
+    bimg .= img_point.(Ref(s), Ref(rm), Ref(K), ddims...) .* dx .* dy
     return nothing
 end
+
+function vis_point(p, rm, K, ps...)
+    psnr = ComradeBase.apply_transform(rm, ps)
+    return ComradeBase.visibility_point(p, NamedTuple{K}(psnr))
+end
+
+function ComradeBase.visibilitymap_analytic_executor!(
+        vis::IntensityMap{T, N},
+        s::ComradeBase.AbstractModel,
+        ::ReactantEx
+    ) where {T, N}
+    dms = Reactant.materialize_traced_array.(map(basedim, dims(vis)))
+    ddims = ntuple(k -> reshape(dms[k], ntuple(i -> i == k ? Base.Colon() : 1, Val(N))), Val(N))
+    rm = rotmat(axisdims(vis))
+    bvis = baseimage(vis)
+    K = keys(axisdims(vis))
+    bvis .= vis_point.(Ref(s), Ref(rm), Ref(K), ddims...)
+    # return nothing
+end
+
 
 function ComradeBase.intensitymap_analytic_executor!(
         img::UnstructuredMap,
@@ -152,22 +170,22 @@ function ComradeBase.intensitymap_analytic_executor!(
     g = domainpoints(img)
     bimg = baseimage(img)
     fa = Base.Fix1(ComradeBase.intensity_point, s)
-    tmp = fa.(g)
-    copyto!(bimg, tmp)
+    bimg .= fa.(g)
     return nothing
 end
 
 function ComradeBase.visibilitymap_analytic_executor!(
-        vis::ComradeBase.FluxMap2,
+        vis::UnstructuredMap,
         s::ComradeBase.AbstractModel,
         ::ReactantEx
     )
     g = domainpoints(vis)
-    pvis = baseimage(vis)
-    vp = Base.Fix1(ComradeBase.visibility_point, s)
-    tmp = vp.(g)
-    copyto!(pvis, tmp)
+    bimg = baseimage(vis)
+    fa = Base.Fix1(ComradeBase.visibility_point, s)
+    bimg .= fa.(g)
     return nothing
 end
+
+
 
 end

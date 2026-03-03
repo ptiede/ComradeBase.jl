@@ -7,42 +7,6 @@ This is useful for broadcasting a model across an abritrary grid.
 """
 domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
-struct LazySlice{T, N, A <: AbstractVector{T}} <: AbstractArray{T, N}
-    slice::A
-    dir::Int
-    dims::Dims{N}
-    @inline function LazySlice(
-            slice::AbstractVector{T}, dim::Int,
-            dims::Dims{N}
-        ) where {T, N}
-        @assert 1 ≤ dim ≤ N "Slice dimension is not valid. Must be ≤ $N and ≥ 1 and got $dim"
-        return new{T, N, typeof(slice)}(slice, dim, dims)
-    end
-end
-
-@inline slice(A::LazySlice) = getfield(A, :slice)
-@inline Base.size(A::LazySlice) = A.dims
-Base.@propagate_inbounds @inline function Base.getindex(
-        A::LazySlice{T, N},
-        I::Vararg{Int, N}
-    ) where {T, N}
-    i = I[A.dir]
-    @boundscheck checkbounds(slice(A), i)
-    return @inline slice(A)[i]
-end
-
-function Base.Broadcast.BroadcastStyle(::Type{<:LazySlice{T, N, A}}) where {T, N, A}
-    inner_style = Base.Broadcast.BroadcastStyle(A)
-    style = Base.Broadcast.result_style(inner_style, Base.Broadcast.DefaultArrayStyle{N}())
-    return style
-end
-
-# The ntuple construction fails here (recursion limit?) so we use
-# a generated function to get around it
-@generated function _build_slices(g, sz::Dims{N}) where {N}
-    exprs = [:(LazySlice(g[$k], $k, sz)) for k in 1:N]
-    return :((tuple($(exprs...))))
-end
 
 # I need this because LazySlice is allocating unless I strip the dimension information
 @inline basedim(x::DD.Dimension) = basedim(parent(x))
