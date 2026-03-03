@@ -8,7 +8,6 @@ This is useful for broadcasting a model across an abritrary grid.
 domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
 
-# I need this because LazySlice is allocating unless I strip the dimension information
 @inline basedim(x::DD.Dimension) = basedim(parent(x))
 @inline basedim(x::DD.LookupArrays.LookupArray) = basedim(parent(x))
 @inline basedim(x) = x
