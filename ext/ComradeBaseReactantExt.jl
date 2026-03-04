@@ -98,10 +98,9 @@ function ComradeBase.allocate_map(
 end
 
 function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) where {D}
-    g = Reactant.materialize_traced_array.(map(basedim, dims(d)))
+    g = map(Reactant.materialize_traced_array∘basedim, named_dims(d))
     rot = rotmat(d)
-    N = keys(d)
-    return ComradeBase.LazyGrid()
+    return ComradeBase.LazyGrid(g, rot)
 end
 
 
@@ -122,7 +121,7 @@ end
 #     return IntensityMap(arrs, g)
 # end
 
-function img_point(p, rm, K, ps...)
+@inline function img_point(p, rm, K, ps...)
     psnr = ComradeBase.apply_transform(rm, ps)
     return ComradeBase.intensity_point(p, NamedTuple{K}(psnr))
 end
@@ -133,16 +132,19 @@ function ComradeBase.intensitymap_analytic_executor!(
         ::ReactantEx
     ) where {T, N}
     dx, dy = pixelsizes(img)
-    dms = Reactant.materialize_traced_array.(map(basedim, dims(img)))
-    ddims = ntuple(k -> reshape(dms[k], ntuple(i -> i == k ? Base.Colon() : 1, Val(N))), Val(N))
+    dms = map(Reactant.materialize_traced_array∘ComradeBase.basedim, named_dims(img))
+    ddims = ntuple(Val(N)) do n 
+        Base.@_inline_meta
+        reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
+    end
     rm = rotmat(axisdims(img))
     bimg = baseimage(img)
-    K = keys(axisdims(img))
-    bimg .= img_point.(Ref(s), Ref(rm), Ref(K), ddims...) .* dx .* dy
+    bimg .= img_point.(Ref(s), Ref(rm), Ref(keys(dms)), ddims...) .* dx .* dy
+    # bimg .= ComradeBase.intensity_point.(Ref(s), domainpoints(img)) .* dx .* dy
     return nothing
 end
 
-function vis_point(p, rm, K, ps...)
+@inline function vis_point(p, rm, K, ps...)
     psnr = ComradeBase.apply_transform(rm, ps)
     return ComradeBase.visibility_point(p, NamedTuple{K}(psnr))
 end
@@ -152,12 +154,15 @@ function ComradeBase.visibilitymap_analytic_executor!(
         s::ComradeBase.AbstractModel,
         ::ReactantEx
     ) where {T, N}
-    dms = Reactant.materialize_traced_array.(map(basedim, dims(vis)))
-    ddims = ntuple(k -> reshape(dms[k], ntuple(i -> i == k ? Base.Colon() : 1, Val(N))), Val(N))
+
+    dms = map(Reactant.materialize_traced_array∘ComradeBase.basedim, named_dims(vis))
+    ddims = ntuple(Val(N)) do n 
+        Base.@_inline_meta
+        reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
+    end
     rm = rotmat(axisdims(vis))
     bvis = baseimage(vis)
-    K = keys(axisdims(vis))
-    bvis .= vis_point.(Ref(s), Ref(rm), Ref(K), ddims...)
+    bvis .= vis_point.(Ref(s), Ref(rm), Ref(keys(dms)), ddims...)
     # return nothing
 end
 

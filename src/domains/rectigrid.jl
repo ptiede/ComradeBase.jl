@@ -63,7 +63,7 @@ function domainpoints(d::RectiGrid{D, Hd}) where {D, Hd}
     return LazyGrid(NamedTuple{N}(g), rot)
 end
 
-Base.keys(g::RectiGrid) = map(name, dims(g))
+@inline Base.keys(g::RectiGrid) = map(name, dims(g))
 
 @inline RectiGrid(g::RectiGrid) = g
 
