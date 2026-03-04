@@ -121,10 +121,16 @@ end
 #     return IntensityMap(arrs, g)
 # end
 
-@inline function img_point(p, rm, K, ps...)
-    psnr = ComradeBase.apply_transform(rm, ps)
-    return ComradeBase.intensity_point(p, NamedTuple{K}(psnr))
+struct NamedIT{K, M, R}
+    s::M
+    rm::R
 end
+
+@inline function img_point(n::NamedIT{K}, ps...) where {K}
+    psnr = ComradeBase.apply_transform(n.rm, ps)
+    return ComradeBase.intensity_point(n.s, NamedTuple{K}(psnr))
+end
+
 
 function ComradeBase.intensitymap_analytic_executor!(
         img::IntensityMap{T, N},
@@ -137,16 +143,17 @@ function ComradeBase.intensitymap_analytic_executor!(
         Base.@_inline_meta
         reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
     end
-    rm = rotmat(axisdims(img))
+    K = keys(dms)
+    itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(img)))}(s, rotmat(axisdims(img)))
     bimg = baseimage(img)
-    bimg .= img_point.(Ref(s), Ref(rm), Ref(keys(dms)), ddims...) .* dx .* dy
+    bimg .= img_point.(Ref(itp), ddims...) .* dx .* dy
     # bimg .= ComradeBase.intensity_point.(Ref(s), domainpoints(img)) .* dx .* dy
     return nothing
 end
 
-@inline function vis_point(p, rm, K, ps...)
-    psnr = ComradeBase.apply_transform(rm, ps)
-    return ComradeBase.visibility_point(p, NamedTuple{K}(psnr))
+@inline function vis_point(n::NamedIT{K}, ps...) where {K}
+    psnr = ComradeBase.apply_transform(n.rm, ps)
+    return ComradeBase.visibility_point(n.s, NamedTuple{K}(psnr))
 end
 
 function ComradeBase.visibilitymap_analytic_executor!(
@@ -160,10 +167,11 @@ function ComradeBase.visibilitymap_analytic_executor!(
         Base.@_inline_meta
         reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
     end
-    rm = rotmat(axisdims(vis))
+    K = keys(dms)
+    itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(vis)))}(s, rotmat(axisdims(vis)))
     bvis = baseimage(vis)
-    bvis .= vis_point.(Ref(s), Ref(rm), Ref(keys(dms)), ddims...)
-    # return nothing
+    bvis .= vis_point.(Ref(itp), ddims...)
+    return nothing
 end
 
 
