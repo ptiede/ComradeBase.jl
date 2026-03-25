@@ -1,4 +1,4 @@
-struct LazyGrid{T, N, Dirs, TR<:Union{Nothing, AbstractMatrix}} <: AbstractArray{T, N}
+struct LazyGrid{T, N, Dirs, TR <: Union{Nothing, AbstractMatrix}} <: AbstractArray{T, N}
     dirs::Dirs
     dims::Dims{N}
     transform::TR
@@ -24,7 +24,7 @@ end
 
 @inline function DD.dims(g::LazyGrid{T, N}) where {T, N}
     dms = g.dirs
-    return ntuple(Val(N)) do n 
+    return ntuple(Val(N)) do n
         Base.@_inline_meta
         reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
     end
@@ -40,7 +40,6 @@ end
 function shapedims(dims::NamedTuple{N}) where {N}
     return NamedTuple{N}(shapedims(dims))
 end
-
 
 
 Base.size(g::LazyGrid) = g.dims
@@ -61,9 +60,9 @@ function apply_transform(transform::AbstractMatrix, pos)
 end
 
 Base.@propagate_inbounds function get_pos(A::LazyGrid{T, N}, I::Vararg{Int, N}) where {T, N}
-   pos0 = SVector{N}(ntuple(n -> rgetindex(A.dirs[n], I[n]), Val(N)))
-   pos = apply_transform(A.transform, pos0)
-   return Tuple(parent(pos))
+    pos0 = SVector{N}(ntuple(n -> rgetindex(A.dirs[n], I[n]), Val(N)))
+    pos = apply_transform(A.transform, pos0)
+    return Tuple(parent(pos))
 end
 
 

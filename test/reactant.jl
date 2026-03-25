@@ -22,4 +22,9 @@ using Reactant
     g = imagepixels(10.0, 10.0, 8, 8)
     go = @jit(identity(g))
     @test executor(go) isa ComradeBase.ReactantEx
+
+    m1 = BlobTest(4.0)
+    m2 = @jit BlobTest(ConcreteRNumber(m1.size))
+
+
 end

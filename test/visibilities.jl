@@ -44,7 +44,6 @@ ComradeBase.flux(::BlobTest{T}) where {T} = one(T)
 ComradeBase.radialextent(m::BlobTest{T}) where {T} = 5 * m.size
 
 
-
 struct GaussTestNA{T} <: ComradeBase.AbstractModel
 end
 GaussTestNA() = GaussTestNA{Float64}()

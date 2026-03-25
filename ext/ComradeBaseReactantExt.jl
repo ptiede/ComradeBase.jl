@@ -59,22 +59,20 @@ end
 end
 
 
-
-
 # Copied from ComradeBaseKernelAbstractionsExt, these
 # probably will need to be modified still:
 
 function ComradeBase.allocate_map(
         ::Type{<:StructArray{T}},
         g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
-    ) where {T<:StokesParams, D}
-    
+    ) where {T <: StokesParams, D}
+
     arrs = StructArrays.buildfromschema(x -> similar(Reactant.TracedRArray{unwrapped_eltype(x)}, size(g)), T)
     return IntensityMap(arrs, g)
 end
 
 function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) where {D}
-    g = map(Reactant.materialize_traced_array∘basedim, named_dims(d))
+    g = map(Reactant.materialize_traced_array ∘ basedim, named_dims(d))
     rot = rotmat(d)
     return ComradeBase.LazyGrid(g, rot)
 end
@@ -96,7 +94,7 @@ function ComradeBase.intensitymap_analytic_executor!(
         ::ReactantEx
     ) where {T, N}
     dx, dy = pixelsizes(img)
-    dms = map(Reactant.materialize_traced_array∘ComradeBase.basedim, named_dims(img))
+    dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(img))
     ddims = shapedims(values(dms))
     K = keys(dms)
     itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(img)))}(s, rotmat(axisdims(img)))
@@ -116,7 +114,7 @@ function ComradeBase.visibilitymap_analytic_executor!(
         ::ReactantEx
     ) where {T, N}
 
-    dms = map(Reactant.materialize_traced_array∘ComradeBase.basedim, named_dims(vis))
+    dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(vis))
     ddims = shapedims(values(dms))
     K = keys(dms)
     itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(vis)))}(s, rotmat(axisdims(vis)))
@@ -149,7 +147,6 @@ function ComradeBase.visibilitymap_analytic_executor!(
     bvis .= fa.(g)
     return nothing
 end
-
 
 
 end

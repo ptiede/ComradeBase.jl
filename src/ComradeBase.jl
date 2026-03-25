@@ -37,7 +37,6 @@ const FluxMap2{T, N, E} = Union{
 end
 
 
-
 Base.@propagate_inbounds function rgetindex(I, i...)
     return I[i...]
 end
