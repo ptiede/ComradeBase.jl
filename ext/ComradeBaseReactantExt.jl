@@ -95,7 +95,7 @@ function ComradeBase.intensitymap_analytic_executor!(
     ) where {T, N}
     dx, dy = pixelsizes(img)
     dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(img))
-    ddims = shapedims(values(dms))
+    ddims = ComradeBase.shapedims(values(dms))
     K = keys(dms)
     itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(img)))}(s, rotmat(axisdims(img)))
     bimg = baseimage(img)
@@ -115,7 +115,7 @@ function ComradeBase.visibilitymap_analytic_executor!(
     ) where {T, N}
 
     dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(vis))
-    ddims = shapedims(values(dms))
+    ddims = ComradeBase.shapedims(values(dms))
     K = keys(dms)
     itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(vis)))}(s, rotmat(axisdims(vis)))
     bvis = baseimage(vis)

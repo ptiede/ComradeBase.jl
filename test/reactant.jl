@@ -26,5 +26,10 @@ using Reactant
     m1 = BlobTest(4.0)
     m2 = @jit BlobTest(ConcreteRNumber(m1.size))
 
+    guv = UnstructuredDomain((; U = randn(64), V = randn(64)))
+    guvr = Reactant.to_rarray(guv)
+
+    @test baseimage(@jit(intensitymap(m2, go))) ≈ baseimage(intensitymap(m1, g))
+    @test baseimage(@jit(visibilitymap(m2, guvr))) ≈ baseimage(visibilitymap(m1, guv))
 
 end
