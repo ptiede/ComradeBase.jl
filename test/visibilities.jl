@@ -20,6 +20,31 @@ ComradeBase.flux(::GaussTest{T}) where {T} = one(T)
 ComradeBase.radialextent(::GaussTest{T}) where {T} = 5 * one(T)
 
 
+struct BlobTest{T} <: ComradeBase.AbstractModel
+    size::T
+end
+
+ComradeBase.visanalytic(::Type{<:BlobTest}) = ComradeBase.IsAnalytic()
+ComradeBase.imanalytic(::Type{<:BlobTest}) = ComradeBase.IsAnalytic()
+ComradeBase.ispolarized(::Type{<:BlobTest}) = ComradeBase.NotPolarized()
+
+function ComradeBase.intensity_point(m::BlobTest, p)
+    (; X, Y) = p
+    sz = m.size
+    return exp(-(X^2 + Y^2) * inv(2 * sz^2)) / (2π * sz^2)
+end
+
+function ComradeBase.visibility_point(m::BlobTest, p)
+    (; U, V) = p
+    sz = m.size
+    return complex(exp(-2π^2 * sz^2 * (U^2 + V^2)))
+end
+
+ComradeBase.flux(::BlobTest{T}) where {T} = one(T)
+ComradeBase.radialextent(m::BlobTest{T}) where {T} = 5 * m.size
+
+
+
 struct GaussTestNA{T} <: ComradeBase.AbstractModel
 end
 GaussTestNA() = GaussTestNA{Float64}()

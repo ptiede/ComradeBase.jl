@@ -9,7 +9,7 @@ domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
 
 @inline basedim(x::DD.Dimension) = basedim(parent(x))
-@inline basedim(x::DD.LookupArrays.LookupArray) = basedim(parent(x))
+@inline basedim(x::DD.Lookups.LookupArray) = basedim(parent(x))
 @inline basedim(x) = x
 
 """

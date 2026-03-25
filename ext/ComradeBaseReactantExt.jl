@@ -50,30 +50,6 @@ Base.eltype(d::AbstractSingleDomain{D, E}) where {D, E <: ReactantEx} = Reactant
     eltype(basedim(first(dims(d))))
 end
 
-# function ComradeBase.allocate_map(
-#         ::Type{<:AbstractArray{T}},
-#         g::UnstructuredDomain{D, <:ReactantEx}
-#     ) where {T, D}
-#     result = UnstructuredMap(similar(TracedRArray{unwrapped_eltype(T)}, size(g)), g)
-#     return result
-# end
-
-# function ComradeBase.allocate_map(
-#         ::Type{<:AbstractArray{Reactant.TracedRNumber{T}}},
-#         g::ComradeBase.AbstractRectiGrid
-#     ) where {T}
-#     arr = similar(Reactant.TracedRArray{T}, size(g))
-#     return IntensityMap(arr, g)
-# end
-
-# function ComradeBase.allocate_map(
-#         ::Type{<:AbstractArray{T}},
-#         g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
-#     ) where {T, D}
-#     arr = similar(ConcreteRArray{T}, size(g))
-#     return IntensityMap(arr, g)
-# end
-
 @inline function ComradeBase.similartype(::IsPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
     return StructArray{StokesParams{Reactant.TracedRNumber{unwrapped_eltype(T)}}}
 end
@@ -103,24 +79,6 @@ function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) whe
     return ComradeBase.LazyGrid(g, rot)
 end
 
-
-# function ComradeBase.allocate_map(
-#         ::Type{<:AbstractArray{T}},
-#         g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
-#     ) where {T, D}
-#     exec = executor(g)
-#     return IntensityMap(allocate(exec, T, size(g)), g)
-# end
-
-# function ComradeBase.allocate_map(
-#         ::Type{<:StructArray{T}},
-#         g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
-#     ) where {T, D}
-#     exec = executor(g)
-#     arrs = StructArrays.buildfromschema(x -> allocate(exec, x, size(g)), T)
-#     return IntensityMap(arrs, g)
-# end
-
 struct NamedIT{K, M, R}
     s::M
     rm::R
@@ -139,15 +97,11 @@ function ComradeBase.intensitymap_analytic_executor!(
     ) where {T, N}
     dx, dy = pixelsizes(img)
     dms = map(Reactant.materialize_traced_array∘ComradeBase.basedim, named_dims(img))
-    ddims = ntuple(Val(N)) do n 
-        Base.@_inline_meta
-        reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
-    end
+    ddims = shapedims(values(dms))
     K = keys(dms)
     itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(img)))}(s, rotmat(axisdims(img)))
     bimg = baseimage(img)
     bimg .= img_point.(Ref(itp), ddims...) .* dx .* dy
-    # bimg .= ComradeBase.intensity_point.(Ref(s), domainpoints(img)) .* dx .* dy
     return nothing
 end
 
@@ -163,10 +117,7 @@ function ComradeBase.visibilitymap_analytic_executor!(
     ) where {T, N}
 
     dms = map(Reactant.materialize_traced_array∘ComradeBase.basedim, named_dims(vis))
-    ddims = ntuple(Val(N)) do n 
-        Base.@_inline_meta
-        reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
-    end
+    ddims = shapedims(values(dms))
     K = keys(dms)
     itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(vis)))}(s, rotmat(axisdims(vis)))
     bvis = baseimage(vis)
@@ -193,9 +144,9 @@ function ComradeBase.visibilitymap_analytic_executor!(
         ::ReactantEx
     )
     g = domainpoints(vis)
-    bimg = baseimage(vis)
+    bvis = baseimage(vis)
     fa = Base.Fix1(ComradeBase.visibility_point, s)
-    bimg .= fa.(g)
+    bvis .= fa.(g)
     return nothing
 end
 

@@ -78,6 +78,7 @@ end
 Base.propertynames(d::RectiGrid) = keys(d)
 # This needs to be inlined to avoid performance issues
 @inline function Base.getproperty(g::RectiGrid, p::Symbol)
+    hasproperty(g, p) || throw(ArgumentError("RectiGrid does not have property $p"))
     return basedim(getproperty(named_dims(g), p))
 end
 
