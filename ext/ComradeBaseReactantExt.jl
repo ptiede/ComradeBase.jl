@@ -144,7 +144,8 @@ function ComradeBase.visibilitymap_analytic_executor!(
     g = domainpoints(vis)
     bvis = baseimage(vis)
     fa = Base.Fix1(ComradeBase.visibility_point, s)
-    bvis .= fa.(g)
+    res = fa.(g)
+    copyto!(bvis, res)
     return nothing
 end
 
