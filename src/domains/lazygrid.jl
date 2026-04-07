@@ -23,18 +23,19 @@ end
 end
 
 @inline function DD.dims(g::LazyGrid{T, N}) where {T, N}
-    dms = g.dirs
-    return ntuple(Val(N)) do n
-        Base.@_inline_meta
-        reshape(dms[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
-    end
+    return shapedims(g.dirs)
 end
+
 
 function shapedims(dims::NTuple{N}) where {N}
     return ntuple(Val(N)) do n
         Base.@_inline_meta
         reshape(dims[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
     end
+end
+
+@inline function shapedims(g::LazyGrid)
+    return shapedims(dims(g))
 end
 
 function shapedims(dims::NamedTuple{N}) where {N}
