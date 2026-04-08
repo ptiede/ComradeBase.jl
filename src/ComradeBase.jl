@@ -30,6 +30,12 @@ const FluxMap2{T, N, E} = Union{
     UnstructuredMap{T, <:AbstractVector, E},
 }
 
+@inline function update_spat(p::NamedTuple, x, y)
+    p1 = @set p[1] = x
+    p2 = @set p1[2] = y
+    return p2
+end
+
 
 Base.@propagate_inbounds function rgetindex(I, i...)
     return I[i...]

@@ -116,14 +116,14 @@ function IntensityMap(
 end
 
 """
-    IntensityMap(data::AbstractArray, fovx::Real, fovy::Real, x0::Real=0, y0::Real=0; header=NoHeader())
+    IntensityMap(data::AbstractArray, fovx::Number, fovy::Number, x0::Number=0, y0::Number=0; header=NoHeader())
 
 Creates a IntensityMap with the pixel fluxes `data` and a spatial grid with field of view
 (`fovx`, `fovy`) and center pixel offset (`x0`, `y0`) and header `header`.
 """
 function IntensityMap(
-        data::AbstractArray{T}, fovx::Real, fovy::Real, x0::Real = 0,
-        y0::Real = 0; header = NoHeader()
+        data::AbstractArray{T}, fovx::Number, fovy::Number, x0::Number = 0,
+        y0::Number = 0; header = NoHeader()
     ) where {T}
     grid = imagepixels(fovx, fovy, size(data)..., T(x0), T(y0); header)
     return IntensityMap(data, grid)
@@ -165,10 +165,8 @@ baseimage(x::IntensityMap) = baseimage(parent(x))
         n = name(img),
         metadata = metadata(img)
     )
-    # @info (typeof(img))
     # TODO find why Name is changing type
     # n2 = n == Symbol("") ? NoName : n
-    # @info which(name, (typeof(img),))
     grid = rebuild(axisdims(img), dims, executor(img), metadata, posang(axisdims(img)))
     # return name(img)
     return IntensityMap(data, grid, refdims, n)

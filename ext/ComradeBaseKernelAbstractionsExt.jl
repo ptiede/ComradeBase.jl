@@ -55,8 +55,8 @@ function ComradeBase.intensitymap_analytic_executor!(
         ::Backend
     )
     g = domainpoints(img)
-    pvis = baseimage(vis)
-    pvis .= ComradeBase.intensity_point.(Ref(s), g)
+    bimg = baseimage(img)
+    bimg .= ComradeBase.intensity_point.(Ref(s), g)
     return nothing
 end
 

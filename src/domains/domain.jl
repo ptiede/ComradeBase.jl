@@ -185,6 +185,7 @@ vismap(dm::DualMap) = dm.vis
 domain(dm::DualMap) = dm.dims
 
 
+include("lazygrid.jl")
 include("executors.jl")
 include("headers.jl")
 include("rectigrid.jl")
