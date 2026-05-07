@@ -79,11 +79,6 @@ Base.BroadcastStyle(
     ::Base.Broadcast.DefaultArrayStyle{M},
 ) where {N, M} = s
 
-Base.BroadcastStyle(
-    s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},
-    ::StructArrays.StructArrayStyle{M},
-) where {N, M} = s
-
 
 # We need this to make sure IntensityMap works correctly on the GPU
 # function Base.copyto!(dest::IntensityMap, bc::Broadcast.Broadcasted)
