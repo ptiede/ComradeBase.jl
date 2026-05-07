@@ -41,8 +41,7 @@ julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
 
 Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
 """
-struct IntensityMap{T, N, D, G <: AbstractRectiGrid{D}, A <: AbstractArray{T, N}, R <: Tuple, Na} <:
-    AbstractDimArray{T, N, D, A}
+struct IntensityMap{T, N, D <: Tuple, G <: AbstractRectiGrid{D}, A <: AbstractArray{T, N}, R <: Tuple, Na} <: AbstractDimArray{T, N, D, A}
     data::A
     grid::G
     refdims::R
@@ -69,6 +68,24 @@ executor(img::IntensityMap) = executor(axisdims(img))
 EnzymeRules.inactive(::typeof(DD._broadcasted_dims), args...; kwargs...) = nothing
 EnzymeRules.inactive(::typeof(DD.Dimensions.comparedims), args...; kwargs...) = nothing
 EnzymeRules.inactive(::typeof(DD.Dimensions._comparedims), args...; kwargs...) = nothing
+
+
+# DD 0.30 regression: DimensionalStyle{StructArrayStyle,N} ⊕ DefaultArrayStyle{0}                                             
+# resolves to Unknown via StructArrays' deliberate fallback, dropping the                                                   
+# DimensionalStyle and producing a DimArray instead of an IntensityMap.                                                       
+# A scalar broadcast shouldn't change the outer style, so keep ours.                                                          
+Base.BroadcastStyle(                                                                                                          
+      s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},                                                               
+      ::Base.Broadcast.DefaultArrayStyle{M},                                                                                                   
+) where {N, M} = s                                                                                                             
+
+Base.BroadcastStyle(                                                                                                          
+      s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},                                                               
+      ::StructArrays.StructArrayStyle{M},                                                                                                   
+) where {N, M} = s                                                                                                             
+
+
+
 
 # We need this to make sure IntensityMap works correctly on the GPU
 # function Base.copyto!(dest::IntensityMap, bc::Broadcast.Broadcasted)
