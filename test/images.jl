@@ -119,6 +119,9 @@ end
         img1 = IntensityMap(imgP[:, :, 1, 1], RectiGrid((; X = x, Y = y)))
         img2 = IntensityMap(imgP, RectiGrid((x, y, t, f)))
 
+        @test img1 * 2 ≈ img2[:, :, 1, 1] * 2
+        @test img1 .* imgI[:, :, 1, 1] ≈ img2[:, :, 1, 1] .* imgI[:, :, 1, 1]
+
         @test flux(img1) ≈ flux(img2)[1, 1, 1, 1]
         @test centroid(img1) == centroid(stokes(img1, :I))
         @test second_moment(img1) == second_moment(stokes(img1, :I))
