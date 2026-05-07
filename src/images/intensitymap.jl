@@ -70,21 +70,19 @@ EnzymeRules.inactive(::typeof(DD.Dimensions.comparedims), args...; kwargs...) = 
 EnzymeRules.inactive(::typeof(DD.Dimensions._comparedims), args...; kwargs...) = nothing
 
 
-# DD 0.30 regression: DimensionalStyle{StructArrayStyle,N} ⊕ DefaultArrayStyle{0}                                             
-# resolves to Unknown via StructArrays' deliberate fallback, dropping the                                                   
-# DimensionalStyle and producing a DimArray instead of an IntensityMap.                                                       
-# A scalar broadcast shouldn't change the outer style, so keep ours.                                                          
-Base.BroadcastStyle(                                                                                                          
-      s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},                                                               
-      ::Base.Broadcast.DefaultArrayStyle{M},                                                                                                   
-) where {N, M} = s                                                                                                             
+# DD 0.30 regression: DimensionalStyle{StructArrayStyle,N} ⊕ DefaultArrayStyle{0}
+# resolves to Unknown via StructArrays' deliberate fallback, dropping the
+# DimensionalStyle and producing a DimArray instead of an IntensityMap.
+# A scalar broadcast shouldn't change the outer style, so keep ours.
+Base.BroadcastStyle(
+    s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},
+    ::Base.Broadcast.DefaultArrayStyle{M},
+) where {N, M} = s
 
-Base.BroadcastStyle(                                                                                                          
-      s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},                                                               
-      ::StructArrays.StructArrayStyle{M},                                                                                                   
-) where {N, M} = s                                                                                                             
-
-
+Base.BroadcastStyle(
+    s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},
+    ::StructArrays.StructArrayStyle{M},
+) where {N, M} = s
 
 
 # We need this to make sure IntensityMap works correctly on the GPU
