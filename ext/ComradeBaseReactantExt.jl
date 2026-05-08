@@ -20,7 +20,6 @@ Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRA
 end
 
 
-
 # If inside tracing land we automatically switch the backend to Reactant
 Base.@nospecializeinfer function Reactant.make_tracer(
         seen,
@@ -136,12 +135,10 @@ function ComradeBase.centroid(im::IntensityMap{T, N}) where {T <: Reactant.RNumb
         dims = (X, Y)
     end
 
-    xcent = sum(giterate.(Ref(itrx), dms.X, dms.Y) .* im; dims=dims)
-    ycent = sum(giterate.(Ref(itry), dms.X, dms.Y) .* im; dims=dims)
+    xcent = sum(giterate.(Ref(itrx), dms.X, dms.Y) .* im; dims = dims)
+    ycent = sum(giterate.(Ref(itry), dms.X, dms.Y) .* im; dims = dims)
     return xcent ./ f, ycent ./ f
 end
-
-
 
 
 function ComradeBase.intensitymap_analytic_executor!(
