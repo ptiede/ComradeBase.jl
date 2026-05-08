@@ -96,13 +96,13 @@ Computes the image centroid aka the center of light of the image.
 
 For polarized maps we return the centroid for Stokes I only.
 """
-function centroid(im::IntensityMap{<:Number})
+function centroid(im::IntensityMap{<:Real})
     (; X, Y) = named_dims(im)
     return mapslices(x -> centroid(IntensityMap(x, RectiGrid((; X, Y)))), im; dims = (:X, :Y))
 end
 centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Number}
+function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
     f = flux(im)
     d = domainpoints(im)
     # Grab the parent otherwise things don't work on the GPU (DD missing multiargument mapreduce)

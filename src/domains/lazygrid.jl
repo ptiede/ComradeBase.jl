@@ -39,7 +39,7 @@ end
 end
 
 function shapedims(dims::NamedTuple{N}) where {N}
-    return NamedTuple{N}(shapedims(dims))
+    return NamedTuple{N}(shapedims(values(dims)))
 end
 
 

@@ -19,16 +19,6 @@ Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRA
     return @allowscalar I[i...] = v
 end
 
-function ComradeBase.centroid(im::IntensityMap{T, 2}) where {T <: Reactant.RNumber}
-    f = flux(im)
-    (;X, Y) = domainpoints(im).dirs
-    
-    fx(x) = x[1].X * x[2]
-    xcent = sum(fx, zip(d, parent(im)))
-    fy(y) = y[1].Y * y[2]
-    ycent = sum(fy, zip(d, parent(im)))
-    return xcent / f, ycent / f
-end
 
 
 # If inside tracing land we automatically switch the backend to Reactant
@@ -88,14 +78,17 @@ function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) whe
     return ComradeBase.LazyGrid(g, rot)
 end
 
-struct NamedIT{K, M, R}
+struct ApplyIT{K, M, R}
     s::M
     rm::R
 end
+function ApplyIT{K}(s, rm) where {K}
+    return ApplyIT{K, typeof(s), typeof(rm)}(s, rm)
+end
 
-@inline function img_point(n::NamedIT{K}, ps...) where {K}
+@inline function giterate(n::ApplyIT{K}, ps...) where {K}
     psnr = ComradeBase.apply_transform(n.rm, ps)
-    return ComradeBase.intensity_point(n.s, NamedTuple{K}(psnr))
+    return n.s(NamedTuple{K}(psnr))
 end
 
 
@@ -108,15 +101,10 @@ function ComradeBase.intensitymap_analytic_executor!(
     dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(img))
     ddims = ComradeBase.shapedims(values(dms))
     K = keys(dms)
-    itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(img)))}(s, rotmat(axisdims(img)))
+    itp = ApplyIT{K}(Base.Fix1(ComradeBase.intensity_point, s), rotmat(axisdims(img)))
     bimg = baseimage(img)
-    bimg .= img_point.(Ref(itp), ddims...) .* dx .* dy
+    bimg .= giterate.(Ref(itp), ddims...) .* dx .* dy
     return nothing
-end
-
-@inline function vis_point(n::NamedIT{K}, ps...) where {K}
-    psnr = ComradeBase.apply_transform(n.rm, ps)
-    return ComradeBase.visibility_point(n.s, NamedTuple{K}(psnr))
 end
 
 function ComradeBase.visibilitymap_analytic_executor!(
@@ -128,11 +116,32 @@ function ComradeBase.visibilitymap_analytic_executor!(
     dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(vis))
     ddims = ComradeBase.shapedims(values(dms))
     K = keys(dms)
-    itp = NamedIT{K, typeof(s), typeof(rotmat(axisdims(vis)))}(s, rotmat(axisdims(vis)))
+    itp = ApplyIT{K}(Base.Fix1(ComradeBase.visibility_point, s), rotmat(axisdims(vis)))
     bvis = baseimage(vis)
-    bvis .= vis_point.(Ref(itp), ddims...)
+    bvis .= giterate.(Ref(itp), ddims...)
     return nothing
 end
+
+function ComradeBase.centroid(im::IntensityMap{T, N}) where {T <: Reactant.RNumber, N}
+    f = flux(im)
+    dp = domainpoints(im)
+    A = dp.transform
+    dms = ComradeBase.shapedims(dp.dirs)
+    itrx = ApplyIT{(:X, :Y)}(Base.Fix2(getproperty, :X), A)
+    itry = ApplyIT{(:X, :Y)}(Base.Fix2(getproperty, :Y), A)
+
+    if N == 2
+        dims = Colon()
+    else
+        dims = (X, Y)
+    end
+
+    xcent = sum(giterate.(Ref(itrx), dms.X, dms.Y) .* im; dims=dims)
+    ycent = sum(giterate.(Ref(itry), dms.X, dms.Y) .* im; dims=dims)
+    return xcent ./ f, ycent ./ f
+end
+
+
 
 
 function ComradeBase.intensitymap_analytic_executor!(
