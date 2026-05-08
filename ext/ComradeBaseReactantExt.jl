@@ -19,6 +19,17 @@ Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRA
     return @allowscalar I[i...] = v
 end
 
+function ComradeBase.centroid(im::IntensityMap{T, 2}) where {T <: Reactant.RNumber}
+    f = flux(im)
+    (;X, Y) = domainpoints(im).dirs
+    
+    fx(x) = x[1].X * x[2]
+    xcent = sum(fx, zip(d, parent(im)))
+    fy(y) = y[1].Y * y[2]
+    ycent = sum(fy, zip(d, parent(im)))
+    return xcent / f, ycent / f
+end
+
 
 # If inside tracing land we automatically switch the backend to Reactant
 Base.@nospecializeinfer function Reactant.make_tracer(

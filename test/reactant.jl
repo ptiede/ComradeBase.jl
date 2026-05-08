@@ -32,4 +32,8 @@ using Reactant
     @test baseimage(@jit(intensitymap(m2, go))) ≈ baseimage(intensitymap(m1, g))
     @test baseimage(@jit(visibilitymap(m2, guvr))) ≈ baseimage(visibilitymap(m1, guv))
 
+    img1 = intensitymap(m1, g)
+    img2 = @jit(intensitymap(m2, go))
+    @test centroid(img1) ≈ @jit(centroid(img2))
+
 end
