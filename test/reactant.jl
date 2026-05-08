@@ -34,6 +34,11 @@ using Reactant
 
     img1 = intensitymap(m1, g)
     img2 = @jit(intensitymap(m2, go))
+
+    # circ shift the image so we get an actual centroid
+    img1 = circshift(img1, (2, 3))
+    img2 = @jit circshift(img2, (2, 3))
+
     c1 = centroid(img1)
     c2 = @jit(centroid(img2))
     @test c1[1] ≈ c2[1]
