@@ -32,4 +32,16 @@ using Reactant
     @test baseimage(@jit(intensitymap(m2, go))) ≈ baseimage(intensitymap(m1, g))
     @test baseimage(@jit(visibilitymap(m2, guvr))) ≈ baseimage(visibilitymap(m1, guv))
 
+    img1 = intensitymap(m1, g)
+    img2 = @jit(intensitymap(m2, go))
+
+    # circ shift the image so we get an actual centroid
+    img1 = circshift(img1, (2, 3))
+    img2 = Reactant.to_rarray(img1) #circshift stackoverflows with Reactant TODO: fix this
+
+    c1 = centroid(img1)
+    c2 = @jit(centroid(img2))
+    @test c1[1] ≈ c2[1]
+    @test c1[2] ≈ c2[2]
+
 end
