@@ -184,7 +184,7 @@ baseimage(x::IntensityMap) = baseimage(parent(x))
 end
 
 @inline function DD.rebuild(
-        img::IntensityMap; data = DD.data(img), 
+        img::IntensityMap; data = DD.data(img),
         dims::Tuple = dims(img),
         executor = executor(img),
         refdims = refdims(img),
