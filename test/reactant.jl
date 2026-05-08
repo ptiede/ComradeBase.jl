@@ -34,6 +34,9 @@ using Reactant
 
     img1 = intensitymap(m1, g)
     img2 = @jit(intensitymap(m2, go))
-    @test centroid(img1) ≈ @jit(centroid(img2))
+    c1 = centroid(img1)
+    c2 = @jit(centroid(img2))
+    @test c1[1] ≈ c2[1]
+    @test c1[2] ≈ c2[2]
 
 end
