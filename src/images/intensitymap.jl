@@ -173,22 +173,26 @@ baseimage(x::IntensityMap) = baseimage(parent(x))
         img::IntensityMap, data, dims::Tuple = dims(img),
         refdims = refdims(img),
         n = name(img),
-        metadata = metadata(img)
+        metadata = metadata(img),
+        executor = executor(img),
     )
     # TODO find why Name is changing type
     # n2 = n == Symbol("") ? NoName : n
-    grid = rebuild(axisdims(img), dims, executor(img), metadata, posang(axisdims(img)))
+    grid = rebuild(axisdims(img), dims, executor, metadata, posang(axisdims(img)))
     # return name(img)
     return IntensityMap(data, grid, refdims, n)
 end
 
 @inline function DD.rebuild(
-        img::IntensityMap; data = DD.data(img), dims::Tuple = dims(img),
+        img::IntensityMap;
+        data = DD.data(img),
+        dims::Tuple = dims(img),
         refdims = refdims(img),
         name = name(img),
         metadata = metadata(img),
+        executor = executor(img),
     )
-    return rebuild(img, data, dims, refdims, name, metadata)
+    return rebuild(img, data, dims, refdims, name, metadata, executor)
 end
 
 function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::Serial)
