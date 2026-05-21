@@ -95,10 +95,7 @@ EnzymeRules.inactive(::typeof(DD.metadata), ::IntensityMap) = nothing
 EnzymeRules.inactive(::typeof(executor), ::IntensityMap) = nothing
 
 @inline function stokes(pimg::IntensityMap{<:StokesParams}, v::Symbol)
-    return IntensityMap(
-        stokes(baseimage(pimg), v), axisdims(pimg), refdims(pimg),
-        name(pimg)
-    )
+    return rebuild(pimg; data = stokes(baseimage(pimg), v))
 end
 
 function Base.propertynames(img::IntensityMap)
