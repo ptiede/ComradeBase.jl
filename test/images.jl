@@ -265,9 +265,11 @@ end
     end
 
     @testset "broadcast with StructArray backing" begin
-        sdata = StructArray{StokesParams{Float64}}((
-            I = rand(128), Q = rand(128), U = rand(128), V = rand(128),
-        ))
+        sdata = StructArray{StokesParams{Float64}}(
+            (
+                I = rand(128), Q = rand(128), U = rand(128), V = rand(128),
+            )
+        )
         simg = UnstructuredMap(sdata, g)
         @test simg isa UnstructuredMap{StokesParams{Float64}, <:StructArray}
         res = simg .+ simg
