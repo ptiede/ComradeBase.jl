@@ -214,4 +214,65 @@ end
 
     @test propertynames(img) == propertynames(g)
     @test img.X == g.X
+
+    @testset "BroadcastStyle" begin
+        using Base.Broadcast: BroadcastStyle, DefaultArrayStyle
+        UStyle = ComradeBase.UnstructuredStyle
+
+        # Style wraps the inner array's style
+        @test BroadcastStyle(typeof(img)) isa UStyle{DefaultArrayStyle{1}}
+
+        # Style preserves inner type through Val promotion
+        s = UStyle{DefaultArrayStyle{1}}()
+        @test s isa UStyle{DefaultArrayStyle{1}}
+        @test UStyle{DefaultArrayStyle{1}}(Val(2)) isa UStyle{DefaultArrayStyle{1}}
+
+        # Combining two UnstructuredStyles resolves inner styles
+        s2 = UStyle{DefaultArrayStyle{1}}()
+        @test BroadcastStyle(s, s2) isa UStyle{DefaultArrayStyle{1}}
+
+        # Combining with DefaultArrayStyle{0} (scalars) keeps UnstructuredStyle
+        @test BroadcastStyle(s, DefaultArrayStyle{0}()) isa UStyle
+    end
+
+    @testset "broadcast correctness" begin
+        # Unary broadcast
+        @test parent(img .^ 2) == parent(img) .^ 2
+        # Binary broadcast with two UnstructuredMaps
+        img2 = UnstructuredMap(rand(128), g)
+        res = img .+ img2
+        @test res isa UnstructuredMap
+        @test parent(res) == parent(img) .+ parent(img2)
+        # Scalar broadcast
+        res = img .* 3.0
+        @test res isa UnstructuredMap
+        @test parent(res) == parent(img) .* 3.0
+        # Chained broadcast
+        res = img .* 2.0 .+ img2
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ parent(img) .* 2.0 .+ parent(img2)
+        # Domain is preserved through broadcast
+        @test axisdims(res) === g
+    end
+
+    @testset "broadcast in-place" begin
+        dest = UnstructuredMap(zeros(128), g)
+        dest .= img .^ 2
+        @test parent(dest) == parent(img) .^ 2
+        # In-place with two sources
+        dest .= img .+ img
+        @test parent(dest) == parent(img) .+ parent(img)
+    end
+
+    @testset "broadcast with StructArray backing" begin
+        sdata = StructArray{StokesParams{Float64}}((
+            I = rand(128), Q = rand(128), U = rand(128), V = rand(128),
+        ))
+        simg = UnstructuredMap(sdata, g)
+        @test simg isa UnstructuredMap{StokesParams{Float64}, <:StructArray}
+        res = simg .+ simg
+        @test res isa UnstructuredMap
+        @test parent(res) isa StructArray
+        @test parent(res).I ≈ parent(simg).I .+ parent(simg).I
+    end
 end
