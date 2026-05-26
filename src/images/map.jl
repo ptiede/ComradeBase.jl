@@ -30,58 +30,71 @@ Base.@propagate_inbounds Base.setindex!(a::UnstructuredMap, v, i::Integer) = rse
 )
 
 using Base.Broadcast: Broadcasted, BroadcastStyle, AbstractArrayStyle, DefaultArrayStyle,
-    Style
+    Style, Unknown
 
-Base.BroadcastStyle(::Type{<:UnstructuredMap}) = Broadcast.ArrayStyle{UnstructuredMap}()
-function Base.similar(
-        bc::Broadcast.Broadcasted{Broadcast.ArrayStyle{UnstructuredMap}},
-        ::Type{ElType}
-    ) where {ElType}
-    # Scan inputs for the time and sites
-    sarr = find_ustr(bc)
-    return UnstructuredMap(similar(parent(sarr), ElType), axisdims(sarr))
+struct UnstructuredStyle{S <: BroadcastStyle} <: AbstractArrayStyle{1} end
+@inline UnstructuredStyle(::S) where {S <: BroadcastStyle} = UnstructuredStyle{S}()
+@inline UnstructuredStyle(::S) where {S <: UnstructuredStyle} = S()
+@inline UnstructuredStyle(::Unknown) = Unknown()
+
+# Important for broadcasting over multidimensional arrays
+@inline UnstructuredStyle(::Val{N}) where {N} = UnstructuredStyle{DefaultArrayStyle{N}}()
+@inline UnstructuredStyle{S}(::Val{N}) where {S, N} = UnstructuredStyle{S}()
+
+@inline function UnstructuredStyle(a::BroadcastStyle, b::BroadcastStyle)
+    inner_style = BroadcastStyle(a, b)
+    return UnstructuredStyle(inner_style)
+end
+
+@inline function Base.BroadcastStyle(::Type{<:UnstructuredMap{T, A}}) where {T, A}
+    inner_style = typeof(BroadcastStyle(A))
+    return UnstructuredStyle{inner_style}()
 end
 
 
-function Base.copyto!(dest::UnstructuredMap, bc::Broadcast.Broadcasted)
-    copyto!(baseimage(dest), bc)
+@inline Base.BroadcastStyle(::UnstructuredStyle, ::Unknown) = Unknown()
+@inline Base.BroadcastStyle(::Unknown, ::UnstructuredStyle) = Unknown()
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, ::UnstructuredStyle{B}) where {A, B} = UnstructuredStyle(A(), B())
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::AbstractArrayStyle) where {A} = UnstructuredStyle(A(), b)
+@inline Base.BroadcastStyle(a::AbstractArrayStyle, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
+# Disambiguate from Base's (::AbstractArrayStyle{M}, ::DefaultArrayStyle{N}) methods,
+# which also match when UnstructuredStyle is in the first/second position.
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::DefaultArrayStyle) where {A} = UnstructuredStyle(A(), b)
+@inline Base.BroadcastStyle(a::DefaultArrayStyle, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, ::Style{Tuple}) where {A} = UnstructuredStyle{A}()
+@inline Base.BroadcastStyle(::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle{B}()
+
+@inline _unwrap_ustr(x) = x
+@inline _unwrap_ustr(m::UnstructuredMap) = parent(m)
+@inline _unwrap_ustr(bc::Broadcasted{<:UnstructuredStyle}) = Broadcasted(bc.f, map(_unwrap_ustr, bc.args), bc.axes)
+
+@inline find_ustr(bc::Broadcasted) = find_ustr(bc.args)
+@inline find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
+@inline find_ustr(x) = x
+@inline find_ustr(::Tuple{}) = nothing
+@inline find_ustr(x::UnstructuredMap, _) = x
+@inline find_ustr(::Any, rest) = find_ustr(rest)
+
+function Base.copyto!(dest::UnstructuredMap, bc::Broadcasted{<:UnstructuredStyle})
+    copyto!(parent(dest), _unwrap_ustr(bc))
     return dest
 end
 
-find_ustr(bc::Broadcasted) = find_ustr(bc.args)
-find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
-find_ustr(x) = x
-find_ustr(::Tuple{}) = nothing
-find_ustr(x::UnstructuredMap, rest) = x
-find_ustr(::Any, rest) = find_ustr(rest)
+function Base.copyto!(dest::UnstructuredMap, bc::Broadcasted)
+    copyto!(parent(dest), bc)
+    return dest
+end
+
+function Base.similar(bc::Broadcasted{UnstructuredStyle{S}}, ::Type{ElType}) where {S, ElType}
+    A = find_ustr(bc)
+    data = similar(_unwrap_ustr(bc), ElType)
+    return UnstructuredMap(data, axisdims(A))
+end
 
 domainpoints(x::UnstructuredMap) = domainpoints(axisdims(x))
 
 Base.propertynames(x::UnstructuredMap) = propertynames(axisdims(x))
 Base.getproperty(x::UnstructuredMap, s::Symbol) = getproperty(axisdims(x), s)
-
-# function UnstructuredStyle(a::BroadcastStyle, b::BroadcastStyle)
-#     inner_style = BroadcastStyle(a, b)
-#     if inner_style isa Broadcast.Unknown
-#         return Broadcast.Unknown()
-#     else
-#         return UnstructuredStyle(inner_style)
-#     end
-# end
-
-# BroadcastStyle(::UnstructuredStyle, ::Base.Broadcast.Unknown) = Unknown()
-# BroadcastStyle(::Base.Broadcast.Unknown, ::UnstructuredStyle) = Unknown()
-# BroadcastStyle(::UnstructuredStyle{A}, ::UnstructuredStyle{B}) where {A, B} = UnstructuredStyle(A(), B())
-# BroadcastStyle(::UnstructuredStyle{A}, b::Style) where {A} = UnstructuredStyle(A(), b)
-# BroadcastStyle(a::Style, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
-# BroadcastStyle(::UnstructuredStyle{A}, b::Style{Tuple}) where {A} = UnstructuredStyle(A(), b)
-# BroadcastStyle(a::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
-# function Base.similar(bc::Broadcasted{UnstructuredStyle},
-#     ::Type{ElType}) where {ElType}
-# # Scan inputs for the time and sites
-# sarr = find_ustr(bc)
-# return UnstructuredMap(similar(parent(sarr), ElType), axisdims(sarr))
-# end
 
 
 function UnstructuredMap(data::UnstructuredMap, dims::UnstructuredDomain)

@@ -214,4 +214,116 @@ end
 
     @test propertynames(img) == propertynames(g)
     @test img.X == g.X
+
+    @testset "BroadcastStyle" begin
+        using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, Unknown, Style
+        UStyle = ComradeBase.UnstructuredStyle
+
+        # Style wraps the inner array's style
+        @test BroadcastStyle(typeof(img)) isa UStyle{DefaultArrayStyle{1}}
+
+        # Style preserves inner type through Val promotion
+        s = UStyle{DefaultArrayStyle{1}}()
+        @test s isa UStyle{DefaultArrayStyle{1}}
+        @test UStyle{DefaultArrayStyle{1}}(Val(2)) isa UStyle{DefaultArrayStyle{1}}
+
+        # Combining two UnstructuredStyles resolves inner styles
+        s2 = UStyle{DefaultArrayStyle{1}}()
+        @test BroadcastStyle(s, s2) isa UStyle{DefaultArrayStyle{1}}
+
+        # Combining with DefaultArrayStyle{0} (scalars) keeps UnstructuredStyle
+        @test BroadcastStyle(s, DefaultArrayStyle{0}()) isa UStyle
+
+        # Reversed Style + UnstructuredStyle (symmetric to the above)
+        @test BroadcastStyle(DefaultArrayStyle{0}(), s) isa UStyle
+
+        # Unknown propagation through BroadcastStyle combinators (both directions)
+        @test BroadcastStyle(s, Unknown()) isa Unknown
+        @test BroadcastStyle(Unknown(), s) isa Unknown
+
+        # Key new path: UnstructuredStyle(::Unknown) constructor used by two-arg combinator
+        @test ComradeBase.UnstructuredStyle(Unknown()) isa Unknown
+
+        # Unparameterized Val{N} constructor
+        @test UStyle(Val(1)) isa UStyle{DefaultArrayStyle{1}}
+        @test UStyle(Val(2)) isa UStyle{DefaultArrayStyle{2}}
+
+        # AbstractArrayStyle on the right: (UnstructuredStyle, DefaultArrayStyle{1})
+        @test BroadcastStyle(s, DefaultArrayStyle{1}()) isa UStyle
+        # AbstractArrayStyle on the left: (DefaultArrayStyle{1}, UnstructuredStyle)
+        @test BroadcastStyle(DefaultArrayStyle{1}(), s) isa UStyle
+
+        # Tuple style branches (Style{Tuple} is not AbstractArrayStyle, needs its own dispatch)
+        @test BroadcastStyle(s, Style{Tuple}()) isa UStyle
+        @test BroadcastStyle(Style{Tuple}(), s) isa UStyle
+    end
+
+    @testset "broadcast correctness" begin
+        # Unary broadcast
+        @test parent(img .^ 2) == parent(img) .^ 2
+        # Binary broadcast with two UnstructuredMaps
+        img2 = UnstructuredMap(rand(128), g)
+        res = img .+ img2
+        @test res isa UnstructuredMap
+        @test parent(res) == parent(img) .+ parent(img2)
+        # Scalar broadcast (UnstructuredMap on left)
+        res = img .* 3.0
+        @test res isa UnstructuredMap
+        @test parent(res) == parent(img) .* 3.0
+        # Scalar broadcast reversed (scalar on left — exercises AbstractArrayStyle{0} + UnstructuredStyle)
+        res = 3.0 .* img
+        @test res isa UnstructuredMap
+        @test parent(res) == 3.0 .* parent(img)
+        # Chained broadcast
+        res = img .* 2.0 .+ img2
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ parent(img) .* 2.0 .+ parent(img2)
+        # Domain is preserved through broadcast
+        @test axisdims(res) === g
+        # AbstractArrayStyle{1} on right (UnstructuredStyle, AbstractArrayStyle branch)
+        arr = rand(128)
+        res = img .* arr
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ parent(img) .* arr
+        @test axisdims(res) === g
+        # AbstractArrayStyle{1} on left (AbstractArrayStyle, UnstructuredStyle branch)
+        res = arr .* img
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ arr .* parent(img)
+        @test axisdims(res) === g
+        # Tuple on right (UnstructuredStyle, Style{Tuple} branch)
+        t = ntuple(_ -> 2.0, 128)
+        res = img .* t
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ parent(img) .* collect(t)
+        @test axisdims(res) === g
+        # Tuple on left (Style{Tuple}, UnstructuredStyle branch)
+        res = t .* img
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ collect(t) .* parent(img)
+        @test axisdims(res) === g
+    end
+
+    @testset "broadcast in-place" begin
+        dest = UnstructuredMap(zeros(128), g)
+        dest .= img .^ 2
+        @test parent(dest) == parent(img) .^ 2
+        # In-place with two sources
+        dest .= img .+ img
+        @test parent(dest) == parent(img) .+ parent(img)
+    end
+
+    @testset "broadcast with StructArray backing" begin
+        sdata = StructArray{StokesParams{Float64}}(
+            (
+                I = rand(128), Q = rand(128), U = rand(128), V = rand(128),
+            )
+        )
+        simg = UnstructuredMap(sdata, g)
+        @test simg isa UnstructuredMap{StokesParams{Float64}, <:StructArray}
+        res = simg .+ simg
+        @test res isa UnstructuredMap
+        @test parent(res) isa StructArray
+        @test parent(res).I ≈ parent(simg).I .+ parent(simg).I
+    end
 end
