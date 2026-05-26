@@ -216,7 +216,7 @@ end
     @test img.X == g.X
 
     @testset "BroadcastStyle" begin
-        using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, Unknown
+        using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, Unknown, Style
         UStyle = ComradeBase.UnstructuredStyle
 
         # Style wraps the inner array's style
@@ -247,6 +247,15 @@ end
         # Unparameterized Val{N} constructor
         @test UStyle(Val(1)) isa UStyle{DefaultArrayStyle{1}}
         @test UStyle(Val(2)) isa UStyle{DefaultArrayStyle{2}}
+
+        # AbstractArrayStyle on the right: (UnstructuredStyle, DefaultArrayStyle{1})
+        @test BroadcastStyle(s, DefaultArrayStyle{1}()) isa UStyle
+        # AbstractArrayStyle on the left: (DefaultArrayStyle{1}, UnstructuredStyle)
+        @test BroadcastStyle(DefaultArrayStyle{1}(), s) isa UStyle
+
+        # Tuple style branches (Style{Tuple} is not AbstractArrayStyle, needs its own dispatch)
+        @test BroadcastStyle(s, Style{Tuple}()) isa UStyle
+        @test BroadcastStyle(Style{Tuple}(), s) isa UStyle
     end
 
     @testset "broadcast correctness" begin
@@ -257,15 +266,41 @@ end
         res = img .+ img2
         @test res isa UnstructuredMap
         @test parent(res) == parent(img) .+ parent(img2)
-        # Scalar broadcast
+        # Scalar broadcast (UnstructuredMap on left)
         res = img .* 3.0
         @test res isa UnstructuredMap
         @test parent(res) == parent(img) .* 3.0
+        # Scalar broadcast reversed (scalar on left — exercises AbstractArrayStyle{0} + UnstructuredStyle)
+        res = 3.0 .* img
+        @test res isa UnstructuredMap
+        @test parent(res) == 3.0 .* parent(img)
         # Chained broadcast
         res = img .* 2.0 .+ img2
         @test res isa UnstructuredMap
         @test parent(res) ≈ parent(img) .* 2.0 .+ parent(img2)
         # Domain is preserved through broadcast
+        @test axisdims(res) === g
+        # AbstractArrayStyle{1} on right (UnstructuredStyle, AbstractArrayStyle branch)
+        arr = rand(128)
+        res = img .* arr
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ parent(img) .* arr
+        @test axisdims(res) === g
+        # AbstractArrayStyle{1} on left (AbstractArrayStyle, UnstructuredStyle branch)
+        res = arr .* img
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ arr .* parent(img)
+        @test axisdims(res) === g
+        # Tuple on right (UnstructuredStyle, Style{Tuple} branch)
+        t = ntuple(_ -> 2.0, 128)
+        res = img .* t
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ parent(img) .* collect(t)
+        @test axisdims(res) === g
+        # Tuple on left (Style{Tuple}, UnstructuredStyle branch)
+        res = t .* img
+        @test res isa UnstructuredMap
+        @test parent(res) ≈ collect(t) .* parent(img)
         @test axisdims(res) === g
     end
 
