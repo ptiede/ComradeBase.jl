@@ -57,8 +57,12 @@ end
 @inline Base.BroadcastStyle(::UnstructuredStyle{A}, ::UnstructuredStyle{B}) where {A, B} = UnstructuredStyle(A(), B())
 @inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::AbstractArrayStyle) where {A} = UnstructuredStyle(A(), b)
 @inline Base.BroadcastStyle(a::AbstractArrayStyle, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
-@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::Style{Tuple}) where {A} = UnstructuredStyle(A(), b)
-@inline Base.BroadcastStyle(a::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
+# Disambiguate from Base's (::AbstractArrayStyle{M}, ::DefaultArrayStyle{N}) methods,
+# which also match when UnstructuredStyle is in the first/second position.
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::DefaultArrayStyle) where {A} = UnstructuredStyle(A(), b)
+@inline Base.BroadcastStyle(a::DefaultArrayStyle, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, ::Style{Tuple}) where {A} = UnstructuredStyle{A}()
+@inline Base.BroadcastStyle(::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle{B}()
 
 @inline _unwrap_ustr(x) = x
 @inline _unwrap_ustr(m::UnstructuredMap) = parent(m)
@@ -68,7 +72,7 @@ end
 @inline find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
 @inline find_ustr(x) = x
 @inline find_ustr(::Tuple{}) = nothing
-@inline find_ustr(x::UnstructuredMap, rest) = x
+@inline find_ustr(x::UnstructuredMap, _) = x
 @inline find_ustr(::Any, rest) = find_ustr(rest)
 
 function Base.copyto!(dest::UnstructuredMap, bc::Broadcasted{<:UnstructuredStyle})
