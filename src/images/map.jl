@@ -33,43 +33,43 @@ using Base.Broadcast: Broadcasted, BroadcastStyle, AbstractArrayStyle, DefaultAr
     Style, Unknown
 
 struct UnstructuredStyle{S <: BroadcastStyle} <: AbstractArrayStyle{1} end
-UnstructuredStyle(::S) where {S <: BroadcastStyle} = UnstructuredStyle{S}()
-UnstructuredStyle(::S) where {S <: UnstructuredStyle} = S()
-UnstructuredStyle(::Val{N}) where {N} = UnstructuredStyle{DefaultArrayStyle{N}}()
-UnstructuredStyle{S}(::Val{N}) where {S, N} = UnstructuredStyle{S}()
+@inline UnstructuredStyle(::S) where {S <: BroadcastStyle} = UnstructuredStyle{S}()
+@inline UnstructuredStyle(::S) where {S <: UnstructuredStyle} = S()
+@inline UnstructuredStyle(::Unknown) = Unknown()
 
-function Base.BroadcastStyle(::Type{<:UnstructuredMap{T, A}}) where {T, A}
+# Important for broadcasting over multidimensional arrays
+@inline UnstructuredStyle(::Val{N}) where {N} = UnstructuredStyle{DefaultArrayStyle{N}}()
+@inline UnstructuredStyle{S}(::Val{N}) where {S, N} = UnstructuredStyle{S}()
+
+@inline function UnstructuredStyle(a::BroadcastStyle, b::BroadcastStyle)
+    inner_style = BroadcastStyle(a, b)
+    return UnstructuredStyle(inner_style)
+end
+
+@inline function Base.BroadcastStyle(::Type{<:UnstructuredMap{T, A}}) where {T, A}
     inner_style = typeof(BroadcastStyle(A))
     return UnstructuredStyle{inner_style}()
 end
 
-function UnstructuredStyle(a::BroadcastStyle, b::BroadcastStyle)
-    inner_style = BroadcastStyle(a, b)
-    if inner_style isa Unknown
-        return Unknown()
-    else
-        return UnstructuredStyle(inner_style)
-    end
-end
 
-Base.BroadcastStyle(::UnstructuredStyle, ::Unknown) = Unknown()
-Base.BroadcastStyle(::Unknown, ::UnstructuredStyle) = Unknown()
-Base.BroadcastStyle(::UnstructuredStyle{A}, ::UnstructuredStyle{B}) where {A, B} = UnstructuredStyle(A(), B())
-Base.BroadcastStyle(::UnstructuredStyle{A}, b::Style) where {A} = UnstructuredStyle(A(), b)
-Base.BroadcastStyle(a::Style, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
-Base.BroadcastStyle(::UnstructuredStyle{A}, b::Style{Tuple}) where {A} = UnstructuredStyle(A(), b)
-Base.BroadcastStyle(a::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
+@inline Base.BroadcastStyle(::UnstructuredStyle, ::Unknown) = Unknown()
+@inline Base.BroadcastStyle(::Unknown, ::UnstructuredStyle) = Unknown()
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, ::UnstructuredStyle{B}) where {A, B} = UnstructuredStyle(A(), B())
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::Style) where {A} = UnstructuredStyle(A(), b)
+@inline Base.BroadcastStyle(a::Style, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::Style{Tuple}) where {A} = UnstructuredStyle(A(), b)
+@inline Base.BroadcastStyle(a::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
 
-_unwrap_ustr(x) = x
-_unwrap_ustr(m::UnstructuredMap) = parent(m)
-_unwrap_ustr(bc::Broadcasted{<:UnstructuredStyle}) = Broadcasted(bc.f, map(_unwrap_ustr, bc.args), bc.axes)
+@inline _unwrap_ustr(x) = x
+@inline _unwrap_ustr(m::UnstructuredMap) = parent(m)
+@inline _unwrap_ustr(bc::Broadcasted{<:UnstructuredStyle}) = Broadcasted(bc.f, map(_unwrap_ustr, bc.args), bc.axes)
 
-find_ustr(bc::Broadcasted) = find_ustr(bc.args)
-find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
-find_ustr(x) = x
-find_ustr(::Tuple{}) = nothing
-find_ustr(x::UnstructuredMap, rest) = x
-find_ustr(::Any, rest) = find_ustr(rest)
+@inline find_ustr(bc::Broadcasted) = find_ustr(bc.args)
+@inline find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
+@inline find_ustr(x) = x
+@inline find_ustr(::Tuple{}) = nothing
+@inline find_ustr(x::UnstructuredMap, rest) = x
+@inline find_ustr(::Any, rest) = find_ustr(rest)
 
 function Base.copyto!(dest::UnstructuredMap, bc::Broadcasted{<:UnstructuredStyle})
     copyto!(parent(dest), _unwrap_ustr(bc))

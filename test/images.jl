@@ -216,7 +216,7 @@ end
     @test img.X == g.X
 
     @testset "BroadcastStyle" begin
-        using Base.Broadcast: BroadcastStyle, DefaultArrayStyle
+        using Base.Broadcast: BroadcastStyle, DefaultArrayStyle, Unknown
         UStyle = ComradeBase.UnstructuredStyle
 
         # Style wraps the inner array's style
@@ -233,6 +233,20 @@ end
 
         # Combining with DefaultArrayStyle{0} (scalars) keeps UnstructuredStyle
         @test BroadcastStyle(s, DefaultArrayStyle{0}()) isa UStyle
+
+        # Reversed Style + UnstructuredStyle (symmetric to the above)
+        @test BroadcastStyle(DefaultArrayStyle{0}(), s) isa UStyle
+
+        # Unknown propagation through BroadcastStyle combinators (both directions)
+        @test BroadcastStyle(s, Unknown()) isa Unknown
+        @test BroadcastStyle(Unknown(), s) isa Unknown
+
+        # Key new path: UnstructuredStyle(::Unknown) constructor used by two-arg combinator
+        @test ComradeBase.UnstructuredStyle(Unknown()) isa Unknown
+
+        # Unparameterized Val{N} constructor
+        @test UStyle(Val(1)) isa UStyle{DefaultArrayStyle{1}}
+        @test UStyle(Val(2)) isa UStyle{DefaultArrayStyle{2}}
     end
 
     @testset "broadcast correctness" begin
