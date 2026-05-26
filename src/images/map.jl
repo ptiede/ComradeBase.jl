@@ -55,7 +55,7 @@ end
 @inline Base.BroadcastStyle(::UnstructuredStyle, ::Unknown) = Unknown()
 @inline Base.BroadcastStyle(::Unknown, ::UnstructuredStyle) = Unknown()
 @inline Base.BroadcastStyle(::UnstructuredStyle{A}, ::UnstructuredStyle{B}) where {A, B} = UnstructuredStyle(A(), B())
-@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::Style) where {A} = UnstructuredStyle(A(), b)
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::AbstractArrayStyle) where {A} = UnstructuredStyle(A(), b)
 @inline Base.BroadcastStyle(a::AbstractArrayStyle, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
 @inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::Style{Tuple}) where {A} = UnstructuredStyle(A(), b)
 @inline Base.BroadcastStyle(a::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
