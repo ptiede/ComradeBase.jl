@@ -66,7 +66,7 @@ end
 
 @inline _unwrap_ustr(x) = x
 @inline _unwrap_ustr(m::UnstructuredMap) = parent(m)
-@inline _unwrap_ustr(bc::Broadcasted{<:UnstructuredStyle}) = Broadcasted(bc.f, map(_unwrap_ustr, bc.args), bc.axes)
+@inline _unwrap_ustr(bc::Broadcasted{UnstructuredStyle{S}}) where {S} = Broadcasted{S}(bc.f, map(_unwrap_ustr, bc.args), bc.axes)
 
 @inline find_ustr(bc::Broadcasted) = find_ustr(bc.args)
 @inline find_ustr(args::Tuple) = find_ustr(find_ustr(args[1]), Base.tail(args))
@@ -85,9 +85,18 @@ function Base.copyto!(dest::UnstructuredMap, bc::Broadcasted)
     return dest
 end
 
+# When StructArrays wraps our style (StructArrayStyle{UnstructuredStyle{S}}),
+# it strips its wrapper and calls similar with UnstructuredStyle{S} but no
+# UnstructuredMap in the args. Delegate to the inner style in that case.
+# Remove this guard when StructArrays fixes its BroadcastStyle rules:
+# https://github.com/rafaqz/DimensionalData.jl/issues/1195
 function Base.similar(bc::Broadcasted{UnstructuredStyle{S}}, ::Type{ElType}) where {S, ElType}
     A = find_ustr(bc)
-    data = similar(_unwrap_ustr(bc), ElType)
+    inner = _unwrap_ustr(bc)
+    if A === nothing
+        return similar(inner, ElType)
+    end
+    data = similar(inner, ElType)
     return UnstructuredMap(data, axisdims(A))
 end
 
