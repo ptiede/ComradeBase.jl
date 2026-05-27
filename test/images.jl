@@ -326,4 +326,18 @@ end
         @test parent(res) isa StructArray
         @test parent(res).I ≈ parent(simg).I .+ parent(simg).I
     end
+
+    @testset "broadcast StructVector with UnstructuredMap columns" begin
+        sv = StructArray{StokesParams{ComplexF64}}(
+            (
+                I = rand(ComplexF64, 128),
+                Q = UnstructuredMap(rand(ComplexF64, 128), g),
+                U = UnstructuredMap(rand(ComplexF64, 128), g),
+                V = UnstructuredMap(rand(ComplexF64, 128), g),
+            )
+        )
+        res = sv .- sv
+        @test length(res) == 128
+        @test all(x -> all(iszero, (x.I, x.Q, x.U, x.V)), res)
+    end
 end
