@@ -63,6 +63,7 @@ end
 @inline Base.BroadcastStyle(a::DefaultArrayStyle, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle(a, B())
 @inline Base.BroadcastStyle(::UnstructuredStyle{A}, ::Style{Tuple}) where {A} = UnstructuredStyle{A}()
 @inline Base.BroadcastStyle(::Style{Tuple}, ::UnstructuredStyle{B}) where {B} = UnstructuredStyle{B}()
+@inline Base.BroadcastStyle(::UnstructuredStyle{A}, b::StructArrays.StructArrayStyle{S, N}) where {S, N, A} = UnstructuredStyle(A(), b)
 
 @inline _unwrap_ustr(x) = x
 @inline _unwrap_ustr(m::UnstructuredMap) = parent(m)
