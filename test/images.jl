@@ -256,6 +256,28 @@ end
         # Tuple style branches (Style{Tuple} is not AbstractArrayStyle, needs its own dispatch)
         @test BroadcastStyle(s, Style{Tuple}()) isa UStyle
         @test BroadcastStyle(Style{Tuple}(), s) isa UStyle
+
+        # Bare StructArrayStyle: the (UnstructuredStyle, StructArrayStyle) method
+        # must disambiguate from StructArrays' own (AbstractArrayStyle,
+        # StructArrayStyle) rule, which would otherwise be ambiguous with our
+        # (UnstructuredStyle, AbstractArrayStyle) method.
+        sas = BroadcastStyle(
+            typeof(
+                StructArray{StokesParams{Float64}}(
+                    (I = rand(2), Q = rand(2), U = rand(2), V = rand(2))
+                )
+            )
+        )
+        @test sas isa StructArrays.StructArrayStyle
+        @test BroadcastStyle(s, sas) isa UStyle
+        # The reverse direct call has no explicit method and resolves to Unknown,
+        # so combine_styles (what broadcasting actually uses) must recover the
+        # UnstructuredStyle in both operand orders.
+        sa128 = StructArray{StokesParams{Float64}}(
+            (I = rand(128), Q = rand(128), U = rand(128), V = rand(128))
+        )
+        @test Base.Broadcast.combine_styles(img, sa128) isa UStyle
+        @test Base.Broadcast.combine_styles(sa128, img) isa UStyle
     end
 
     @testset "broadcast correctness" begin
@@ -325,6 +347,26 @@ end
         @test res isa UnstructuredMap
         @test parent(res) isa StructArray
         @test parent(res).I ≈ parent(simg).I .+ parent(simg).I
+    end
+
+    @testset "broadcast bare StructArray against scalar UnstructuredMap" begin
+        # Regression: a plain-backed UnstructuredMap broadcast against a *bare*
+        # StructArray pairs bare UnstructuredStyle with bare StructArrayStyle,
+        # which was ambiguous with StructArrays' own BroadcastStyle rule.
+        sa = StructArray{StokesParams{Float64}}(
+            (I = rand(128), Q = rand(128), U = rand(128), V = rand(128))
+        )
+        res = img .* sa
+        @test res isa UnstructuredMap{<:StokesParams}
+        @test parent(res) isa StructArray
+        @test parent(res).I ≈ parent(img) .* sa.I
+        @test axisdims(res) === g
+        # reversed operand order (StructArray on the left)
+        res = sa .* img
+        @test res isa UnstructuredMap{<:StokesParams}
+        @test parent(res) isa StructArray
+        @test parent(res).Q ≈ sa.Q .* parent(img)
+        @test axisdims(res) === g
     end
 
     @testset "broadcast StructVector with UnstructuredMap columns" begin
