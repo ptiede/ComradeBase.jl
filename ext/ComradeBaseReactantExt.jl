@@ -6,8 +6,70 @@ using Reactant
 using StaticArrays
 
 import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
-using ComradeBase: ReactantEx
+using ComradeBase: ReactantEx, ShardSpec, UnstructuredDomain
 import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
+
+
+# --- Sharding ---------------------------------------------------------------------------------
+# The `ShardSpec` carried on a `ReactantEx` executor is only a *declaration* of how the user wants
+# things laid out. The actual sharding is applied with the public `Reactant.to_rarray` API at the
+# input boundary (`to_sharded` below); ordinary Julia code in the executors / NUFFT then propagates
+# the sharding through tracing. No internal Reactant ops are used.
+
+function ComradeBase.shardmesh(dims::Vararg{Int}; names)
+    return Reactant.Sharding.Mesh(reshape(Reactant.devices(), dims...), names)
+end
+
+# Map each semantic axis name to its array-dimension position for the object being sharded.
+# An unstructured domain/map is a flat vector of points, so the per-point labels :Ti and :Fr both
+# refer to the single data dimension (dim 1) — sharding "over Ti/Fr" means sharding that flat axis
+# after the domain has been `regroup`ed by the same label. Rectilinear objects map their named dims
+# (:X, :Y, optionally :Ti, :Fr) to positions in order.
+_axispositions(::Union{UnstructuredDomain, UnstructuredMap}) = (; Ti = 1, Fr = 1)
+function _axispositions(x::ComradeBase.AbstractRectiGrid)
+    ks = keys(x)
+    return NamedTuple{ks}(ntuple(identity, length(ks)))
+end
+# An IntensityMap is an AbstractArray, so `keys` would give CartesianIndices; take the named dims
+# from its grid instead (the pixel-array dimensions follow the grid's dim order).
+_axispositions(x::IntensityMap) = _axispositions(ComradeBase.axisdims(x))
+
+# Translate a `ShardSpec` + the object's axis layout into a public `Reactant.Sharding.DimsSharding`.
+# `DimsSharding` shards the listed dims and replicates the rest, so one spec works across the
+# different-rank arrays held inside a domain/map. Multiple semantic axes can land on the same array
+# dimension (e.g. :Ti and :Fr both map to the flat dim 1), and a mesh-axis value may itself be a tuple
+# — in either case that dimension is sharded across the tuple of all the mesh axes assigned to it.
+function _dimssharding(spec::ShardSpec, x)
+    pos = _axispositions(x)
+    bydim = Tuple{Int, Symbol}[]
+    for an in keys(spec.axes)
+        haskey(pos, an) || continue
+        v = spec.axes[an]
+        for m in (v isa Tuple ? v : (v,))
+            push!(bydim, (pos[an], m))
+        end
+    end
+    sdims = sort!(unique(first.(bydim)))
+    pspec = map(sdims) do d
+        ax = [m for (dd, m) in bydim if dd == d]
+        length(ax) == 1 ? ax[1] : Tuple(ax)
+    end
+    return Reactant.Sharding.DimsSharding(spec.mesh, Tuple(sdims), Tuple(pspec))
+end
+
+# Resolve the executor's sharding *declaration* into a concrete Reactant sharding for `x`.
+#  - `ShardSpec`: the semantic convenience layer (axis names -> DimsSharding).
+#  - a callable: the escape hatch — full Reactant power; gets `x`, returns any AbstractSharding.
+#  - an AbstractSharding: used as-is.
+_resolve_sharding(spec::ShardSpec, x) = _dimssharding(spec, x)
+_resolve_sharding(sh::Reactant.Sharding.AbstractSharding, x) = sh
+_resolve_sharding(f, x) = f(x)
+
+function ComradeBase.to_sharded(x)
+    decl = ComradeBase.sharding(executor(x))
+    decl === nothing && return Reactant.to_rarray(x)
+    return Reactant.to_rarray(x; sharding = _resolve_sharding(decl, x))
+end
 
 const RInt = Union{Integer, Reactant.TracedRNumber{<:Integer}}
 const TInt = Reactant.TracedRNumber{<:Integer}
@@ -54,7 +116,10 @@ Base.@nospecializeinfer function Reactant.make_tracer(
         @nospecialize(runtime),
         kwargs...
     )
-    return Reactant.traced_type(typeof(prev), Val(mode), track_numbers, sharding, runtime)()
+    # Serial/ThreadsEx carry no sharding intent, so they convert to an unsharded ReactantEx.
+    # A domain that was explicitly given `ReactantEx(spec)` keeps its spec via the generic
+    # struct tracer (the Mesh is a leaf type), so no rule is needed for `ReactantEx` itself.
+    return ReactantEx()
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -65,7 +130,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         @nospecialize(ndevices),
         @nospecialize(runtime)
     )
-    return ReactantEx
+    return ReactantEx{Nothing}
 end
 
 
@@ -81,9 +146,6 @@ end
     return TracedRArray{unwrapped_eltype(T)}
 end
 
-
-# Copied from ComradeBaseKernelAbstractionsExt, these
-# probably will need to be modified still:
 
 function ComradeBase.allocate_map(
         ::Type{<:StructArray{T}},

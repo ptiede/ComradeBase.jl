@@ -1,4 +1,4 @@
-export UnstructuredDomain
+export UnstructuredDomain, regroup
 
 const DataNames = Union{
     <:NamedTuple{(:X, :Y, :T, :F)}, <:NamedTuple{(:X, :Y, :F, :T)},
@@ -74,6 +74,37 @@ function Base.getindex(domain::UnstructuredDomain; Ti = nothing, Fr = nothing)
         findall(p -> (p.Fr == Fr), points)
     end
     return UnstructuredDomain(points[indices], executor(domain), header(domain))
+end
+
+"""
+    regroup(domain::UnstructuredDomain, axes::Symbol...)
+
+Return `(rdomain, perm)` where `rdomain` is `domain` reordered by a stable **lexicographic** sort over
+the points' `axes` properties so that all points sharing the same `axes` values are contiguous, and
+`perm` is the permutation such that `domainpoints(rdomain) == domainpoints(domain)[perm]`.
+
+With a single axis (`regroup(d, :Fr)`) this groups by frequency; with several
+(`regroup(d, :Fr, :Ti)`) the first axis is the major key, so the data nests as `Fr`-blocks each split
+into `Ti`-blocks — matching a sharding declared as `ReactantEx(mesh; Fr = :devf, Ti = :devt)` (the
+declaration's axis order sets the same major/minor order). This is the companion to sharding the
+corresponding image dimensions across a device mesh (see [`shard_frequency`](@ref)/[`shard_time`](@ref)):
+contiguous-per-group ordering lets the per-block visibilities lay out cleanly across devices. Apply
+`perm` to any data/noise vectors that must stay aligned with the model visibilities, and use
+`invperm(perm)` to map results back to the original order.
+
+!!! note
+    Even per-device placement of whole groups requires the groups to be (close to) equal sized. With
+    ragged group sizes the grouping is still contiguous but a uniform mesh split will not fall exactly
+    on group boundaries.
+"""
+function regroup(domain::UnstructuredDomain, axes::Symbol...)
+    isempty(axes) && throw(ArgumentError("regroup requires at least one axis"))
+    points = domainpoints(domain)
+    cols = map(a -> getproperty(points, a), axes)
+    keyvecs = collect(zip(cols...))   # vector of tuples, compared lexicographically
+    perm = sortperm(keyvecs; alg = Base.Sort.DEFAULT_STABLE)
+    rdomain = UnstructuredDomain(points[perm], executor(domain), header(domain))
+    return rdomain, perm
 end
 
 function Base.summary(io::IO, g::UnstructuredDomain)
