@@ -97,14 +97,54 @@ contiguous-per-group ordering lets the per-block visibilities lay out cleanly ac
     ragged group sizes the grouping is still contiguous but a uniform mesh split will not fall exactly
     on group boundaries.
 """
-function regroup(domain::UnstructuredDomain, axes::Symbol...)
-    isempty(axes) && throw(ArgumentError("regroup requires at least one axis"))
+# Shared core for every `regroup` method: build one stable **lexicographic** permutation from the
+# per-point key columns (first column is the major key) and return the reordered domain plus `perm`.
+# All flavours of grouping (by raw value, or by grid-plane position) differ only in how they build
+# `keycols`, so the ordering lives in exactly one place.
+function _regroup(domain::UnstructuredDomain, keycols)
     points = domainpoints(domain)
-    cols = map(a -> getproperty(points, a), axes)
-    keyvecs = collect(zip(cols...))   # vector of tuples, compared lexicographically
+    keyvecs = collect(zip(keycols...))   # vector of tuples, compared lexicographically
     perm = sortperm(keyvecs; alg = Base.Sort.DEFAULT_STABLE)
     rdomain = UnstructuredDomain(points[perm], executor(domain), header(domain))
     return rdomain, perm
+end
+
+function regroup(domain::UnstructuredDomain, axes::Symbol...)
+    isempty(axes) && throw(ArgumentError("regroup requires at least one axis"))
+    points = domainpoints(domain)
+    return _regroup(domain, map(a -> getproperty(points, a), axes))
+end
+
+# Rank a coordinate `v` by its position within the grid axis values `order`, matched with `isapprox`
+# so a data frequency/time that differs from the grid's by floating-point round-off still lands on the
+# right plane. A coordinate absent from the axis sorts to the end (`lastindex + 1`).
+_gridrank(order, v) = something(findfirst(x -> isapprox(x, v), order), lastindex(order) + 1)
+
+"""
+    regroup(domain::UnstructuredDomain, grid::AbstractRectiGrid)
+
+Reorder `domain` into the plane order the multidomain Fourier transform enumerates the image planes
+of `grid` — `DimPoints(dims(grid)[3:end])`, i.e. column-major over the grid's *stored* non-spatial
+(`Ti`/`Fr`) coordinate order. Unlike the value-sorting [`regroup`](@ref)`(domain, axes...)`, points are
+ranked by their *position within* each grid axis (matched with `isapprox`), so a descending or
+non-monotonic grid still lays each block out to co-locate with its image plane — the precondition for
+sharding the blocks across a device mesh. Points whose coordinate is absent from a grid axis sort to
+the end. Returns `(rdomain, perm)`.
+
+This is the single source of the data-side plane ordering; it derives its axes from the same
+`dims(grid)[3:end]` the NUFFT planner iterates, so the two cannot silently drift apart.
+"""
+function regroup(domain::UnstructuredDomain, grid::AbstractRectiGrid)
+    points = domainpoints(domain)
+    # non-spatial image axes in stored (column-major) order, keeping only those the data carries
+    gaxes = filter(a -> hasproperty(points, a), map(name, dims(grid)[3:end]))
+    isempty(gaxes) && return domain, Base.OneTo(length(points))
+    ranks = map(gaxes) do a
+        order = getproperty(grid, a)
+        map(v -> _gridrank(order, v), getproperty(points, a))
+    end
+    # `DimPoints` varies the first non-spatial dim fastest, so the last grid dim is the major sort key.
+    return _regroup(domain, reverse(ranks))
 end
 
 function Base.summary(io::IO, g::UnstructuredDomain)

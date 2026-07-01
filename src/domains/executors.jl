@@ -140,11 +140,17 @@ function shardmesh end
 
 """
     to_sharded(x)
+    to_sharded(x, ex::ReactantEx)
 
 Move a domain or map `x` onto the device mesh declared by its `ReactantEx` executor's [`ShardSpec`](@ref),
 returning a sharded copy via the public `Reactant.to_rarray` API. The sharding rides on the input
 arrays; ordinary evaluation code then propagates it. If the executor carries no `ShardSpec`, this is
 just `Reactant.to_rarray(x)` (unsharded). Requires Reactant to be loaded.
+
+The two-argument form shards `x` using the declaration carried by `ex` rather than by `x`'s own
+executor. Use it to place a visibility domain and a likelihood's flat `measurement`/`noise` vectors —
+which carry no executor of their own — onto the same blocks from a single `ReactantEx`. A bare vector
+is treated as a flat list of points, so `:Ti`/`:Fr` select its first dimension.
 
 ```julia
 mesh = shardmesh(length(Reactant.devices()); names = (:dev,))

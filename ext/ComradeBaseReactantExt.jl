@@ -21,11 +21,13 @@ function ComradeBase.shardmesh(dims::Vararg{Int}; names)
 end
 
 # Map each semantic axis name to its array-dimension position for the object being sharded.
-# An unstructured domain/map is a flat vector of points, so the per-point labels :Ti and :Fr both
-# refer to the single data dimension (dim 1) — sharding "over Ti/Fr" means sharding that flat axis
-# after the domain has been `regroup`ed by the same label. Rectilinear objects map their named dims
-# (:X, :Y, optionally :Ti, :Fr) to positions in order.
-_axispositions(::Union{UnstructuredDomain, UnstructuredMap}) = (; Ti = 1, Fr = 1)
+# An unstructured domain/map — and a bare per-visibility vector (a measurement / noise vector with no
+# executor of its own) — is a flat list of points, so the per-point labels :Ti and :Fr both refer to
+# the single data dimension (dim 1); sharding "over Ti/Fr" means sharding that flat axis after the data
+# has been `regroup`ed by the same label. Restricted to `AbstractVector` so a higher-rank payload fails
+# loudly (MethodError) instead of being silently split on dim 1. Rectilinear objects map their named
+# dims (:X, :Y, optionally :Ti, :Fr) to positions in order.
+_axispositions(::Union{UnstructuredDomain, UnstructuredMap, AbstractVector}) = (; Ti = 1, Fr = 1)
 function _axispositions(x::ComradeBase.AbstractRectiGrid)
     ks = keys(x)
     return NamedTuple{ks}(ntuple(identity, length(ks)))
@@ -65,11 +67,32 @@ _resolve_sharding(spec::ShardSpec, x) = _dimssharding(spec, x)
 _resolve_sharding(sh::Reactant.Sharding.AbstractSharding, x) = sh
 _resolve_sharding(f, x) = f(x)
 
-function ComradeBase.to_sharded(x)
-    decl = ComradeBase.sharding(executor(x))
-    decl === nothing && return Reactant.to_rarray(x)
-    return Reactant.to_rarray(x; sharding = _resolve_sharding(decl, x))
+# Core sharding step: move `x` onto the device for a resolved sharding *declaration* (`nothing` =
+# unsharded). Both public entry points below funnel through here so the one- and two-argument forms,
+# and every object type, can never drift apart.
+_to_sharded(x, ::Nothing) = Reactant.to_rarray(x)
+_to_sharded(x, decl) = Reactant.to_rarray(x; sharding = _resolve_sharding(decl, x))
+
+# An image map's grid axes (`X`, `Y`, `Ti`, `Fr`) are tiny coordinate vectors that the multidomain
+# NUFFT plan builder iterates on the *host*; only the pixel array is large enough to be worth sharding.
+# So shard the value array per the declaration and leave the grid replicated on the host (turning the
+# coordinate arrays into device arrays would make that host iteration a disallowed scalar index). The
+# declaration is resolved against the *image* (for its X/Y/Ti/Fr dim positions) but applied to the bare
+# pixel array; `axisdims(img)` keeps the original host grid.
+_to_sharded(img::IntensityMap, ::Nothing) = IntensityMap(Reactant.to_rarray(baseimage(img)), axisdims(img))
+function _to_sharded(img::IntensityMap, decl)
+    vals = Reactant.to_rarray(baseimage(img); sharding = _resolve_sharding(decl, img))
+    return IntensityMap(vals, axisdims(img))
 end
+
+# One-argument form: shard `x` per its own executor's declaration.
+ComradeBase.to_sharded(x) = _to_sharded(x, ComradeBase.sharding(executor(x)))
+
+# Two-argument form: shard `x` per the declaration carried by `ex` rather than by `x`'s own executor.
+# This is how a likelihood's flat `measurement`/`noise` vectors — which carry no executor — and a
+# visibility domain are placed on the same device blocks from a single `ReactantEx` passed at
+# `prepare_device` time. An `IntensityMap` still keeps its grid on the host via the shared core above.
+ComradeBase.to_sharded(x, ex::ReactantEx) = _to_sharded(x, ComradeBase.sharding(ex))
 
 const RInt = Union{Integer, Reactant.TracedRNumber{<:Integer}}
 const TInt = Reactant.TracedRNumber{<:Integer}
