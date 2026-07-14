@@ -10,12 +10,35 @@ using ComradeBase: ReactantEx
 import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
 const RInt = Union{Integer, Reactant.TracedRNumber{<:Integer}}
+const TInt = Reactant.TracedRNumber{<:Integer}
 
 Base.@propagate_inbounds function ComradeBase.rgetindex(I::Reactant.AnyTracedRArray, i::RInt...)
     return @allowscalar I[i...]
 end
 
 Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRArray, v, i::RInt...)
+    return @allowscalar I[i...] = v
+end
+
+# A *plain* Julia array indexed with a traced index (e.g. a static chain-time table read
+# inside an `@trace` loop): Reactant's interpreter promotes the array to a traced
+# constant automatically; it only needs the scalar-indexing opt-in. The plain-index
+# methods above stay untouched so the CPU fast path never pays for `@allowscalar`.
+# (The AnyTracedRArray+traced-index copies below break the vararg specificity ambiguity
+# with the RInt methods above.)
+Base.@propagate_inbounds function ComradeBase.rgetindex(I::AbstractArray, i::TInt...)
+    return @allowscalar I[i...]
+end
+
+Base.@propagate_inbounds function ComradeBase.rgetindex(I::Reactant.AnyTracedRArray, i::TInt...)
+    return @allowscalar I[i...]
+end
+
+Base.@propagate_inbounds function ComradeBase.rsetindex!(I::AbstractArray, v, i::TInt...)
+    return @allowscalar I[i...] = v
+end
+
+Base.@propagate_inbounds function ComradeBase.rsetindex!(I::Reactant.AnyTracedRArray, v, i::TInt...)
     return @allowscalar I[i...] = v
 end
 
