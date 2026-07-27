@@ -73,7 +73,7 @@ julia> ti_fr_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Til
 ```
 """
 function imagepixels(
-        fovx::Number, fovy::Number, nx::Integer, ny::Integer,
+        fovx::Real, fovy::Real, nx::Integer, ny::Integer,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
         mdims::Union{NamedTuple, Tuple}=(),
         posang::Number = zero(fovx),
