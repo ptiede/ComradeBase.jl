@@ -29,12 +29,12 @@ phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
 # ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 """
-    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; posang=0.0, executor=Serial(), header=NoHeader())
+    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; mdims=Nothing, posang=0.0, executor=Serial(), header=NoHeader())
 
 Construct a grid of pixels with a field of view `fovx` and `fovy` and `nx` and `ny` pixels.
 This points are the pixel centers and the field of view goes from the edge of the first pixel
 to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin over by
-(`x0`, `y0`) in the image plane.
+(`x0`, `y0`) in the image plane. 
 
 ## Arguments:
  - `fovx::Number`: The field of view in the x-direction
@@ -69,74 +69,51 @@ end
 
 
 # extending image pizels to time AND frequency to build the multidomain RectiGrid
-@doc """
-**Multidomain version:**
+"""
+    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; mdims=Nothing, posang=0, executor=Serial(), header=NoHeader())
 
-    imagepixels(fovx, fovy, nx, ny, d1, d2, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
-
-Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
-`d1` and `d2` are extra dimension lists appended to the spatial grid after X and Y.
-Their order determines the index ordering of the output cube.
+`mdims` is a tuple containing lists of extra dimensions (time and frequency) appended to the spatial grid after X and Y.
+The dimension ordering in `mdims` determines the ordering of the additional dimensions in the multidomain cube.
+X and Y are always the first two dimensions, respectively.
 
 - A frequency list is created with `Fr([...])`
 - A time list is created with `Ti([...])`
 
-Both must be subtypes of `DimensionalData.Dimensions.Dimension`.
+## Arguments:
+ - `fovx::Number`: The field of view in the x-direction
+ - `fovy::Number`: The field of view in the y-direction
+ - `nx::Integer`: The number of pixels in the x-direction
+ - `ny::Integer`: The number of pixels in the y-direction
 
-# Arguments
-- `d1::D1`, `d2::D2`: extra dimensions (frequency or time lists)
-- `x0`, `y0`: optional image center offsets (default `0`)
+## Keyword Arguments:
+ - `x0::Number=0`: The x-offset of the image
+ - `y0::Number=0`: The y-offset of the image
+ - mdims::Tuple : tuple containing the non-spatial dimensions (1 or 2 dimensions)
+ - `posang::Number=0`: The position angle of the grid, relative to RA=0 axis.
+ - `executor=Serial()`: The executor to use for the grid, default is serial execution
+ - `header=NoHeader()`: The header to use for the grid
 
 # Examples
 
 ```julia
-julia> frlist = Fr([5, 6, 7])
-julia> tlist  = Ti([8, 9, 0])
+julia> Frlist = Fr([5, 6, 7])
+julia> Tilist = Ti([8, 9, 0])
 
-julia> fr_ti_grid = imagepixels(1, 1, 10, 10, frlist, tlist)
-# Fr index comes before Ti
+julia> fr_ti_grid = imagepixels(1, 1, 10, 10, x0=0, y0=0; mdims=(Frlist, Tilist)) # index ordering is (X,Y,Fr,Ti)
 
-julia> ti_fr_grid = imagepixels(1, 1, 10, 10, tlist, frlist)
-# Ti index comes before Fr
+julia> ti_fr_grid = imagepixels(1, 1, 10, 10, x0=0, y0=0; mdims=(Tilist, Frlist)) # index ordering is (X,Y,Ti,Fr)
 
 julia> fr_ti_grid != ti_fr_grid
 true
 ```
-
-imagepixels(fovx, fovy, nx, ny, d1, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
-
-Extends `imagepixels` for multidomain (multifrequency/multitime) image cubes.
-`d1` is an extra dimension (time or frequency) appended to the spatial grid after X and Y.
-
-- A frequency list is created with `Fr([...])`
-- A time list is created with `Ti([...])`
-
-Must be a subtype of `DimensionalData.Dimensions.Dimension`.
-
-# Arguments
-- `d1::D1`: extra dimension (frequency or time list)
-- `x0`, `y0`: optional image center offsets (default `0`)
-
-# Examples
-
-```julia
-julia> frlist = Fr([5, 6, 7])
-julia> tlist  = Ti([8, 9, 0])
-
-julia> fr_grid = imagepixels(1, 1, 10, 10, frlist)
-# adding frequency dimension
-
-julia> ti_grid = imagepixels(1, 1, 10, 10, tlist)
-# adding time dimension
-```
 """
 function imagepixels(
         fovx::Real, fovy::Real, nx::Integer, ny::Integer,
-        d1::D1, d2::D2,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
+        mdims::Union{NamedTuple, Tuple},
         posang::Number = zero(fovx),
         executor = Serial(), header = NoHeader()
-    ) where {D <: DimensionalData.Dimensions.Dimension, D1 <: D, D2 <: D}
+    )
     @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
 
     psizex = fovx / nx
@@ -144,32 +121,10 @@ function imagepixels(
 
     xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
     yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
-    d1itr = d1
-    d2itr = d2
-    grid = RectiGrid((xitr, yitr, d1itr, d2itr); executor, header, posang)
+
+    grid = RectiGrid((xitr, yitr, mdims...); executor, header, posang)
     return grid
 end
-
-# extending imagepixels to time OR frequency to build multidomain RectiGrid
-function imagepixels(
-        fovx::Real, fovy::Real, nx::Integer, ny::Integer,
-        d1::D1,
-        x0::Number = zero(fovx), y0::Number = zero(fovy);
-        posang::Number = zero(fovx),
-        executor = Serial(), header = NoHeader()
-    ) where {D1 <: DimensionalData.Dimensions.Dimension}
-    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
-
-    psizex = fovx / nx
-    psizey = fovy / ny
-
-    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
-    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
-    d1itr = d1
-    grid = RectiGrid((xitr, yitr, d1itr); executor, header, posang)
-    return grid
-end
-
 
 """
     fieldofview(img::IntensityMap)
