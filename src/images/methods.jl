@@ -29,12 +29,19 @@ phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
 # ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 """
-    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; mdims=Nothing, posang=0.0, executor=Serial(), header=NoHeader())
+    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; mdims=(), posang=0.0, executor=Serial(), header=NoHeader())
 
-Construct a grid of pixels with a field of view `fovx` and `fovy` and `nx` and `ny` pixels.
-This points are the pixel centers and the field of view goes from the edge of the first pixel
+Construct a spatial grid of pixels with a field of view `fovx` and `fovy` and `nx` and `ny` pixels.
+The points are the pixel centers and the field of view goes from the edge of the first pixel
 to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin over by
 (`x0`, `y0`) in the image plane. 
+
+Additional dimensions (time and/or frequency) are added via `mdims`: a tuple of domain lists. 
+- A frequency list is created with `Fr([...])`
+- A time list is created with `Ti([...])`
+These dimensions are appended to the spatial grid after X and Y.
+The dimension ordering in `mdims` determines the ordering of the additional dimensions in the multidomain cube.
+X and Y are always the first two dimensions, respectively.
 
 ## Arguments:
  - `fovx::Number`: The field of view in the x-direction
@@ -45,13 +52,30 @@ to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin ove
 ## Keyword Arguments:
  - `x0::Number=0`: The x-offset of the image
  - `y0::Number=0`: The y-offset of the image
+ - `mdims::Union{NamedTuple, Tuple}` : The non-spatial dimensions of the image (frequency and/or time)
  - `posang::Number=0`: The position angle of the grid, relative to RA=0 axis.
  - `executor=Serial()`: The executor to use for the grid, default is serial execution
  - `header=NoHeader()`: The header to use for the grid
+
+```julia
+# create a square 64x64 grid with a FOV of 250μas
+julia> grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64)
+
+# create a square 64x64 multidomain grid with a FOV of 250μas
+julia> Frlist = Fr([230e9, 345e9])
+julia> Tilist = Ti([1, 2, 3])
+
+# set index ordering as (X,Y,Fr,Ti)
+julia> fr_ti_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Frlist, Tilist))
+
+# set index ordering as (X,Y,Ti,Fr)
+julia> ti_fr_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Tilist, Frlist))
+```
 """
 function imagepixels(
         fovx::Number, fovy::Number, nx::Integer, ny::Integer,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
+        mdims::Union{NamedTuple, Tuple}=(),
         posang::Number = zero(fovx),
         executor = Serial(), header = NoHeader()
     )
@@ -62,66 +86,6 @@ function imagepixels(
 
     xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
     yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
-    grid = RectiGrid((xitr, yitr); executor, header, posang)
-    return grid
-end
-
-
-
-# extending image pizels to time AND frequency to build the multidomain RectiGrid
-"""
-    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; mdims=Nothing, posang=0, executor=Serial(), header=NoHeader())
-
-`mdims` is a tuple containing lists of extra dimensions (time and frequency) appended to the spatial grid after X and Y.
-The dimension ordering in `mdims` determines the ordering of the additional dimensions in the multidomain cube.
-X and Y are always the first two dimensions, respectively.
-
-- A frequency list is created with `Fr([...])`
-- A time list is created with `Ti([...])`
-
-## Arguments:
- - `fovx::Number`: The field of view in the x-direction
- - `fovy::Number`: The field of view in the y-direction
- - `nx::Integer`: The number of pixels in the x-direction
- - `ny::Integer`: The number of pixels in the y-direction
-
-## Keyword Arguments:
- - `x0::Number=0`: The x-offset of the image
- - `y0::Number=0`: The y-offset of the image
- - mdims::Tuple : tuple containing the non-spatial dimensions (1 or 2 dimensions)
- - `posang::Number=0`: The position angle of the grid, relative to RA=0 axis.
- - `executor=Serial()`: The executor to use for the grid, default is serial execution
- - `header=NoHeader()`: The header to use for the grid
-
-# Examples
-
-```julia
-julia> Frlist = Fr([5, 6, 7])
-julia> Tilist = Ti([8, 9, 0])
-
-julia> fr_ti_grid = imagepixels(1, 1, 10, 10, x0=0, y0=0; mdims=(Frlist, Tilist)) # index ordering is (X,Y,Fr,Ti)
-
-julia> ti_fr_grid = imagepixels(1, 1, 10, 10, x0=0, y0=0; mdims=(Tilist, Frlist)) # index ordering is (X,Y,Ti,Fr)
-
-julia> fr_ti_grid != ti_fr_grid
-true
-```
-"""
-function imagepixels(
-        fovx::Real, fovy::Real, nx::Integer, ny::Integer,
-        x0::Number = zero(fovx), y0::Number = zero(fovy);
-        mdims::Union{NamedTuple, Tuple},
-        posang::Number = zero(fovx),
-        executor = Serial(), header = NoHeader()
-    )
-    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
-
-    psizex = fovx / nx
-    psizey = fovy / ny
-
-    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
-    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
-
     grid = RectiGrid((xitr, yitr, mdims...); executor, header, posang)
     return grid
 end
