@@ -52,7 +52,7 @@ X and Y are always the first two dimensions, respectively.
 ## Keyword Arguments:
  - `x0::Number=0`: The x-offset of the image
  - `y0::Number=0`: The y-offset of the image
- - `mdims::Union{NamedTuple, Tuple}` : The non-spatial dimensions of the image (frequency and/or time)
+ - `mdims::Union{NamedTuple, Tuple}=()` : The non-spatial dimensions of the image (frequency and/or time)
  - `posang::Number=0`: The position angle of the grid, relative to RA=0 axis.
  - `executor=Serial()`: The executor to use for the grid, default is serial execution
  - `header=NoHeader()`: The header to use for the grid
@@ -64,6 +64,9 @@ julia> grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64)
 # create a square 64x64 multidomain grid with a FOV of 250μas
 julia> Frlist = Fr([230e9, 345e9])
 julia> Tilist = Ti([1, 2, 3])
+
+# multifrequency grid
+julia> fr_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Frlist, ))
 
 # set index ordering as (X,Y,Fr,Ti)
 julia> fr_ti_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Frlist, Tilist))
