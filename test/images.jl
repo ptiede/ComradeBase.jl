@@ -56,15 +56,15 @@ end
 @testset "multidomain imagepixels" begin
     fr = Fr([230.0e9, 345.0e9])
     ti = Ti([1.0, 2.0, 3.0])
-    g_fr = imagepixels(10.0, 20.0, 4, 5, mdims=(fr,))
+    g_fr = imagepixels(10.0, 20.0, 4, 5, mdims = (fr,))
 
     @test length(g_fr.X) == 4
     @test length(g_fr.Y) == 5
     @test length(g_fr.Fr) == 2
     @test collect(g_fr.Fr) == [230.0e9, 345.0e9]
 
-    g_fr_ti = imagepixels(10.0, 20.0, 4, 5, mdims=(fr, ti))
-    g_ti_fr = imagepixels(10.0, 20.0, 4, 5, mdims=(ti, fr))
+    g_fr_ti = imagepixels(10.0, 20.0, 4, 5, mdims = (fr, ti))
+    g_ti_fr = imagepixels(10.0, 20.0, 4, 5, mdims = (ti, fr))
 
     @test length(g_fr_ti.Fr) == 2
     @test length(g_fr_ti.Ti) == 3
@@ -76,8 +76,8 @@ end
 
     fr = Fr([230.0e9, 345.0e9])
 
-    @test_throws AssertionError imagepixels(10.0, 20.0, 0, 5, mdims=(fr,))
-    @test_throws AssertionError imagepixels(10.0, 20.0, 4, 0, mdims=(fr,))
+    @test_throws AssertionError imagepixels(10.0, 20.0, 0, 5, mdims = (fr,))
+    @test_throws AssertionError imagepixels(10.0, 20.0, 4, 0, mdims = (fr,))
 end
 
 @testset "IntensityMap" begin
