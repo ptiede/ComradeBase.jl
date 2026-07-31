@@ -1,44 +1,54 @@
-export getparam, @unpack_params
+export getparam, @unpack_params, build_param
 
 """
-    abstract type DomainParams
+    abstract type DomainParams{T}
 
-Abstract type for multidomain i.e. time, frequency domain models. 
-This is to extend existing models that are just definedin the image and 
-visibility domain and automatically extend them to time and frequency domain.
+A parameter family that is evaluated at a point in the time/frequency domain rather than
+being a fixed value. This extends models defined in the image and visibility domains so
+that their parameters may also vary across time and frequency.
 
-The interface is simple and to extend this with your own time and frequency models,
-most users will just need to define 
+`T` is the element type of the value the family produces at a point: a single parameter
+value such as a `Number` or a `StokesParams`, never a container. See [`paramtype`](@ref).
+
+To define your own family, subtype `DomainParams` and define [`build_param`](@ref):
 
 ```julia
-struct MyDomainParam{T} <: DomainParams{T} end
-function build_param(param::MyDomainParam{Float64}, p)
-    ...
+struct MyDomainParam{T} <: DomainParams{T}
+    scale::T
 end
+build_param(param::MyDomainParam, p) = param.scale * p.Fr
 ```
 
-where `p` is the point where the model will be evaluated at.
+where `p` is the point the family is evaluated at. To use the family inside a chain that
+transforms a base value, also define the three-argument
+`build_param(base, param::MyDomainParam, p)`.
 
-To evaluate the parameter family at a point `p` in the frequency and time 
-domain use `build_param(param, p)` or just `param(p)`.
-
-For a model parameterized with a `<:DomainParams` the a use should access 
-the parameters with [`getparam`](@ref) or the `@unpack_params` macro.
-```
+To evaluate the family at a point `p` use `build_param(param, p)` or just `param(p)`. A
+model parameterized by a `DomainParams` should read its parameters with [`getparam`](@ref)
+or the [`@unpack_params`](@ref) macro.
 """
 abstract type DomainParams{T} end
 
-abstract type FrequencyParams{T} <: DomainParams{T} end
-abstract type TimeParams{T} <: DomainParams{T} end
-
 """
-    paramtype(::Type{<:DomainParams})
+    paramtype(::Type)
 
-Computes the base parameter type of the DomainParams. If `!<:DomainParams` then it just returns
-the type. 
+The element type of a single parameter value: what a [`DomainParams`](@ref) produces when
+evaluated at a point. A type that is not a `DomainParams` returns its own element type.
+
+A parameter is either a single value or a field of values over the image grid. An
+`AbstractArray` is a field, so it unwraps to its element type; a `StaticArray` is a single
+value, since a polarized parameter (`StokesParams <: FieldVector`) is itself a static
+vector. This is the only place that distinction is made — every operation that must tell a
+field from a value dispatches on it and nothing else.
+
+So `paramtype(Matrix{Float64}) === Float64`, while
+`paramtype(StokesParams{Float64}) === StokesParams{Float64}` and
+`paramtype(Matrix{StokesParams{Float64}}) === StokesParams{Float64}`.
 """
+@inline paramtype(::Type{T}) where {T} = T
 @inline paramtype(::Type{<:DomainParams{T}}) where {T} = paramtype(T)
-@inline paramtype(T::Type{<:Any}) = T
+@inline paramtype(::Type{<:AbstractArray{T}}) where {T} = paramtype(T)
+@inline paramtype(::Type{T}) where {T <: StaticArray} = T
 
 """
     getparam(m, s::Symbol, p)
@@ -65,12 +75,16 @@ end
 end
 
 """
-    build_param(param::DomainParams, p)
+    build_param(param, p)
+    build_param(base, param, p)
 
-Constucts the parameters for the `param` model at the point `p`
-in the (X/U, Y/V, Ti, Fr) domain. This is a required function for
-any `<: DomainParams` and must return a number for the specific
-parameter at the point `p`.
+Construct the value of `param` at the point `p` in the (X/U, Y/V, Ti, Fr) domain. A value
+that is not a [`DomainParams`](@ref) is returned unchanged.
+
+The two-argument form is required for any `<:DomainParams` and returns the parameter on its
+own. The three-argument form transforms an externally supplied `base` value and is required
+for any family used inside a chain that applies several models in turn; it must not alias
+`base`.
 """
 @inline function build_param(param::Any, p)
     return param

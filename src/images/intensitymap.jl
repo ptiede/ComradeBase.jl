@@ -7,7 +7,7 @@ DD.@dim Fr ZDim "frequency"
 DD.@dim U XDim "U"
 DD.@dim V YDim "V"
 
-export IntensityMap, Fr, X, Y, Ti, U, V
+export IntensityMap, Fr, X, Y, Ti, U, V, spatialdims
 
 """
     $(TYPEDEF)
@@ -108,6 +108,23 @@ end
 
 const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
 const SpatialIntensityMap{T, A, G} = IntensityMap{T, 2, <:SpatialDims, A, G} where {T, A, G}
+
+"""
+    spatialdims(g::AbstractRectiGrid)
+    spatialdims(img::IntensityMap)
+
+Return the sub-grid spanned by the *first two* dimensions of `g`, dropping any additional
+dimensions such as frequency (`Fr`) or time (`Ti`).
+
+Grids here place the two spatial dimensions first (see `SpatialDims`), so those two
+are `X` and `Y` for any conventionally constructed grid. The names are not checked:
+whatever the first two dimensions are is what you get back.
+"""
+function spatialdims(g::AbstractRectiGrid)
+    ds = dims(g)
+    return rebuild(g; dims = ds[1:2])
+end
+spatialdims(img::IntensityMap) = spatialdims(axisdims(img))
 
 """
     IntensityMap(data::AbstractArray, g::AbstractRectiGrid; refdims=(), name=Symbol(""))
