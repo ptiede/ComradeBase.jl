@@ -1,4 +1,4 @@
-export getparam, @unpack_params, build_param
+export getparam, @unpack_params, build_param, apply_param, paramfield
 
 """
     abstract type DomainParams{T}
@@ -10,22 +10,29 @@ that their parameters may also vary across time and frequency.
 `T` is the element type of the value the family produces at a point: a single parameter
 value such as a `Number` or a `StokesParams`, never a container. See [`paramtype`](@ref).
 
-To define your own family, subtype `DomainParams` and define [`build_param`](@ref):
+A family is a *transformation* of a base value, not a value on its own: it says how a
+parameter departs from a reference as time and frequency change. Subtype `DomainParams` and
+define [`apply_param`](@ref), optionally splitting off the part that depends on the domain
+alone as [`paramfield`](@ref):
 
 ```julia
 struct MyDomainParam{T} <: DomainParams{T}
     scale::T
 end
-build_param(param::MyDomainParam, p) = param.scale * p.Fr
+paramfield(param::MyDomainParam, p) = param.scale .* p.Fr
+apply_param(base, param::MyDomainParam, field, p) = base .* field
 ```
 
-where `p` is the point the family is evaluated at. To use the family inside a chain that
-transforms a base value, also define the three-argument
-`build_param(base, param::MyDomainParam, p)`.
+where `p` is the point the family is evaluated at. Splitting out `paramfield` lets the chain
+evaluate it once per frequency rather than once per point of the result; a family with no
+domain-only part defines `apply_param` alone and ignores `field`.
 
-To evaluate the family at a point `p` use `build_param(param, p)` or just `param(p)`. A
-model parameterized by a `DomainParams` should read its parameters with [`getparam`](@ref)
-or the [`@unpack_params`](@ref) macro.
+A family becomes an evaluable parameter only when it is paired with a base value, and
+several may be chained to compose in order — the modeling package supplies the container
+that does this (`MultiDomainParams` in VLBISkyModels). Evaluate the result with
+[`build_param`](@ref) at a point `p`, or read it off a model with [`getparam`](@ref) or the
+[`@unpack_params`](@ref) macro. A bare family has no value: `build_param` on one is an
+error, because the base it transforms is missing.
 """
 abstract type DomainParams{T} end
 
@@ -60,7 +67,7 @@ If `m.s` is not a subtype of `DomainParams` then `m.s` is returned.
 
 !!! warn
     Developers should not typically overload this function and instead
-    target [`build_param`](@ref).
+    target [`apply_param`](@ref).
 
 !!! warn
     This feature is experimental and is not considered part of the public stable API.
@@ -76,15 +83,12 @@ end
 
 """
     build_param(param, p)
-    build_param(base, param, p)
 
-Construct the value of `param` at the point `p` in the (X/U, Y/V, Ti, Fr) domain. A value
-that is not a [`DomainParams`](@ref) is returned unchanged.
+The value of `param` at the point `p` in the (X/U, Y/V, Ti, Fr) domain. Anything that is not
+a [`DomainParams`](@ref) is already a value and is returned unchanged.
 
-The two-argument form is required for any `<:DomainParams` and returns the parameter on its
-own. The three-argument form transforms an externally supplied `base` value and is required
-for any family used inside a chain that applies several models in turn; it must not alias
-`base`.
+This is closed: families do not extend it. A `DomainParams` acquires a value only once it is
+paired with a base, so evaluating a bare one is an error — see [`apply_param`](@ref).
 """
 @inline function build_param(param::Any, p)
     return param
@@ -97,6 +101,54 @@ end
 function build_param(param::AbstractArray{<:DomainParams}, p)
     return map(x -> build_param(x, p), param)
 end
+
+# Without this a family falls through to the pass-through above and silently returns itself.
+function build_param(param::DomainParams, p)
+    throw(
+        ArgumentError(
+            "$(typeof(param)) transforms a base value and has none of its own; pair it " *
+                "with one, e.g. `MultiDomainParams(base, param)`."
+        )
+    )
+end
+
+"""
+    paramfield(param::DomainParams, p)
+
+The part of `param` that depends on the domain alone, with no reference to a base — for a
+spectral model, the factor as a function of frequency. Returns `nothing` by default, for a
+family with no such part.
+
+A chain evaluates this once per model and hands the result to [`apply_param`](@ref), so work
+that depends on only some of the domain axes is done once per axis point rather than once
+per point of the full result. The whole frequency axis may arrive in `p` at once, and that
+difference is typically one or two orders of magnitude on a cube — splitting it out here is
+what makes it automatic rather than something each family has to remember.
+
+Returning a lazy `Base.Broadcasted` opts back out of the caching, which is worth doing only
+when the field is already as large as the result and would gain nothing from being reused.
+"""
+paramfield(param::DomainParams, p) = nothing
+
+"""
+    apply_param(base, param::DomainParams, field, p)
+
+Apply `param` to the running value `base` at the point `p`, returning the transformed value.
+`field` is what [`paramfield`](@ref) produced for this model and point. This is one link of a
+chain: what it returns becomes the `base` of the next link, and it must not alias `base`.
+
+Together with `paramfield` this is all a family defines. Write it with ordinary broadcasting;
+a family with no domain-only part ignores `field`:
+
+```julia
+apply_param(base, param::MyDrift, _, p) = base .+ param.v .* p.Ti
+```
+
+There is no general relation between this and [`build_param`](@ref): the identity element of
+the transformation is family-specific, so a value cannot be derived from a transformation
+without one.
+"""
+function apply_param end
 
 function (m::DomainParams{T})(p) where {T}
     return build_param(m, p)
