@@ -1,4 +1,5 @@
 using Reactant
+Reactant.set_default_backend("cpu")
 
 @testset "Reactant" begin
     x = rand(54, 32)
@@ -46,82 +47,138 @@ using Reactant
 
 end
 
+# Index ranges along `dim` held by each device, deduplicated and sorted.
+function stored_blocks(a, dim)
+    slices = a.sharding.device_to_array_slices
+    return sort!(unique(map(s -> s[dim], slices)); by = first)
+end
+# Blocks of `n` elements split over `k` devices, with the last block padded when needed.
+function split_blocks(n, k)
+    b = cld(n, k)
+    return [((i - 1) * b + 1):(i * b) for i in 1:k]
+end
+
 @testset "Sharding" begin
-    # --- Construction (backend-agnostic, no devices needed) ---
-    @test ReactantEx() === ReactantEx(nothing)
-    @test ComradeBase.sharding(ReactantEx()) === nothing
-    spec = ComradeBase.sharding(ReactantEx(:fakemesh; X = :dx, Y = :dy))
-    @test spec isa ShardSpec
-    @test spec.mesh === :fakemesh
-    @test spec.axes == (X = :dx, Y = :dy)
-    @test ComradeBase.sharding(shard_image(:m)).axes == (X = :dx, Y = :dy)
-    @test ComradeBase.sharding(shard_frequency(:m)).axes == (Fr = :dev,)
-    @test ComradeBase.sharding(shard_time(:m)).axes == (Ti = :dev,)
+    @testset "ShardLayout construction" begin
+        l = ShardLayout(:mesh; Ti = :t, Fr = :f)
+        @test l.mesh === :mesh
+        @test l.axes == (Ti = :t, Fr = :f)
+        @test ShardLayout(:mesh; X = (:a, :b)).axes == (X = (:a, :b),)
+        @test_throws "requires at least one dimension" ShardLayout(:mesh)
+        @test_throws "the value for dimension `X` must be a `Symbol` or a tuple of `Symbol`s" ShardLayout(:mesh; X = "a")
+        @test_throws "the value for dimension `Fr` must be" ShardLayout(:mesh; Fr = (:a, 1))
+        @test_throws "the value for dimension `Fr` must be" ShardLayout(:mesh; Fr = ())
+    end
 
-    # --- regroup ---
-    Frs = [3.0, 1.0, 2.0, 1.0, 3.0, 2.0]
-    dvis = UnstructuredDomain((; U = randn(6), V = randn(6), Ti = zeros(6), Fr = Frs))
-    rdom, perm = regroup(dvis, :Fr)
-    @test issorted(domainpoints(rdom).Fr)
-    @test domainpoints(rdom).U ≈ domainpoints(dvis).U[perm]
-    @test domainpoints(dvis).Fr[perm] ≈ domainpoints(rdom).Fr
-    @test domainpoints(rdom).U[invperm(perm)] ≈ domainpoints(dvis).U  # round trip
+    @testset "ReactantEx" begin
+        @test Base.issingletontype(ReactantEx)
+        dvis = UnstructuredDomain((; U = randn(4), V = randn(4)))
+        @test executor(dvis) isa Serial
+        @test executor(Reactant.to_rarray(dvis)) === ReactantEx()
+        @test executor(@jit(identity(imagepixels(10.0, 10.0, 8, 8)))) === ReactantEx()
+    end
 
-    # The executor carries the (unsharded) spec without changing the result, and the unsharded
-    # ReactantEx path is unaffected.
-    @test ComradeBase.sharding(executor(imagepixels(10.0, 10.0, 8, 8))) === nothing
-    mesh_like = :placeholder_mesh
-    gspec = imagepixels(10.0, 10.0, 8, 8; executor = ReactantEx(mesh_like; X = :dx))
-    @test ComradeBase.sharding(executor(gspec)) isa ShardSpec
+    @info "Reactant runtime: $(Reactant.XLA.REACTANT_XLA_RUNTIME)"
+    @test Reactant.XLA.REACTANT_XLA_RUNTIME == "IFRT"
 
-    # --- End-to-end: declare (Fr), regroup, to_sharded, evaluate -> scalar ---
-    # Sharding is layout-only: the result must equal the serial reference. The `is_sharded`
-    # assertion only has teeth with >1 device, but the path runs (replicated) on a single device.
     ndev = length(Reactant.devices())
-    mesh = ComradeBase.shardmesh(ndev; names = (:dev,))
-    Nper = 16
-    U = 0.2 .* randn(ndev * Nper)
-    V = 0.2 .* randn(ndev * Nper)
-    Fr = repeat(Float64.(1:ndev); inner = Nper)
-    Ti = zeros(ndev * Nper)
+    img0 = IntensityMap(rand(2ndev, 4), imagepixels(10.0, 10.0, 2ndev, 4))
+    mesh1 = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:1], 1), (:d,))
+    @test_throws "single-device meshes are not supported by Reactant" shard(img0, ShardLayout(mesh1; X = :d))
+    @test_throws "single-device meshes are not supported by Reactant" shard(img0, Reactant.Sharding.DimsSharding(mesh1, (1,), (:d,)))
+    @test_throws "must be a `Reactant.Sharding.Mesh`" shard(img0, ShardLayout(:notamesh; X = :d))
 
-    m = BlobTest(4.0)
-    mr = Reactant.to_rarray(m)
-    f(mod, dom) = sum(abs2, baseimage(visibilitymap(mod, dom)))
-    ref = f(m, UnstructuredDomain((; U, V, Ti, Fr)))   # order-independent reduction
+    if ndev == 1
+        @warn "Multi-device sharding tests skipped: start Julia with XLA_FLAGS=--xla_force_host_platform_device_count=4"
+    else
+        mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices(), ndev), (:d,))
+        mesh2 = Reactant.Sharding.Mesh(reshape(Reactant.devices(), ndev, 1), (:a, :b))
 
-    dvis = UnstructuredDomain((; U, V, Ti, Fr); executor = ReactantEx(mesh; Fr = :dev))
-    rdvis, perm = regroup(dvis, :Fr)
-    rds = to_sharded(rdvis)
-    @test issorted(domainpoints(rdvis).Fr)
-    @test Float64(@jit(f(mr, rds))) ≈ ref
-    ndev > 1 && @test Reactant.Sharding.is_sharded(domainpoints(rds).U)
+        @testset "Validation" begin
+            @test_throws "dimension `Fr` is not a dimension of the image; available dimensions are (:X, :Y)" shard(img0, ShardLayout(mesh; Fr = :d))
+            @test_throws "mesh axis `q` (for dimension `X`) is not in the mesh; available mesh axes are (:d,)" shard(img0, ShardLayout(mesh; X = :q))
+            @test_throws "mesh axis `c` (for dimension `X`) is not in the mesh" shard(img0, ShardLayout(mesh2; X = (:a, :c)))
+        end
 
-    # --- Extensibility: tuple-valued axes, callable escape hatch, multi-key regroup ---
-    @test ComradeBase.sharding(ReactantEx(:m; X = (:a, :b))).axes == (X = (:a, :b),)
-    hatch = x -> :anything
-    @test ComradeBase.sharding(ReactantEx(hatch)) === hatch
+        @testset "Partition evidence" begin
+            x = rand(2ndev, 3)
+            split = Reactant.to_rarray(x; sharding = Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
+            replicated = Reactant.to_rarray(x; sharding = Reactant.Sharding.Replicated(mesh))
+            @test stored_blocks(split, 1) == split_blocks(2ndev, ndev)
+            @test stored_blocks(replicated, 1) == [1:(2ndev)]
+            @test Reactant.Sharding.is_sharded(replicated)
+        end
 
-    # multi-key (lexicographic) regroup, Fr major then Ti minor
-    Frm = [2.0, 1, 2, 1, 2, 1, 2, 1]
-    Tim = [1.0, 1, 2, 2, 1, 1, 2, 2]
-    dml = UnstructuredDomain((; U = collect(1.0:8), V = zeros(8), Ti = Tim, Fr = Frm))
-    rml, pml = regroup(dml, :Fr, :Ti)
-    @test issorted(collect(zip(domainpoints(rml).Fr, domainpoints(rml).Ti)))
-    @test domainpoints(rml).U ≈ domainpoints(dml).U[pml]
+        @testset "IntensityMap along X" begin
+            nx = 2ndev
+            img = IntensityMap(rand(nx, 6), imagepixels(10.0, 10.0, nx, 6))
+            simg = shard(img, ShardLayout(mesh; X = :d))
+            @test axisdims(simg) === axisdims(img)
+            f(a) = baseimage(a) .* 2 .+ sum(baseimage(a))
+            @test Array(@jit(f(simg))) ≈ f(img)
+            @test stored_blocks(baseimage(simg), 1) == split_blocks(nx, ndev)
+            @test stored_blocks(baseimage(simg), 2) == [1:6]
+            simg2 = @jit((a -> a .* 2)(simg))
+            @test simg2 isa IntensityMap
+            @test Array(baseimage(simg2)) ≈ 2 .* baseimage(img)
+        end
 
-    # Escape hatch end-to-end: a function returning a raw Reactant sharding
-    sh = Reactant.Sharding.DimsSharding(mesh, (1,), (:dev,))
-    dh = UnstructuredDomain((; U, V, Ti, Fr); executor = ReactantEx(_ -> sh))
-    rdh = to_sharded(dh)
-    @test Float64(@jit(f(mr, rdh))) ≈ ref
-    ndev > 1 && @test Reactant.Sharding.is_sharded(domainpoints(rdh).U)
+        @testset "Non-divisible dimension is padded" begin
+            nx = ndev + 1
+            img = IntensityMap(rand(nx, 4), imagepixels(10.0, 10.0, nx, 4))
+            simg = shard(img, ShardLayout(mesh; X = :d))
+            @test stored_blocks(baseimage(simg), 1) == split_blocks(nx, ndev)
+            @test last(last(stored_blocks(baseimage(simg), 1))) > nx
+            f(a) = baseimage(a) .* 2 .+ sum(baseimage(a))
+            @test Array(@jit(f(simg))) ≈ f(img)
+        end
 
-    # Image raster X/Y sharding end-to-end
-    gimg = imagepixels(10.0, 10.0, 8, 8; executor = ReactantEx(mesh; X = :dev))
-    img = IntensityMap(rand(8, 8), gimg)
-    imgref = sum(abs2, baseimage(img))
-    imgs = to_sharded(img)
-    @test Float64(@jit((a -> sum(abs2, baseimage(a)))(imgs))) ≈ imgref
-    ndev > 1 && @test Reactant.Sharding.is_sharded(baseimage(imgs))
+        @testset "IntensityMap along Fr" begin
+            nf = 2ndev
+            x = X(range(-10.0, 10.0; length = 6))
+            y = Y(range(-10.0, 10.0; length = 6))
+            g = RectiGrid((x, y, Ti([0.0, 0.5, 0.8]), Fr(range(86.0e9, 345.0e9; length = nf))))
+            img = IntensityMap(rand(6, 6, 3, nf), g)
+            f(a) = sum(baseimage(a); dims = (1, 2))
+            for layout in (ShardLayout(mesh; Fr = :d), ShardLayout(mesh2; Fr = :a, Ti = :b), ShardLayout(mesh2; Fr = (:a, :b)))
+                simg = shard(img, layout)
+                @test Array(@jit(f(simg))) ≈ f(img)
+                @test stored_blocks(baseimage(simg), 4) == split_blocks(nf, ndev)
+                @test stored_blocks(baseimage(simg), 3) == [1:3]
+            end
+        end
+
+        @testset "Polarized IntensityMap along X" begin
+            nx = 2ndev
+            sa = StructArray{StokesParams{Float64}}((I = rand(nx, 4), Q = rand(nx, 4), U = rand(nx, 4), V = rand(nx, 4)))
+            img = IntensityMap(sa, imagepixels(10.0, 10.0, nx, 4))
+            simg = shard(img, ShardLayout(mesh; X = :d))
+            f(a) = sum(abs2, baseimage(a).Q) + sum(baseimage(a).V)
+            @test Float64(@jit(f(simg))) ≈ f(img)
+            for c in StructArrays.components(baseimage(simg))
+                @test stored_blocks(c, 1) == split_blocks(nx, ndev)
+            end
+        end
+
+        @testset "Raw sharding of an UnstructuredDomain" begin
+            nvis = 16ndev
+            U = 0.2 .* randn(nvis)
+            V = 0.2 .* randn(nvis)
+            dvis = UnstructuredDomain((; U, V))
+            m = BlobTest(4.0)
+            mr = Reactant.to_rarray(m)
+            sdvis = shard(dvis, Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
+            @test executor(sdvis) === ReactantEx()
+            vis = @jit(visibilitymap(mr, sdvis))
+            @test Array(baseimage(vis)) ≈ baseimage(visibilitymap(m, dvis))
+            @test stored_blocks(domainpoints(sdvis).U, 1) == split_blocks(nvis, ndev)
+        end
+
+        @testset "Raw sharding of an IntensityMap keeps the grid on the host" begin
+            simg = shard(img0, Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
+            @test axisdims(simg) === axisdims(img0)
+            @test Array(baseimage(simg)) == baseimage(img0)
+            @test stored_blocks(baseimage(simg), 1) == split_blocks(2ndev, ndev)
+        end
+    end
 end

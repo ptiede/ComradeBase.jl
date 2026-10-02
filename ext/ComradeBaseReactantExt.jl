@@ -6,93 +6,71 @@ using Reactant
 using StaticArrays
 
 import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
-using ComradeBase: ReactantEx, ShardSpec, UnstructuredDomain
+using ComradeBase: ReactantEx, ShardLayout
 import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
-
-# --- Sharding ---------------------------------------------------------------------------------
-# The `ShardSpec` carried on a `ReactantEx` executor is only a *declaration* of how the user wants
-# things laid out. The actual sharding is applied with the public `Reactant.to_rarray` API at the
-# input boundary (`to_sharded` below); ordinary Julia code in the executors / NUFFT then propagates
-# the sharding through tracing. No internal Reactant ops are used.
-
-function ComradeBase.shardmesh(dims::Vararg{Int}; names)
-    return Reactant.Sharding.Mesh(reshape(Reactant.devices(), dims...), names)
+function ComradeBase.shard(img::IntensityMap, layout::ShardLayout)
+    vals = Reactant.to_rarray(baseimage(img); sharding = _dimssharding(img, layout))
+    return IntensityMap(vals, ComradeBase.axisdims(img))
 end
 
-# Map each semantic axis name to its array-dimension position for the object being sharded.
-# An unstructured domain/map — and a bare per-visibility vector (a measurement / noise vector with no
-# executor of its own) — is a flat list of points, so the per-point labels :Ti and :Fr both refer to
-# the single data dimension (dim 1); sharding "over Ti/Fr" means sharding that flat axis after the data
-# has been `regroup`ed by the same label. Restricted to `AbstractVector` so a higher-rank payload fails
-# loudly (MethodError) instead of being silently split on dim 1. Rectilinear objects map their named
-# dims (:X, :Y, optionally :Ti, :Fr) to positions in order.
-_axispositions(::Union{UnstructuredDomain, UnstructuredMap, AbstractVector}) = (; Ti = 1, Fr = 1)
-function _axispositions(x::ComradeBase.AbstractRectiGrid)
-    ks = keys(x)
-    return NamedTuple{ks}(ntuple(identity, length(ks)))
+function ComradeBase.shard(x, sh::Reactant.Sharding.AbstractSharding)
+    _check_sharding_supported(sh)
+    return Reactant.to_rarray(x; sharding = sh)
 end
-# An IntensityMap is an AbstractArray, so `keys` would give CartesianIndices; take the named dims
-# from its grid instead (the pixel-array dimensions follow the grid's dim order).
-_axispositions(x::IntensityMap) = _axispositions(ComradeBase.axisdims(x))
+function ComradeBase.shard(img::IntensityMap, sh::Reactant.Sharding.AbstractSharding)
+    _check_sharding_supported(sh)
+    return IntensityMap(Reactant.to_rarray(baseimage(img); sharding = sh), ComradeBase.axisdims(img))
+end
 
-# Translate a `ShardSpec` + the object's axis layout into a public `Reactant.Sharding.DimsSharding`.
-# `DimsSharding` shards the listed dims and replicates the rest, so one spec works across the
-# different-rank arrays held inside a domain/map. Multiple semantic axes can land on the same array
-# dimension (e.g. :Ti and :Fr both map to the flat dim 1), and a mesh-axis value may itself be a tuple
-# — in either case that dimension is sharded across the tuple of all the mesh axes assigned to it.
-function _dimssharding(spec::ShardSpec, x)
-    pos = _axispositions(x)
-    bydim = Tuple{Int, Symbol}[]
-    for an in keys(spec.axes)
-        haskey(pos, an) || continue
-        v = spec.axes[an]
-        for m in (v isa Tuple ? v : (v,))
-            push!(bydim, (pos[an], m))
+function _check_runtime()
+    runtime = Reactant.XLA.REACTANT_XLA_RUNTIME
+    runtime == "IFRT" && return nothing
+    throw(
+        ArgumentError(
+            "sharding requires Reactant's IFRT runtime, but the active runtime is $runtime " *
+                "(see EnzymeAD/Reactant.jl#2989). Set the Reactant preference `xla_runtime = \"IFRT\"`, " *
+                "e.g. in LocalPreferences.toml, and restart Julia."
+        )
+    )
+end
+
+function _check_mesh(mesh)
+    mesh isa Reactant.Sharding.Mesh ||
+        throw(ArgumentError("ShardLayout mesh must be a `Reactant.Sharding.Mesh`, got $(typeof(mesh))"))
+    length(mesh) > 1 ||
+        throw(ArgumentError("single-device meshes are not supported by Reactant; use a mesh with at least 2 devices or do not shard"))
+    return nothing
+end
+
+function _check_sharding_supported(sh)
+    _check_runtime()
+    s = Reactant.Sharding.unwrap_shardinfo(sh)
+    hasfield(typeof(s), :mesh) && _check_mesh(s.mesh)
+    return nothing
+end
+
+_meshaxes(v::Symbol) = (v,)
+_meshaxes(v::Tuple) = v
+
+function _dimssharding(img::IntensityMap, layout::ShardLayout)
+    _check_runtime()
+    mesh = layout.mesh
+    _check_mesh(mesh)
+    dnames = keys(ComradeBase.named_dims(img))
+    positions = map(keys(layout.axes), values(layout.axes)) do dname, v
+        p = findfirst(==(dname), dnames)
+        p === nothing && throw(ArgumentError("ShardLayout dimension `$dname` is not a dimension of the image; available dimensions are $dnames"))
+        for m in _meshaxes(v)
+            m in mesh || throw(ArgumentError("ShardLayout mesh axis `$m` (for dimension `$dname`) is not in the mesh; available mesh axes are $(mesh.axis_names)"))
         end
+        return p
     end
-    sdims = sort!(unique(first.(bydim)))
-    pspec = map(sdims) do d
-        ax = [m for (dd, m) in bydim if dd == d]
-        length(ax) == 1 ? ax[1] : Tuple(ax)
-    end
-    return Reactant.Sharding.DimsSharding(spec.mesh, Tuple(sdims), Tuple(pspec))
+    return Reactant.Sharding.DimsSharding(mesh, positions, values(layout.axes))
 end
 
-# Resolve the executor's sharding *declaration* into a concrete Reactant sharding for `x`.
-#  - `ShardSpec`: the semantic convenience layer (axis names -> DimsSharding).
-#  - a callable: the escape hatch — full Reactant power; gets `x`, returns any AbstractSharding.
-#  - an AbstractSharding: used as-is.
-_resolve_sharding(spec::ShardSpec, x) = _dimssharding(spec, x)
-_resolve_sharding(sh::Reactant.Sharding.AbstractSharding, x) = sh
-_resolve_sharding(f, x) = f(x)
-
-# Core sharding step: move `x` onto the device for a resolved sharding *declaration* (`nothing` =
-# unsharded). Both public entry points below funnel through here so the one- and two-argument forms,
-# and every object type, can never drift apart.
-_to_sharded(x, ::Nothing) = Reactant.to_rarray(x)
-_to_sharded(x, decl) = Reactant.to_rarray(x; sharding = _resolve_sharding(decl, x))
-
-# An image map's grid axes (`X`, `Y`, `Ti`, `Fr`) are tiny coordinate vectors that the multidomain
-# NUFFT plan builder iterates on the *host*; only the pixel array is large enough to be worth sharding.
-# So shard the value array per the declaration and leave the grid replicated on the host (turning the
-# coordinate arrays into device arrays would make that host iteration a disallowed scalar index). The
-# declaration is resolved against the *image* (for its X/Y/Ti/Fr dim positions) but applied to the bare
-# pixel array; `axisdims(img)` keeps the original host grid.
-_to_sharded(img::IntensityMap, ::Nothing) = IntensityMap(Reactant.to_rarray(baseimage(img)), axisdims(img))
-function _to_sharded(img::IntensityMap, decl)
-    vals = Reactant.to_rarray(baseimage(img); sharding = _resolve_sharding(decl, img))
-    return IntensityMap(vals, axisdims(img))
-end
-
-# One-argument form: shard `x` per its own executor's declaration.
-ComradeBase.to_sharded(x) = _to_sharded(x, ComradeBase.sharding(executor(x)))
-
-# Two-argument form: shard `x` per the declaration carried by `ex` rather than by `x`'s own executor.
-# This is how a likelihood's flat `measurement`/`noise` vectors — which carry no executor — and a
-# visibility domain are placed on the same device blocks from a single `ReactantEx` passed at
-# `prepare_device` time. An `IntensityMap` still keeps its grid on the host via the shared core above.
-ComradeBase.to_sharded(x, ex::ReactantEx) = _to_sharded(x, ComradeBase.sharding(ex))
+# Tracing paths into an `IntensityMap` address struct fields, not array elements.
+Reactant.traced_getfield(@nospecialize(obj::IntensityMap), field) = getfield(obj, field)
 
 const RInt = Union{Integer, Reactant.TracedRNumber{<:Integer}}
 const TInt = Reactant.TracedRNumber{<:Integer}
@@ -139,9 +117,6 @@ Base.@nospecializeinfer function Reactant.make_tracer(
         @nospecialize(runtime),
         kwargs...
     )
-    # Serial/ThreadsEx carry no sharding intent, so they convert to an unsharded ReactantEx.
-    # A domain that was explicitly given `ReactantEx(spec)` keeps its spec via the generic
-    # struct tracer (the Mesh is a leaf type), so no rule is needed for `ReactantEx` itself.
     return ReactantEx()
 end
 
@@ -153,7 +128,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         @nospecialize(ndevices),
         @nospecialize(runtime)
     )
-    return ReactantEx{Nothing}
+    return ReactantEx
 end
 
 
