@@ -45,43 +45,10 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
     return nothing
 end
 
-function visibilitymap_analytic_executor!(vis, m::AbstractModel, ::Serial)
-    d = axisdims(vis)
-    g = domainpoints(d)
-    pvis = baseimage(vis)
-    for i in eachindex(pvis, g)
-        pvis[i] = visibility_point(m, g[i])
-    end
-    # pvis .= visibility_point.(Ref(m), g)
+function visibilitymap_analytic_executor!(vis, m::AbstractModel, executor)
+    _pointmap!(baseimage(vis), Base.Fix1(visibility_point, m), axisdims(vis), executor)
     return nothing
 end
-
-function visibilitymap_analytic_executor!(
-        vis,
-        s::AbstractModel,
-        ::ThreadsEx{S}
-    ) where {S}
-    d = axisdims(vis)
-    g = domainpoints(d)
-    e = executor(vis)
-    @threaded e for I in CartesianIndices(g)
-        vis[I] = visibility_point(s, g[I])
-    end
-    return nothing
-end
-
-function _threads_visibilitymap! end
-
-# for s in schedulers
-#     @eval begin
-#         function _threads_visibilitymap!(vis, s::AbstractModel, g, ::Val{$s})
-#             Threads.@threads $s for I in CartesianIndices(g)
-#                 vis[I] = visibility_point(s, g[I])
-#             end
-#         end
-#         return nothing
-#     end
-# end
 
 
 """
@@ -98,7 +65,7 @@ consider using the [`visibilitymap`](@ref visibilitymap).
 # Warn
 This is only defined for analytic models. If you want to compute the visibility for a
 single point for a non-analytic model, please use the `visibilitymap` function
-and create an `UnstructuredDomain` with a single point.
+with a [`StructuredDomain`](@ref) of a single point.
 
 """
 @inline function visibility(mimg::M, p) where {M}
@@ -245,28 +212,17 @@ function _bispectrummap(
 end
 
 """
-    closure_phasemap(m,
-                   p1::AbstractArray
-                   p2::AbstractArray
-                   p3::AbstractArray
-                   )
+    closure_phasemap(m, p1::StructuredDomain, p2::StructuredDomain, p3::StructuredDomain)
 
 Computes the closure phases of the model `m` at the
-triangles p1, p2, p3, where `pi` are coordinates.
+triangles p1, p2, p3, where `pi` are domains of the same size. The result is a map over
+the dims of `p1` whose coordinates `p1`, `p2`, `p3` hold the points of each domain.
 """
 @inline function closure_phasemap(
         m::AbstractModel,
         p1::T, p2::T, p3::T
-    ) where {T <: UnstructuredDomain}
-    return create_map(
-        _closure_phasemap(m, p1, p2, p3),
-        UnstructuredDomain(
-            (;
-                p1 = domainpoints(p1), p2 = domainpoints(p2),
-                p3 = domainpoints(p3),
-            )
-        )
-    )
+    ) where {T <: StructuredDomain}
+    return create_map(baseimage(_closure_phasemap(m, p1, p2, p3)), _closure_domain(p1, p2, p3))
 end
 
 # internal method used for trait dispatch
@@ -277,9 +233,9 @@ end
 # internal method used for trait dispatch for analytic visibilities
 @inline function _closure_phasemap(
         ::IsAnalytic, m,
-        p1::UnstructuredDomain,
-        p2::UnstructuredDomain,
-        p3::UnstructuredDomain
+        p1::StructuredDomain,
+        p2::StructuredDomain,
+        p3::StructuredDomain
     )
     g1 = domainpoints(p1)
     g2 = domainpoints(p2)
@@ -293,15 +249,11 @@ function _closure_phasemap(::NotAnalytic, m, p1, p2, p3)
 end
 
 """
-    logclosure_amplitudemap(m::AbstractModel,
-                          p1,
-                          p2,
-                          p3,
-                          p4
-                         )
+    logclosure_amplitudemap(m::AbstractModel, p1::StructuredDomain, p2, p3, p4)
 
 Computes the log closure amplitudemap of the model `m` at the
-quadrangles p1, p2, p3, p4.
+quadrangles p1, p2, p3, p4, where `pi` are domains of the same size. The result is a map
+over the dims of `p1` whose coordinates `p1`, ..., `p4` hold the points of each domain.
 """
 function logclosure_amplitudemap(
         m::AbstractModel,
@@ -309,14 +261,22 @@ function logclosure_amplitudemap(
         p2::T,
         p3::T,
         p4::T
-    ) where {T <: AbstractSingleDomain}
-    glc = UnstructuredDomain(
-        (;
-            p1 = domainpoints(p1), p2 = domainpoints(p2),
-            p3 = domainpoints(p3), p4 = domainpoints(p4),
-        )
-    )
-    return create_map(_logclosure_amplitudemap(m, p1, p2, p3, p4), glc)
+    ) where {T <: StructuredDomain}
+    glc = _closure_domain(p1, p2, p3, p4)
+    return create_map(baseimage(_logclosure_amplitudemap(m, p1, p2, p3, p4)), glc)
+end
+
+"""
+    _closure_domain(ps::StructuredDomain...)
+
+Returns a `StructuredDomain` with the dims of the first domain whose coordinates `p1`, `p2`,
+... are the points of each domain in `ps`.
+"""
+function _closure_domain(ps::StructuredDomain...)
+    d = first(ps)
+    names = ntuple(i -> Symbol(:p, i), length(ps))
+    points = NamedTuple{names}(map(p -> domainpoints(p) => keys(d), ps))
+    return StructuredDomain(dims(d); points...)
 end
 
 # internal method used for trait dispatch

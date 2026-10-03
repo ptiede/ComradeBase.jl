@@ -138,6 +138,9 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
         @test eltype(dm) === Float64
         dn = StructuredDomain((Pt(npt),); W = randn(npt))
         @test_throws "neither `U` nor `u`" eltype(dn)
+        dxy = StructuredDomain((X = randn(Float32, npt), Y = randn(Float32, npt)))
+        @test eltype(dxy) === Float32
+        @test_throws "needs both `X` and `Y`, but `Y` is missing" eltype(StructuredDomain((X = randn(npt),)))
     end
 
     @testset "create_map and allocate" begin

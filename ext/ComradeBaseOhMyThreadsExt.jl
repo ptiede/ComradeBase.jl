@@ -23,34 +23,11 @@ function ComradeBase.intensitymap_analytic_executor!(
     return nothing
 end
 
-function ComradeBase.intensitymap_analytic_executor!(
-        img::UnstructuredMap,
-        s::ComradeBase.AbstractModel,
-        executor::OhMyThreads.Scheduler
-    )
-    dims = axisdims(img)
-    g = domainpoints(dims)
-    f = Base.Fix1(ComradeBase.intensity_point, s)
-    pimg = parent(img)
-    @tasks for I in eachindex(pimg, g)
+function ComradeBase._pointmap!(dest, f, d, executor::OhMyThreads.Scheduler)
+    g = domainpoints(d)
+    @tasks for I in eachindex(dest, g)
         @set scheduler = executor
-        @inbounds pimg[I] = f(g[I])
-    end
-    return nothing
-end
-
-function ComradeBase.visibilitymap_analytic_executor!(
-        vis::ComradeBase.FluxMap2,
-        s::ComradeBase.AbstractModel,
-        executor::OhMyThreads.Scheduler
-    )
-    dims = axisdims(vis)
-    g = domainpoints(dims)
-    f = Base.Fix1(ComradeBase.visibility_point, s)
-    pvis = parent(vis)
-    @tasks for I in eachindex(pvis, g)
-        @set scheduler = executor
-        @inbounds pvis[I] = f(g[I])
+        dest[I] = f(g[I])
     end
     return nothing
 end

@@ -89,6 +89,29 @@ Reactant.set_default_backend("cpu")
             return size(stokes(baseimage(vis), :Q))
         end
         @test @jit(polsize(m1, dr)) == (npt, 3, 2)
+
+        @testset "analytic maps under @jit" begin
+            mp = PolTest(1.5)
+            mpr = @jit PolTest(ConcreteRNumber(mp.size))
+            d2 = ComradeBase.StructuredDomain(
+                (ComradeBase.Pt(npt), Fr(fr)); u = 3.0e4 .* randn(npt), v = 3.0e4 .* randn(npt)
+            )
+            d3 = ComradeBase.StructuredDomain(
+                (ComradeBase.Pt(npt), Ti(ti), Fr(fr)); U = 0.1 .* randn(npt, 3, 2), V = 0.1 .* randn(npt, 3, 2)
+            )
+            for d in (d2, d3)
+                dr = Reactant.to_rarray(d)
+                @test Array(baseimage(@jit(visibilitymap(m2, dr)))) ≈ baseimage(visibilitymap(m1, d))
+                vp = @jit(visibilitymap(mpr, dr))
+                hp = baseimage(visibilitymap(mp, d))
+                @test baseimage(vp) isa StructArray
+                for k in (:I, :Q, :U, :V)
+                    @test Array(getproperty(baseimage(vp), k)) ≈ getproperty(hp, k)
+                end
+            end
+            dxy = UnstructuredDomain((X = randn(npt), Y = randn(npt)))
+            @test Array(baseimage(@jit(intensitymap(m2, Reactant.to_rarray(dxy))))) ≈ baseimage(intensitymap(m1, dxy))
+        end
     end
 end
 
@@ -205,7 +228,7 @@ end
             end
         end
 
-        @testset "Raw sharding of an UnstructuredDomain" begin
+        @testset "Raw sharding of a (Pt,) StructuredDomain" begin
             nvis = 16ndev
             U = 0.2 .* randn(nvis)
             V = 0.2 .* randn(nvis)
@@ -216,7 +239,7 @@ end
             @test executor(sdvis) === ReactantEx()
             vis = @jit(visibilitymap(mr, sdvis))
             @test Array(baseimage(vis)) ≈ baseimage(visibilitymap(m, dvis))
-            @test stored_blocks(domainpoints(sdvis).U, 1) == split_blocks(nvis, ndev)
+            @test stored_blocks(ComradeBase.coords(sdvis).U, 1) == split_blocks(nvis, ndev)
         end
 
         @testset "Raw sharding of an IntensityMap keeps the grid on the host" begin

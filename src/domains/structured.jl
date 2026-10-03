@@ -1,4 +1,4 @@
-export StructuredDomain, Pt
+export StructuredDomain, UnstructuredDomain, Pt
 
 DD.@dim Pt "point"
 
@@ -84,6 +84,20 @@ function StructuredDomain(nt::NamedTuple; executor = Serial(), header = NoHeader
     isempty(nt) && throw(ArgumentError("StructuredDomain needs at least one coordinate"))
     n = length(first(values(nt)))
     return StructuredDomain((Pt(n),); executor, header, map(a -> a => (:Pt,), nt)...)
+end
+
+"""
+    UnstructuredDomain(nt::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader())
+
+Returns the [`StructuredDomain`](@ref) with the single dim `Pt(n)`, where every coordinate
+in `nt` is a length-`n` vector spanning `Pt`. Equivalent to `StructuredDomain(nt; executor, header)`.
+
+```julia
+d = UnstructuredDomain((U = randn(100), V = randn(100)))
+```
+"""
+function UnstructuredDomain(nt::NamedTuple; executor = Serial(), header = NoHeader())
+    return StructuredDomain(nt; executor, header)
 end
 
 EnzymeRules.inactive_type(::Type{<:StructuredDomain}) = true
@@ -278,10 +292,15 @@ _wavelength_eltype(X, F) = Base.promote_op((x, f) -> x * f / speed_of_light, X, 
     eltype(d::StructuredDomain)
 
 Returns the promoted element type of the baseline coordinates `U` and `V`, using the type of
-`u * Fr / c` when they are given in meters as `u`, `v`.
+`u * Fr / c` when they are given in meters as `u`, `v`. A domain without baselines but with
+image coordinates `X` and `Y` returns their promoted element type.
 """
 function Base.eltype(d::StructuredDomain)
-    return promote_type(_baseline_eltype(d, Val(:U), Val(:u)), _baseline_eltype(d, Val(:V), Val(:v)))
+    cs = coords(d)
+    if any(k -> haskey(cs, k), (:U, :u, :V, :v)) || !(haskey(cs, :X) || haskey(cs, :Y))
+        return promote_type(_baseline_eltype(d, Val(:U), Val(:u)), _baseline_eltype(d, Val(:V), Val(:v)))
+    end
+    return promote_type(_image_eltype(cs, Val(:X)), _image_eltype(cs, Val(:Y)))
 end
 
 function _baseline_eltype(d::StructuredDomain, ::Val{W}, ::Val{M}) where {W, M}
@@ -290,7 +309,16 @@ function _baseline_eltype(d::StructuredDomain, ::Val{W}, ::Val{M}) where {W, M}
     haskey(cs, M) && return _wavelength_eltype(eltype(cs[M]), eltype(basedim(DD.dims(dims(d), Fr))))
     throw(
         ArgumentError(
-            "the element type of a StructuredDomain is that of its baselines, but it has neither `$W` nor `$M`; coordinates are $(keys(cs))"
+            "the element type of a StructuredDomain is that of its baselines `U`, `V` (or `u`, `v`) or of its image coordinates `X`, `Y`, but it has neither `$W` nor `$M`; coordinates are $(keys(cs))"
+        )
+    )
+end
+
+function _image_eltype(cs::NamedTuple, ::Val{K}) where {K}
+    haskey(cs, K) && return eltype(cs[K])
+    throw(
+        ArgumentError(
+            "the element type of a StructuredDomain with image coordinates needs both `X` and `Y`, but `$K` is missing; coordinates are $(keys(cs))"
         )
     )
 end
@@ -309,26 +337,30 @@ function _columns(d::StructuredDomain)
     names = keys(d)
     ds = dims(d)
     cs = coords(d)
-    sp = coordspans(d)
-    position(s) = something(findfirst(==(s), names))
-    cols = Pair{Symbol, Any}[]
-    for k in keys(cs)
-        pos = map(position, sp[k])
-        col = if k === :u || k === :v
-            p = position(:Fr)
-            WavelengthColumn(cs[k], pos, basedim(ds[p]), p)
-        else
-            CoordColumn(cs[k], pos)
-        end
-        push!(cols, _point_name(k) => col)
+    ks = keys(cs)
+    given = map(ks, values(cs), values(coordspans(d))) do k, c, span
+        _coord_column(Val(k), c, map(s -> _dimposition(s, names), span), ds)
     end
-    for k in (:Ti, :Fr)
-        if k in names && !haskey(cs, k)
-            p = position(k)
-            push!(cols, k => CoordColumn(basedim(ds[p]), (p,)))
-        end
-    end
-    return (; cols...)
+    return merge(
+        NamedTuple{map(_point_name, ks)}(given),
+        _lookup_column(Val(:Ti), cs, ds), _lookup_column(Val(:Fr), cs, ds)
+    )
+end
+
+_dimposition(s::Symbol, names) = something(findfirst(==(s), names))
+
+_coord_column(::Val, c, pos, ds) = CoordColumn(c, pos)
+_coord_column(::Val{:u}, c, pos, ds) = _wavelength_column(c, pos, ds)
+_coord_column(::Val{:v}, c, pos, ds) = _wavelength_column(c, pos, ds)
+function _wavelength_column(c, pos, ds)
+    p = DD.dimnum(ds, Fr)
+    return WavelengthColumn(c, pos, basedim(ds[p]), p)
+end
+
+function _lookup_column(::Val{K}, cs::NamedTuple, ds) where {K}
+    (haskey(cs, K) || !DD.hasdim(ds, DD.name2dim(K))) && return (;)
+    p = DD.dimnum(ds, DD.name2dim(K))
+    return NamedTuple{(K,)}((CoordColumn(basedim(ds[p]), (p,)),))
 end
 
 function _shaped(c::CoordColumn, target, sz)
@@ -375,7 +407,7 @@ function _slice_domain(f, d::StructuredDomain, I::Tuple, newdims::Tuple)
 end
 
 Base.propertynames(d::StructuredDomain) = keys(_columns(d))
-function Base.getproperty(d::StructuredDomain, p::Symbol)
+Base.@constprop :aggressive function Base.getproperty(d::StructuredDomain, p::Symbol)
     cols = _columns(d)
     haskey(cols, p) || throw(
         ArgumentError("StructuredDomain has no property `$p`; properties are $(keys(cols))")
@@ -447,4 +479,11 @@ function Base.show(io::IO, mime::MIME"text/plain", d::StructuredDomain)
         println(io, "  $k :: $(summary(coords(d)[k])) spanning $s")
     end
     return print(io, ")")
+end
+
+# The point function is a broadcast argument, not the broadcast function, so that Reactant
+# accepts a model holding traced values.
+function _pointbroadcast(f, d::StructuredDomain)
+    sc = shapedcoords(d)
+    return Broadcast.broadcasted(_applynamed, Ref(NamedPointFn{keys(sc)}(f)), values(sc)...)
 end

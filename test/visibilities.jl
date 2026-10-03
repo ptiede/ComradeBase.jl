@@ -111,12 +111,21 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
-    closure_phasemap(m, g, g, g)
-    logclosure_amplitudemap(m, g, g, g, g)
+    cp = closure_phasemap(m, g, g, g)
+    @test cp isa IntensityMap
+    @test axisdims(cp).p2 == domainpoints(g)
+    lca = logclosure_amplitudemap(m, g, g, g, g)
+    @test lca isa IntensityMap
+    @test baseimage(lca) ≈ zeros(length(g)) atol = 1.0e-12
     @test angle.(bispectrummap(m, g, g, g)) ≈ closure_phasemap(m, g, g, g)
 
+    g2 = ComradeBase.StructuredDomain((ComradeBase.Pt(4), Fr([230.0e9, 345.0e9])); u = 1.0e4 .* randn(4), v = 1.0e4 .* randn(4))
+    cp2 = closure_phasemap(m, g2, g2, g2)
+    @test size(cp2) == size(g2)
+    @test dims(cp2) == dims(g2)
+
     vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
-    @test vmappol isa ComradeBase.UnstructuredMap
+    @test vmappol isa ComradeBase.IntensityMap
     @test eltype(vmappol) <: StokesParams
 
     gim = imagepixels(10.0, 10.0, 64, 64)

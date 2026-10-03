@@ -5,7 +5,7 @@ using StructArrays
 using Reactant
 using StaticArrays
 
-import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
+import ComradeBase: AbstractSingleDomain, basedim, dims
 using ComradeBase: ReactantEx, ShardLayout, StructuredDomain
 import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
@@ -132,9 +132,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 end
 
 
-function Base.eltype(
-        d::Union{ComradeBase.AbstractRectiGrid{D, E}, ComradeBase.UnstructuredDomain{D, E}}
-    ) where {D, E <: ReactantEx}
+function Base.eltype(d::ComradeBase.AbstractRectiGrid{D, E}) where {D, E <: ReactantEx}
     return Reactant.allowscalar() do
         eltype(basedim(first(dims(d))))
     end
@@ -283,30 +281,23 @@ function ComradeBase.centroid(im::ComradeBase.RectiMap{T, N}) where {T <: Reacta
 end
 
 
-function ComradeBase.intensitymap_analytic_executor!(
-        img::UnstructuredMap,
-        s::ComradeBase.AbstractModel,
-        ::ReactantEx
-    )
-    g = domainpoints(img)
-    bimg = baseimage(img)
-    fa = Base.Fix1(ComradeBase.intensity_point, s)
-    bimg .= fa.(g)
-    return nothing
+function ComradeBase._pointmap!(dest, f, d, ::ReactantEx)
+    return ComradeBase._broadcast_pointmap!(dest, f, d)
 end
 
-function ComradeBase.visibilitymap_analytic_executor!(
-        vis::UnstructuredMap,
-        s::ComradeBase.AbstractModel,
-        ::ReactantEx
-    )
-    g = domainpoints(vis)
-    bvis = baseimage(vis)
-    fa = Base.Fix1(ComradeBase.visibility_point, s)
-    res = fa.(g)
-    copyto!(bvis, res)
+struct ComponentFn{K, F}
+    f::F
+end
+ComponentFn{K}(f) where {K} = ComponentFn{K, typeof(f)}(f)
+(c::ComponentFn{K})(p) where {K} = getproperty(c.f(p), K)
+
+# Reactant cannot broadcast a struct-valued function into a StructArray, so each component
+# is broadcast on its own.
+function ComradeBase._pointmap!(dest::StructArray, f, d, ::ReactantEx)
+    for (k, c) in pairs(StructArrays.components(dest))
+        ComradeBase._broadcast_pointmap!(c, ComponentFn{k}(f), d)
+    end
     return nothing
 end
-
 
 end

@@ -1,5 +1,5 @@
 export IntensityMap, SpatialIntensityMap,
-    DataArr, SpatialDataArr, DataNames,
+    DataArr, SpatialDataArr,
     named_axisdims, imagepixels, pixelsizes, domainpoints,
     phasecenter, baseimage, stokes
 
@@ -9,7 +9,6 @@ include("intensitymap.jl")
 export flux, centroid, second_moment, named_axisdims, axisdims,
     imagepixels, pixelsizes, domainpoints, phasecenter
 include("methods.jl")
-include("map.jl")
 
 """
     intensitymap(model::AbstractModel, dims::AbstractDomain)

@@ -25,11 +25,6 @@ include("domains/domain.jl")
 include("models/models.jl")
 include("images/images.jl")
 
-const FluxMap2{T, N, E} = Union{
-    IntensityMap{T, N, <:Any, E},
-    UnstructuredMap{T, <:AbstractVector, E},
-}
-
 @inline function update_spat(p::NamedTuple, x, y)
     p1 = @set p[1] = x
     p2 = @set p1[2] = y

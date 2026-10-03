@@ -107,3 +107,68 @@ end
 macro threaded(expr)
     return :(@threaded(ThreadsEx(), $(expr)))
 end
+
+"""
+    _pointmap!(dest, f, d::AbstractSingleDomain, executor)
+
+Sets `dest[I] = f(domainpoints(d)[I])` for every index `I` of `dest`, using `executor`.
+Executor extensions add methods for their executor type.
+"""
+function _pointmap!(dest, f, d, ::Serial)
+    g = domainpoints(d)
+    for I in eachindex(dest, g)
+        dest[I] = f(g[I])
+    end
+    return nothing
+end
+
+function _pointmap!(dest, f, d, ::ThreadsEx{S}) where {S}
+    return _threads_pointmap!(dest, f, domainpoints(d), Val(S))
+end
+
+"""
+    _threads_pointmap!(dest, f, points, ::Val{S})
+
+The loop of [`_pointmap!`](@ref) for `ThreadsEx{S}`. `S` is one of Julia's `Threads.@threads`
+schedulers or `:Enzyme`, `:Polyester` when that package is loaded.
+"""
+function _threads_pointmap! end
+
+for s in schedulers
+    @eval function _threads_pointmap!(dest, f, g, ::Val{$s})
+        Threads.@threads $s for I in eachindex(dest, g)
+            dest[I] = f(g[I])
+        end
+        return nothing
+    end
+end
+
+"""
+    NamedPointFn{K}(f)
+
+Holds a point function `f`; `_applynamed(p, xs...)` applies `f` to `NamedTuple{K}(xs)` for the
+positional values `xs`, so that `f` can be broadcast over coordinate arrays.
+"""
+struct NamedPointFn{K, F}
+    f::F
+end
+NamedPointFn{K}(f) where {K} = NamedPointFn{K, typeof(f)}(f)
+@inline _applynamed(p::NamedPointFn{K}, xs...) where {K} = p.f(NamedTuple{K}(xs))
+
+"""
+    _pointbroadcast(f, d::AbstractSingleDomain)
+
+Returns the lazy broadcast of `f` over the points of `d`, with the axes of `d`.
+"""
+_pointbroadcast(f, d::AbstractSingleDomain) = Broadcast.broadcasted(f, domainpoints(d))
+
+"""
+    _broadcast_pointmap!(dest, f, d::AbstractSingleDomain)
+
+The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
+(KernelAbstractions, Reactant).
+"""
+function _broadcast_pointmap!(dest, f, d)
+    Broadcast.materialize!(dest, _pointbroadcast(f, d))
+    return nothing
+end

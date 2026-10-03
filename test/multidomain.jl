@@ -1,144 +1,39 @@
-function domain4d(N, Nt, Nf)
+function plane_coords(N, planes)
     U_vals = range(-10.0e9, 10.0e9; length = N)
-    U_vals = U_vals' .* ones(N)
-    V_vals = range(-10.0e9, 10.0e9; length = N)
-    V_vals = V_vals' .* ones(N)
-    U_vals = U_vals'
-
-    # Flatten the U and V grids
-    U_final = vec(U_vals)
-    V_final = vec(V_vals)
-
-    ti = sort(10 * rand(Nt))
-    fr = sort(1.0e11 * rand(Nf))
-
-    # Repeat U and V to match Ti dimensions
-    U_repeated = repeat(U_final; outer = (length(ti)))
-    V_repeated = repeat(V_final; outer = (length(ti)))
-    Ti_repeated = repeat(ti; inner = (Int(length(U_final))))
-
-    # Repeat U and V and Ti to match Fr dimensions
-    U_repeated = repeat(U_repeated; outer = (length(fr)))
-    V_repeated = repeat(V_repeated; outer = (length(fr)))
-    Ti_repeated = repeat(Ti_repeated; outer = (length(fr)))
-    Fr_repeated = repeat(fr; inner = (Int(length(U_repeated) / length(fr))))
-    visdomain = UnstructuredDomain(
-        (;
-            U = U_repeated, V = V_repeated, Ti = Ti_repeated,
-            Fr = Fr_repeated,
-        )
-    )
-
-    C1 = true
-    for ti_point in ti
-        for fr_point in fr
-            f = visdomain[Ti = ti_point, Fr = fr_point]
-            g = UnstructuredDomain(
-                (;
-                    U = U_final, V = V_final,
-                    Ti = vcat(fill(ti_point, length(U_final))),
-                    Fr = vcat(fill(fr_point, length(U_final))),
-                )
-            )
-            C1 = C1 && (domainpoints(f) == domainpoints(g))
-        end
+    U_final = vec(U_vals' .* ones(N))
+    V_final = vec(ones(N)' .* U_vals)
+    sz = (length(U_final), map(length, planes)...)
+    U = similar(U_final, sz)
+    V = similar(V_final, sz)
+    for I in CartesianIndices(Base.tail(sz))
+        U[:, I] .= U_final .* sum(Tuple(I))
+        V[:, I] .= V_final .+ prod(Tuple(I))
     end
-
-    #Switch Ti and Fr order
-    C2 = true
-    for ti_point in ti
-        for fr_point in fr
-            f = visdomain[Fr = fr_point, Ti = ti_point]
-            g = UnstructuredDomain(
-                (;
-                    U = U_final, V = V_final,
-                    Ti = vcat(fill(ti_point, length(U_final))),
-                    Fr = vcat(fill(fr_point, length(U_final))),
-                )
-            )
-            C2 = C2 && (domainpoints(f) == domainpoints(g))
-        end
-    end
-
-    return C1, C2
+    return U, V
 end
 
-function domain3df(N, Nf)
-    U_vals = range(-10.0e9, 10.0e9; length = N)
-    U_vals = U_vals' .* ones(N)
-    V_vals = range(-10.0e9, 10.0e9; length = N)
-    V_vals = V_vals' .* ones(N)
-    U_vals = U_vals'
-
-    # Flatten the U and V grids
-    U_final = vec(U_vals)
-    V_final = vec(V_vals)
-
-    fr = sort(1.0e11 * rand(Nf))
-
-    # Repeat U and V to match Fr dimensions
-    U_repeated = repeat(U_final; outer = (length(fr)))
-    V_repeated = repeat(V_final; outer = (length(fr)))
-    Fr_repeated = repeat(fr; inner = (Int(length(U_final))))
-
-    visdomain = UnstructuredDomain((; U = U_repeated, V = V_repeated, Fr = Fr_repeated))
-
+# Selecting a plane by its Ti and Fr values gives the (Pt,) domain of that plane.
+function planes_match(N, planes)
+    U, V = plane_coords(N, planes)
+    npt = size(U, 1)
+    d = ComradeBase.StructuredDomain((ComradeBase.Pt(npt), planes...); U, V)
+    img = IntensityMap(zeros(size(d)), d)
     C = true
-    for fr_point in fr
-        f = visdomain[Fr = fr_point]
-        g = UnstructuredDomain(
-            (;
-                U = U_final, V = V_final,
-                Fr = vcat(fill(fr_point, length(U_final))),
-            )
-        )
-        C = C && (domainpoints(f) == domainpoints(g))
+    for I in CartesianIndices(map(length, planes))
+        sel = map((p, i) -> DD.rebuild(p, DD.At(parent(p)[i])), planes, Tuple(I))
+        for order in (sel, reverse(sel))
+            sub = img[order...]
+            g = UnstructuredDomain((U = U[:, I], V = V[:, I]))
+            C = C && (domainpoints(axisdims(sub)) == domainpoints(g))
+        end
     end
-
     return C
 end
 
-function domain3dt(N, Nt)
-    U_vals = range(-10.0e9, 10.0e9; length = N)
-    U_vals = U_vals' .* ones(N)
-    V_vals = range(-10.0e9, 10.0e9; length = N)
-    V_vals = V_vals' .* ones(N)
-    U_vals = U_vals'
-
-    # Flatten the U and V grids
-    U_final = vec(U_vals)
-    V_final = vec(V_vals)
-
-    ti = sort(10 * rand(Nt))
-
-    # Repeat U and V to match Ti dimensions
-    U_repeated = repeat(U_final; outer = (length(ti)))
-    V_repeated = repeat(V_final; outer = (length(ti)))
-    Ti_repeated = repeat(ti; inner = (Int(length(U_final))))
-
-    visdomain = UnstructuredDomain((; U = U_repeated, V = V_repeated, Ti = Ti_repeated))
-
-    C = true
-    for ti_point in ti
-        f = visdomain[Ti = ti_point]
-        g = UnstructuredDomain(
-            (;
-                U = U_final, V = V_final,
-                Ti = vcat(fill(ti_point, length(U_final))),
-            )
-        )
-        C = C && (domainpoints(f) == domainpoints(g))
-    end
-
-    return C
-end
-
-@testset "Test getindex for visdomain" begin
-    C1, C2 = domain4d(64, 10, 4)
-    @test C1
-    @test C2
-    C3 = domain3dt(64, 10)
-    @test C3
-    C4 = domain3df(64, 4)
-    @test C4
+@testset "Test plane selection for visdomain" begin
+    ti = Ti(sort(10 * rand(10)))
+    fr = Fr(sort(1.0e11 * rand(4)))
+    @test planes_match(8, (ti, fr))
+    @test planes_match(8, (ti,))
+    @test planes_match(8, (fr,))
 end

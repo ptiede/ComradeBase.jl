@@ -1,7 +1,6 @@
 function testeximg(img, m, ex)
     g = axisdims(img)
-    d = DD.dims(g)
-    gnew = DD.rebuild(g, d, ex)
+    gnew = DD.rebuild(g; executor = ex)
     img2 = intensitymap(m, gnew)
     @test img ≈ img2
     intensitymap!(img2, m)
@@ -10,8 +9,7 @@ end
 
 function testexvis(img, m, ex)
     g = axisdims(img)
-    d = DD.dims(g)
-    gnew = DD.rebuild(g, d, ex)
+    gnew = DD.rebuild(g; executor = ex)
     img2 = visibilitymap(m, gnew)
     @test img ≈ img2
     visibilitymap!(img2, m)
@@ -61,7 +59,7 @@ end
         testexvis(vis, m, ThreadsEx(:Polyester))
     end
 
-    @testset "UnstructuredDomain" begin
+    @testset "StructuredDomain (Pt,)" begin
         pim = (; X = randn(64), Y = randn(64))
         puv = (; U = u, V = v, Ti = ti, Fr = fr)
         gim = UnstructuredDomain(pim)
@@ -125,7 +123,7 @@ end
         @test vis ≈ visibilitymap(m, RectiGrid(puv; executor = SerialScheduler()))
     end
 
-    @testset "UnstructuredDomain" begin
+    @testset "StructuredDomain (Pt,)" begin
         pim = (; X = randn(64), Y = randn(64))
         puv = (; U = u, V = v, Ti = ti, Fr = fr)
         gim = UnstructuredDomain(pim)

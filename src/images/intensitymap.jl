@@ -65,6 +65,7 @@ struct IntensityMap{T, N, D <: Tuple, G <: AbstractSingleDomain{D}, A <: Abstrac
 end
 
 const RectiMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractRectiGrid}
+const StructuredMap{T, N} = IntensityMap{T, N, <:Tuple, <:StructuredDomain}
 
 _check_mapsize(data, grid) = nothing
 function _check_mapsize(data, grid::StructuredDomain)
@@ -97,6 +98,14 @@ Base.BroadcastStyle(
     s::DimensionalData.DimensionalStyle{<:StructArrays.StructArrayStyle, N},
     ::Base.Broadcast.DefaultArrayStyle{M},
 ) where {N, M} = s
+
+# Resolves the ambiguity between DimensionalData's (DimensionalStyle, AbstractArrayStyle) and
+# StructArrays' (AbstractArrayStyle, StructArrayStyle) rules, keeping the dims outermost.
+function Base.BroadcastStyle(
+        ::DimensionalData.DimensionalStyle{A}, b::StructArrays.StructArrayStyle
+    ) where {A}
+    return DimensionalData.DimensionalStyle(A(), b)
+end
 
 
 # We need this to make sure IntensityMap works correctly on the GPU
@@ -281,3 +290,8 @@ function intensitymap_analytic_executor!(
 end
 
 function _threads_intensitymap! end
+
+function intensitymap_analytic_executor!(img::StructuredMap, s::AbstractModel, executor)
+    _pointmap!(baseimage(img), Base.Fix1(intensity_point, s), axisdims(img), executor)
+    return nothing
+end
