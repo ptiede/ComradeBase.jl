@@ -24,7 +24,7 @@ function phasecenter(dims::AbstractRectiGrid)
     y0 = -(last(Y) + first(Y)) / 2
     return (X = x0, Y = y0)
 end
-phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
+phasecenter(img::RectiMap) = phasecenter(axisdims(img))
 
 # ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
@@ -99,18 +99,18 @@ end
 
 Returns a named tuple with the field of view of the image.
 """
-function fieldofview(img::IntensityMap)
+function fieldofview(img::RectiMap)
     return fieldofview(axisdims(img))
 end
 
-pixelsizes(img::IntensityMap) = pixelsizes(axisdims(img))
+pixelsizes(img::RectiMap) = pixelsizes(axisdims(img))
 
 """
     flux(im::IntensityMap)
 
 Computes the flux of a intensity map
 """
-function flux(im::IntensityMap{T, N}) where {T, N}
+function flux(im::RectiMap{T, N}) where {T, N}
     return sum(im; dims = (:X, :Y))
 end
 
@@ -123,13 +123,13 @@ Computes the image centroid aka the center of light of the image.
 
 For polarized maps we return the centroid for Stokes I only.
 """
-function centroid(im::IntensityMap{<:Real})
+function centroid(im::RectiMap{<:Real})
     (; X, Y) = named_dims(im)
     return mapslices(x -> centroid(IntensityMap(x, RectiGrid((; X, Y)))), im; dims = (:X, :Y))
 end
-centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
+centroid(im::RectiMap{<:StokesParams}) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
+function centroid(im::RectiMap{T, 2})::Tuple{T, T} where {T <: Real}
     f = flux(im)
     d = domainpoints(im)
     # Grab the parent otherwise things don't work on the GPU (DD missing multiargument mapreduce)
@@ -150,7 +150,7 @@ second moment, which is specified by the `center` argument.
 
 For polarized maps we return the second moment for Stokes I only.
 """
-function second_moment(im::IntensityMap{T, N}; center = true) where {T <: Number, N}
+function second_moment(im::RectiMap{T, N}; center = true) where {T <: Number, N}
     (; X, Y) = named_dims(im)
     return mapslices(
         x -> second_moment(IntensityMap(x, RectiGrid((; X, Y))); center), im;
@@ -159,7 +159,7 @@ function second_moment(im::IntensityMap{T, N}; center = true) where {T <: Number
 end
 
 # Only return the second moment for Stokes I
-function second_moment(im::IntensityMap{<:StokesParams}; center = true)
+function second_moment(im::RectiMap{<:StokesParams}; center = true)
     return second_moment(stokes(im, :I); center)
 end
 
@@ -170,7 +170,7 @@ Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered
 second moment, which is specified by the `center` argument.
 """
-function second_moment(im::IntensityMap{T, 2}; center = true) where {T <: Number}
+function second_moment(im::RectiMap{T, 2}; center = true) where {T <: Number}
     xx = zero(T)
     xy = zero(T)
     yy = zero(T)

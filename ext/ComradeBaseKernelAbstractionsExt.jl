@@ -24,21 +24,40 @@ function ComradeBase.allocate_map(
         ::Type{<:AbstractArray{T}},
         g::ComradeBase.AbstractRectiGrid{D, <:Backend}
     ) where {T, D}
-    exec = executor(g)
-    return IntensityMap(allocate(exec, T, size(g)), g)
+    return _allocate_backend_map(T, g)
+end
+
+function ComradeBase.allocate_map(
+        ::Type{<:AbstractArray{T}},
+        g::ComradeBase.StructuredDomain{<:Tuple, <:NamedTuple, <:NamedTuple, <:Backend}
+    ) where {T}
+    return _allocate_backend_map(T, g)
 end
 
 function ComradeBase.allocate_map(
         ::Type{<:StructArray{T}},
         g::ComradeBase.AbstractRectiGrid{D, <:Backend}
     ) where {T, D}
+    return _allocate_backend_structmap(T, g)
+end
+
+function ComradeBase.allocate_map(
+        ::Type{<:StructArray{T}},
+        g::ComradeBase.StructuredDomain{<:Tuple, <:NamedTuple, <:NamedTuple, <:Backend}
+    ) where {T}
+    return _allocate_backend_structmap(T, g)
+end
+
+_allocate_backend_map(T, g) = IntensityMap(allocate(executor(g), T, size(g)), g)
+
+function _allocate_backend_structmap(T, g)
     exec = executor(g)
     arrs = StructArrays.buildfromschema(x -> allocate(exec, x, size(g)), T)
     return IntensityMap(arrs, g)
 end
 
 function ComradeBase.intensitymap_analytic_executor!(
-        img::IntensityMap,
+        img::ComradeBase.RectiMap,
         s::ComradeBase.AbstractModel,
         ::Backend
     )

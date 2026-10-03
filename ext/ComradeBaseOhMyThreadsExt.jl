@@ -4,7 +4,7 @@ using ComradeBase
 using OhMyThreads
 
 function ComradeBase.intensitymap_analytic_executor!(
-        img::IntensityMap,
+        img::ComradeBase.RectiMap,
         s::ComradeBase.AbstractModel,
         executor::OhMyThreads.Scheduler
     )

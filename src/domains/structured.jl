@@ -271,8 +271,33 @@ Base.@propagate_inbounds function _value(c::WavelengthColumn, I)
 end
 
 _coleltype(c::CoordColumn) = eltype(c.data)
-function _coleltype(c::WavelengthColumn)
-    return Base.promote_op((x, f) -> x * f / speed_of_light, eltype(c.data), eltype(c.freq))
+_coleltype(c::WavelengthColumn) = _wavelength_eltype(eltype(c.data), eltype(c.freq))
+_wavelength_eltype(X, F) = Base.promote_op((x, f) -> x * f / speed_of_light, X, F)
+
+"""
+    eltype(d::StructuredDomain)
+
+Returns the promoted element type of the baseline coordinates `U` and `V`, using the type of
+`u * Fr / c` when they are given in meters as `u`, `v`.
+"""
+function Base.eltype(d::StructuredDomain)
+    return promote_type(_baseline_eltype(d, Val(:U), Val(:u)), _baseline_eltype(d, Val(:V), Val(:v)))
+end
+
+function _baseline_eltype(d::StructuredDomain, ::Val{W}, ::Val{M}) where {W, M}
+    cs = coords(d)
+    haskey(cs, W) && return eltype(cs[W])
+    haskey(cs, M) && return _wavelength_eltype(eltype(cs[M]), eltype(basedim(DD.dims(dims(d), Fr))))
+    throw(
+        ArgumentError(
+            "the element type of a StructuredDomain is that of its baselines, but it has neither `$W` nor `$M`; coordinates are $(keys(cs))"
+        )
+    )
+end
+
+create_map(array, d::StructuredDomain) = IntensityMap(array, d)
+function allocate_map(M::Type{<:AbstractArray{T}}, d::StructuredDomain) where {T}
+    return IntensityMap(similar(M, size(d)), d)
 end
 
 _colpositions(c::CoordColumn) = c.pos
@@ -318,6 +343,36 @@ end
 
 _materialize(c::CoordColumn, sz) = c.data
 _materialize(c::WavelengthColumn, sz) = _shaped(c, _colpositions(c), sz)
+
+_as_array(x::AbstractArray) = x
+_as_array(x) = fill(x)
+
+function _slice_domain(f, d::StructuredDomain, I::Tuple, newdims::Tuple)
+    length(I) == ndims(d) || throw(
+        ArgumentError("indexing a map over a StructuredDomain needs $(ndims(d)) indices, got $(length(I))")
+    )
+    names = keys(d)
+    kept = map(DD.name, newdims)
+    position(s) = something(findfirst(==(s), names))
+    cs = coords(d)
+    sp = coordspans(d)
+    ks = map(k -> (k === :u || k === :v) && !(:Fr in kept) ? _point_name(k) : k, keys(cs))
+    sliced = map(keys(cs)) do k
+        data, span = if (k === :u || k === :v) && !(:Fr in kept)
+            p = position(:Fr)
+            col = WavelengthColumn(cs[k], map(position, sp[k]), basedim(dims(d)[p]), p)
+            pos = _colpositions(col)
+            _materialize(col, size(d)), map(q -> names[q], pos)
+        else
+            cs[k], sp[k]
+        end
+        a = _as_array(f(data, map(s -> I[position(s)], span)...))
+        return a => filter(in(kept), span)
+    end
+    newcoords = NamedTuple{ks}(map(first, sliced))
+    newspans = NamedTuple{ks}(map(last, sliced))
+    return StructuredDomain(newdims, newcoords, newspans, executor(d), header(d))
+end
 
 Base.propertynames(d::StructuredDomain) = keys(_columns(d))
 function Base.getproperty(d::StructuredDomain, p::Symbol)

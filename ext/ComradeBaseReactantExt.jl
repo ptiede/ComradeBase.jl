@@ -6,7 +6,7 @@ using Reactant
 using StaticArrays
 
 import ComradeBase: AbstractSingleDomain, basedim, dims, UnstructuredMap
-using ComradeBase: ReactantEx, ShardLayout
+using ComradeBase: ReactantEx, ShardLayout, StructuredDomain
 import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
 function ComradeBase.shard(img::IntensityMap, layout::ShardLayout)
@@ -132,8 +132,12 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 end
 
 
-Base.eltype(d::AbstractSingleDomain{D, E}) where {D, E <: ReactantEx} = Reactant.allowscalar() do
-    eltype(basedim(first(dims(d))))
+function Base.eltype(
+        d::Union{ComradeBase.AbstractRectiGrid{D, E}, ComradeBase.UnstructuredDomain{D, E}}
+    ) where {D, E <: ReactantEx}
+    return Reactant.allowscalar() do
+        eltype(basedim(first(dims(d))))
+    end
 end
 
 @inline function ComradeBase.similartype(::IsPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
@@ -149,9 +153,64 @@ function ComradeBase.allocate_map(
         ::Type{<:StructArray{T}},
         g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
     ) where {T <: StokesParams, D}
+    return IntensityMap(_traced_structarray(T, size(g)), g)
+end
 
-    arrs = StructArrays.buildfromschema(x -> similar(Reactant.TracedRArray{unwrapped_eltype(x)}, size(g)), T)
-    return IntensityMap(arrs, g)
+function ComradeBase.allocate_map(
+        ::Type{<:StructArray{T}},
+        g::StructuredDomain{<:Tuple, <:NamedTuple, <:NamedTuple, <:ReactantEx}
+    ) where {T <: StokesParams}
+    return IntensityMap(_traced_structarray(T, size(g)), g)
+end
+
+function _traced_structarray(T, sz)
+    return StructArrays.buildfromschema(x -> similar(Reactant.TracedRArray{unwrapped_eltype(x)}, sz), T)
+end
+
+# A StructuredDomain traces its coordinates and executor; its dims, spans and header stay on
+# the host and are compile-time constants of a traced function.
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+        @nospecialize(T::Type{<:StructuredDomain}),
+        seen,
+        mode::Reactant.TraceMode,
+        @nospecialize(track_numbers::Type),
+        @nospecialize(ndevices),
+        @nospecialize(runtime)
+    )
+    D, C, S, E, H = T.parameters
+    C2 = Reactant.traced_type_inner(C, seen, mode, track_numbers, ndevices, runtime)
+    E2 = Reactant.traced_type_inner(E, seen, mode, track_numbers, ndevices, runtime)
+    return StructuredDomain{D, C2, S, E2, H}
+end
+
+Base.@nospecializeinfer function Reactant.make_tracer(
+        seen,
+        @nospecialize(prev::StructuredDomain),
+        @nospecialize(path),
+        mode;
+        @nospecialize(sharding = Reactant.Sharding.NoSharding()),
+        kwargs...
+    )
+    cs = ComradeBase.coords(prev)
+    ex = ComradeBase.executor(prev)
+    if mode == Reactant.TracedToTypes
+        push!(path, Core.Typeof(prev))
+        push!(path, map(d -> collect(basedim(d)), dims(prev)))
+        push!(path, ComradeBase.coordspans(prev))
+        push!(path, ComradeBase.header(prev))
+        Reactant.make_tracer(seen, cs, path, mode; sharding = Base.getproperty(sharding, 2), kwargs...)
+        Reactant.make_tracer(seen, ex, path, mode; sharding = Base.getproperty(sharding, 4), kwargs...)
+        return nothing
+    end
+    tcs = Reactant.make_tracer(
+        seen, cs, Reactant.append_path(path, 2), mode;
+        sharding = Base.getproperty(sharding, 2), kwargs...
+    )
+    tex = Reactant.make_tracer(
+        seen, ex, Reactant.append_path(path, 4), mode;
+        sharding = Base.getproperty(sharding, 4), kwargs...
+    )
+    return StructuredDomain(dims(prev), tcs, ComradeBase.coordspans(prev), tex, ComradeBase.header(prev))
 end
 
 function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) where {D}
@@ -175,7 +234,7 @@ end
 
 
 function ComradeBase.intensitymap_analytic_executor!(
-        img::IntensityMap{T, N},
+        img::ComradeBase.RectiMap{T, N},
         s::ComradeBase.AbstractModel,
         ::ReactantEx
     ) where {T, N}
@@ -190,7 +249,7 @@ function ComradeBase.intensitymap_analytic_executor!(
 end
 
 function ComradeBase.visibilitymap_analytic_executor!(
-        vis::IntensityMap{T, N},
+        vis::ComradeBase.RectiMap{T, N},
         s::ComradeBase.AbstractModel,
         ::ReactantEx
     ) where {T, N}
@@ -204,7 +263,7 @@ function ComradeBase.visibilitymap_analytic_executor!(
     return nothing
 end
 
-function ComradeBase.centroid(im::IntensityMap{T, N}) where {T <: Reactant.RNumber, N}
+function ComradeBase.centroid(im::ComradeBase.RectiMap{T, N}) where {T <: Reactant.RNumber, N}
     f = flux(im)
     dp = domainpoints(im)
     A = dp.transform

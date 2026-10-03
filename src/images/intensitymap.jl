@@ -16,15 +16,17 @@ This type is the basic array type for all images and models that obey the `Comra
 interface. The type is a subtype of `DimensionalData.AbstractDimArray` however, we make
 a few changes to support the Comrade API.
 
-  1. The dimensions should be specified by an `AbstractRectiGrid` interface. Usually users just
-     need the [`RectiGrid`](@ref) grid, for rectilinear grids.
+  1. The dimensions are given by a domain: an `AbstractRectiGrid` (usually [`RectiGrid`](@ref))
+     for images on rectilinear grids, or a [`StructuredDomain`](@ref) for values at points
+     such as visibilities. Operations that need pixels (`pixelsizes`, `fieldofview`, `flux`,
+     `centroid`, `second_moment`, `phasecenter`) are defined only for rectilinear grids.
   2. There are two ways to access the dimensions of the array. `dims(img)` will
      return the usual `DimArray` dimensions, i.e. a `Tuple{DimensionalData.Dim, ...}`.
      The other way to access the array dimensions is using the `getproperty`, e.g.,
      `img.X` will return the RA/X grid locations but stripped of the usual `DimensionalData.Dimension`
      material. This `getproperty` behavior is *NOT CONSIDERED** part of the stable API and
      may be changed in the future.
-  3. Metadata is stored in the `AbstractRectiGrid` type through the `header` property and can be
+  3. Metadata is stored in the domain through the `header` property and can be
      accessed through `metadata` or `header`
 
 The most common way to create a `IntensityMap` is to use the function definitions
@@ -40,8 +42,12 @@ julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
 ```
 
 Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
+For a map over a `StructuredDomain`, indexing slices the coordinates along with the values;
+indexing that drops the `Pt` dim returns a `DimArray`, and any other operation that changes
+the dim names or sizes (e.g. a reduction over `dims`) throws an `ArgumentError`, so apply it
+to `DimArray(img)` instead.
 """
-struct IntensityMap{T, N, D <: Tuple, G <: AbstractRectiGrid{D}, A <: AbstractArray{T, N}, R <: Tuple, Na} <: AbstractDimArray{T, N, D, A}
+struct IntensityMap{T, N, D <: Tuple, G <: AbstractSingleDomain{D}, A <: AbstractArray{T, N}, R <: Tuple, Na} <: AbstractDimArray{T, N, D, A}
     data::A
     grid::G
     refdims::R
@@ -50,11 +56,24 @@ struct IntensityMap{T, N, D <: Tuple, G <: AbstractRectiGrid{D}, A <: AbstractAr
             data::A, grid::G, refdims::R,
             name::Na
         ) where {
-            A <: AbstractArray{T, N}, G <: AbstractRectiGrid{D},
+            A <: AbstractArray{T, N}, G <: AbstractSingleDomain{D},
             R <: Tuple, Na,
-        } where {T, N, D}
+        } where {T, N, D <: Tuple}
+        _check_mapsize(data, grid)
         return new{T, N, D, G, A, R, Na}(data, grid, refdims, name)
     end
+end
+
+const RectiMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractRectiGrid}
+
+_check_mapsize(data, grid) = nothing
+function _check_mapsize(data, grid::StructuredDomain)
+    size(data) == size(grid) || throw(
+        DimensionMismatch(
+            "IntensityMap data has size $(size(data)), but the StructuredDomain has size $(size(grid))"
+        )
+    )
+    return nothing
 end
 
 DD.dims(img::IntensityMap) = dims(getfield(img, :grid))
@@ -99,7 +118,7 @@ EnzymeRules.inactive(::typeof(executor), ::IntensityMap) = nothing
 end
 
 function Base.propertynames(img::IntensityMap)
-    return keys(axisdims(img))
+    return propertynames(axisdims(img))
 end
 
 @inline Base.@constprop :aggressive function Base.getproperty(img::IntensityMap, p::Symbol)
@@ -107,7 +126,7 @@ end
 end
 
 const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
-const SpatialIntensityMap{T, A, G} = IntensityMap{T, 2, <:SpatialDims, A, G} where {T, A, G}
+const SpatialIntensityMap{T, A, G} = IntensityMap{T, 2, <:SpatialDims, A, G} where {T, A <: AbstractRectiGrid, G}
 
 """
     IntensityMap(data::AbstractArray, g::AbstractRectiGrid; refdims=(), name=Symbol(""))
@@ -138,6 +157,26 @@ end
 
 function IntensityMap(data::IntensityMap, g::AbstractRectiGrid)
     @assert g == axisdims(data) "Dimensions do not agree"
+    return data
+end
+
+"""
+    IntensityMap(data::AbstractArray, d::StructuredDomain; refdims=(), name=Symbol(""))
+
+Creates an `IntensityMap` with the values `data` at the points of `d`. `size(data)` must
+equal `size(d)`.
+"""
+function IntensityMap(
+        data::AbstractArray, d::StructuredDomain; refdims = (),
+        name = Symbol("")
+    )
+    return IntensityMap(data, d, refdims, name)
+end
+
+function IntensityMap(data::IntensityMap, d::StructuredDomain)
+    d == axisdims(data) || throw(
+        ArgumentError("the domain of the IntensityMap is not the StructuredDomain given")
+    )
     return data
 end
 
@@ -173,11 +212,36 @@ baseimage(x::IntensityMap) = baseimage(parent(x))
         metadata = metadata(img),
         executor = executor(img),
     )
-    # TODO find why Name is changing type
-    # n2 = n == Symbol("") ? NoName : n
-    grid = rebuild(axisdims(img), dims, executor, metadata, posang(axisdims(img)))
-    # return name(img)
+    grid = _rebuild_domain(axisdims(img), dims, executor, metadata)
     return IntensityMap(data, grid, refdims, n)
+end
+
+function _rebuild_domain(g::AbstractRectiGrid, dims, executor, metadata)
+    return rebuild(g, dims, executor, metadata, posang(g))
+end
+
+function _rebuild_domain(g::StructuredDomain, dims, executor, metadata)
+    names = map(DD.name, dims)
+    sizes = map(length, dims)
+    (names == keys(g) && sizes == size(g)) || throw(
+        ArgumentError(
+            "an IntensityMap over a StructuredDomain with dims $(keys(g)) and size $(size(g)) cannot take dims $names with size $sizes, since its coordinates do not follow; apply the operation to `DimArray(img)` instead"
+        )
+    )
+    return rebuild(g; dims, executor, header = metadata)
+end
+
+Base.@propagate_inbounds function DD.rebuildsliced(
+        f::Function, img::IntensityMap{<:Any, <:Any, <:Tuple, <:StructuredDomain},
+        data::AbstractArray, I::Tuple, name = DD.name(img)
+    )
+    I1 = to_indices(img, I)
+    newdims, newrefdims = DD.slicedims(f, img, I1)
+    d = axisdims(img)
+    if !(:Pt in map(DD.name, newdims))
+        return DD.DimArray(data, newdims; refdims = newrefdims, name, metadata = metadata(img))
+    end
+    return IntensityMap(data, _slice_domain(f, d, I1, newdims), newrefdims, name)
 end
 
 @inline function DD.rebuild(
@@ -192,7 +256,7 @@ end
     return rebuild(img, data, dims, refdims, name, metadata, executor)
 end
 
-function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::Serial)
+function intensitymap_analytic_executor!(img::RectiMap, s::AbstractModel, ::Serial)
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
     bimg = baseimage(img)
@@ -204,7 +268,7 @@ function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ::
 end
 
 function intensitymap_analytic_executor!(
-        img::IntensityMap, s::AbstractModel,
+        img::RectiMap, s::AbstractModel,
         ::ThreadsEx{S}
     ) where {S}
     g = domainpoints(img)

@@ -45,6 +45,51 @@ Reactant.set_default_backend("cpu")
     @test c1[1] ≈ c2[1]
     @test c1[2] ≈ c2[2]
 
+    @testset "StructuredDomain" begin
+        npt = 6
+        ti = [0.0, 1.0, 2.0]
+        fr = [230.0e9, 345.0e9]
+        U = randn(Float32, npt, 3, 2)
+        V = randn(Float32, npt, 3, 2)
+        d = ComradeBase.StructuredDomain((ComradeBase.Pt(npt), Ti(ti), Fr(fr)); U, V)
+        dr = Reactant.to_rarray(d)
+        @test ComradeBase.coords(dr).U isa Reactant.ConcreteRArray{Float32, 3}
+        @test dims(dr) === dims(d)
+        @test executor(dr) isa ComradeBase.ReactantEx
+        @test @jit(sum(ComradeBase.coords(dr).U)) ≈ sum(U)
+        @test @jit(sum(ComradeBase.coords(d).U)) ≈ sum(U)
+
+        dout = @jit(identity(dr))
+        @test dout isa ComradeBase.StructuredDomain
+        @test dims(dout) == dims(d)
+        @test parent(parent(dims(dout, Fr))) isa Vector{Float64}
+        @test Array(ComradeBase.coords(dout).V) ≈ V
+
+        dm = ComradeBase.StructuredDomain(
+            (ComradeBase.Pt(npt), Fr(fr)); u = 1.0e6 .* randn(npt), v = 1.0e6 .* randn(npt)
+        )
+        sumU(d) = sum(d.U)
+        @test @jit(sumU(Reactant.to_rarray(dm))) ≈ sum(dm.U)
+
+        function vissize(m, d)
+            vis = ComradeBase.allocate_vismap(m, d)
+            return size(baseimage(vis)), baseimage(vis) isa Reactant.TracedRArray{ComplexF32, 3}
+        end
+        @test @jit(vissize(m1, dr)) == ((npt, 3, 2), true)
+        function visfill(m, d)
+            vis = ComradeBase.allocate_vismap(m, d)
+            baseimage(vis) .= 1
+            return baseimage(vis)
+        end
+        filled = @jit(visfill(m1, dr))
+        @test size(filled) == size(d)
+        @test all(==(1), Array(filled))
+        function polsize(m, d)
+            vis = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, d)
+            return size(stokes(baseimage(vis), :Q))
+        end
+        @test @jit(polsize(m1, dr)) == (npt, 3, 2)
+    end
 end
 
 # Index ranges along `dim` held by each device, deduplicated and sorted.
