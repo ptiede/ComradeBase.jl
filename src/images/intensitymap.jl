@@ -6,8 +6,9 @@ using DimensionalData: AbstractDimArray, NoName, NoMetadata, format, DimTuple,
 DD.@dim Fr ZDim "frequency"
 DD.@dim U XDim "U"
 DD.@dim V YDim "V"
+DD.@dim Stokes "Stokes"
 
-export IntensityMap, Fr, X, Y, Ti, U, V
+export IntensityMap, StokesMap, Fr, X, Y, Ti, U, V, Stokes, eldims
 
 """
     $(TYPEDEF)
@@ -28,6 +29,10 @@ a few changes to support the Comrade API.
      may be changed in the future.
   3. Metadata is stored in the domain through the `header` property and can be
      accessed through `metadata` or `header`
+  4. A polarized map (a [`StokesMap`](@ref)) has the dims of its domain followed by a
+     trailing [`Stokes`](@ref) dim of length 4; [`axisdims`](@ref) is the domain and
+     [`eldims`](@ref) the trailing dims. Selecting one `Stokes` index gives an unpolarized map
+     over the same domain, and indexing that drops every domain dim returns a `DimArray`.
 
 The most common way to create a `IntensityMap` is to use the function definitions
 ```julia-repl
@@ -47,37 +52,75 @@ indexing that drops the `Pt` dim returns a `DimArray`, and any other operation t
 the dim names or sizes (e.g. a reduction over `dims`) throws an `ArgumentError`, so apply it
 to `DimArray(img)` instead.
 """
-struct IntensityMap{T, N, D <: Tuple, G <: AbstractSingleDomain{D}, A <: AbstractArray{T, N}, R <: Tuple, Na} <: AbstractDimArray{T, N, D, A}
+struct IntensityMap{T, N, D <: Tuple, G <: AbstractSingleDomain, A <: AbstractArray{T, N}, R <: Tuple, Na, E <: Tuple} <: AbstractDimArray{T, N, D, A}
     data::A
     grid::G
     refdims::R
     name::Na
-    function IntensityMap(
-            data::A, grid::G, refdims::R,
-            name::Na
-        ) where {
-            A <: AbstractArray{T, N}, G <: AbstractSingleDomain{D},
-            R <: Tuple, Na,
-        } where {T, N, D <: Tuple}
-        _check_mapsize(data, grid)
-        return new{T, N, D, G, A, R, Na}(data, grid, refdims, name)
+    eldims::E
+    function IntensityMap{T, N}(data, grid, refdims, name, eldims) where {T, N}
+        _check_mapsize(data, grid, eldims)
+        D = typeof((dims(grid)..., eldims...))
+        return new{T, N, D, typeof(grid), typeof(data), typeof(refdims), typeof(name), typeof(eldims)}(
+            data, grid, refdims, name, eldims
+        )
     end
 end
 
 const RectiMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractRectiGrid}
 const StructuredMap{T, N} = IntensityMap{T, N, <:Tuple, <:StructuredDomain}
 
-_check_mapsize(data, grid) = nothing
-function _check_mapsize(data, grid::StructuredDomain)
+"""
+    StokesMap{T, N}
+
+An `N`-dimensional `IntensityMap` with element type `T` whose dims are the dims of its domain
+followed by a [`Stokes`](@ref) dim of length 4 holding Stokes I, Q, U, V in that order.
+Base reductions and element-wise functions act on plain numbers across all dims, Stokes
+included; [`flux`](@ref) sums each component and [`stokes`](@ref) selects one.
+"""
+const StokesMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractSingleDomain, <:AbstractArray, <:Tuple, <:Any, <:Tuple{Stokes}}
+
+_stokesdim() = Stokes(DD.NoLookup(Base.OneTo(4)))
+
+_polarizationdims(::IsPolarized) = (_stokesdim(),)
+_polarizationdims(::NotPolarized) = ()
+
+function _check_mapsize(data, grid, ::Tuple{})
     size(data) == size(grid) || throw(
         DimensionMismatch(
-            "IntensityMap data has size $(size(data)), but the StructuredDomain has size $(size(grid))"
+            "IntensityMap data has size $(size(data)), but the $(nameof(typeof(grid))) has size $(size(grid))"
+        )
+    )
+    return nothing
+end
+function _check_mapsize(data, grid, eldims::Tuple)
+    expected = (size(grid)..., map(length, eldims)...)
+    size(data) == expected || throw(
+        DimensionMismatch(
+            "IntensityMap storage has size $(size(data)), but a domain of size $(size(grid)) with trailing dims $(map(DD.name, eldims)) needs size $expected"
         )
     )
     return nothing
 end
 
-DD.dims(img::IntensityMap) = dims(getfield(img, :grid))
+_slab(data::AbstractArray{<:Any, M}, ks...) where {M} = view(data, ntuple(_ -> Colon(), Val(M - length(ks)))..., ks...)
+
+"""
+    eldims(img::IntensityMap)
+
+Returns the dims of `img` that follow the dims of its domain: `(Stokes(...),)` for a
+[`StokesMap`](@ref) and `()` for an unpolarized map.
+"""
+eldims(img::IntensityMap) = getfield(img, :eldims)
+
+# Splits map dims into the domain dims and the trailing element dims.
+_splitdims(ds::Tuple) = _splitdims(ds, ())
+_splitdims(::Tuple{}, el::Tuple) = ((), el)
+_splitdims(ds::Tuple, el::Tuple) = _splitlast(Base.front(ds), last(ds), el)
+_splitlast(front, d::Stokes, el) = _splitdims(front, (d, el...))
+_splitlast(front, d, el) = ((front..., d), el)
+
+DD.dims(img::IntensityMap) = (dims(getfield(img, :grid))..., getfield(img, :eldims)...)
 DD.refdims(img::IntensityMap) = getfield(img, :refdims)
 DD.data(img::IntensityMap) = getfield(img, :data)
 DD.name(img::IntensityMap) = getfield(img, :name)
@@ -121,10 +164,31 @@ EnzymeRules.inactive(::typeof(DD.refdims), ::IntensityMap) = nothing
 EnzymeRules.inactive(::typeof(DD.name), ::IntensityMap) = nothing
 EnzymeRules.inactive(::typeof(DD.metadata), ::IntensityMap) = nothing
 EnzymeRules.inactive(::typeof(executor), ::IntensityMap) = nothing
+EnzymeRules.inactive(::typeof(eldims), ::IntensityMap) = nothing
 
-@inline function stokes(pimg::IntensityMap{<:StokesParams}, v::Symbol)
-    return rebuild(pimg; data = stokes(baseimage(pimg), v))
+"""
+    stokes(img::StokesMap, K::Symbol)
+
+Returns the Stokes `K` component (`:I`, `:Q`, `:U` or `:V`) of `img` as an unpolarized
+`IntensityMap` over the same domain that is a view of `img`. Every component view has the
+same type, so the call infers for any `K`.
+"""
+@inline function stokes(img::StokesMap, K::Symbol)
+    data = _slab(baseimage(img), _stokesindex(K))
+    return IntensityMap(data, axisdims(img), refdims(img), DD.name(img))
 end
+
+@inline function _stokesindex(K::Symbol)
+    K === :I && return 1
+    K === :Q && return 2
+    K === :U && return 3
+    K === :V && return 4
+    throw(ArgumentError("`$K` is not a Stokes component; the components are I, Q, U, V"))
+end
+
+_stokesI(img::IntensityMap) = _stokesI(img, eldims(img))
+_stokesI(img, ::Tuple{}) = img
+_stokesI(img, ::Tuple{Stokes}) = stokes(img, :I)
 
 function Base.propertynames(img::IntensityMap)
     return propertynames(axisdims(img))
@@ -142,6 +206,7 @@ const SpatialIntensityMap{T, A, G} = IntensityMap{T, 2, <:SpatialDims, A, G} whe
 
 Creates a IntensityMap with the pixel fluxes `data` on the grid `g`. Optionally, you can specify
 a set of reference dimensions `refdims` as a tuple and a name for array `name`.
+An array of `StokesParams` is copied into the storage of a [`StokesMap`](@ref).
 """
 function IntensityMap(
         data::AbstractArray, g::AbstractRectiGrid; refdims = (),
@@ -173,7 +238,8 @@ end
     IntensityMap(data::AbstractArray, d::StructuredDomain; refdims=(), name=Symbol(""))
 
 Creates an `IntensityMap` with the values `data` at the points of `d`. `size(data)` must
-equal `size(d)`.
+equal `size(d)`. An array of `StokesParams` is copied into the storage of a
+[`StokesMap`](@ref).
 """
 function IntensityMap(
         data::AbstractArray, d::StructuredDomain; refdims = (),
@@ -187,6 +253,45 @@ function IntensityMap(data::IntensityMap, d::StructuredDomain)
         ArgumentError("the domain of the IntensityMap is not the StructuredDomain given")
     )
     return data
+end
+
+function IntensityMap(data::AbstractArray, grid::AbstractSingleDomain, refdims::Tuple, name)
+    return _wrapstorage(data, grid, refdims, name, ())
+end
+
+function IntensityMap(data::AbstractArray{<:StokesParams}, grid::AbstractSingleDomain, refdims::Tuple, name)
+    return _wrapstorage(_stokesstorage(data), grid, refdims, name, (_stokesdim(),))
+end
+
+"""
+    IntensityMap(storage::AbstractArray, d::AbstractSingleDomain, ::Stokes; refdims=(), name=Symbol(""))
+
+Creates a [`StokesMap`](@ref) over `d` whose storage is `storage`, an array of size
+`(size(d)..., 4)` holding Stokes I, Q, U, V along its last dim. `storage` is not copied.
+"""
+function IntensityMap(
+        storage::AbstractArray, d::AbstractSingleDomain, ::Stokes;
+        refdims = (), name = Symbol("")
+    )
+    return _wrapstorage(storage, d, refdims, name, (_stokesdim(),))
+end
+
+function _wrapstorage(storage, grid, refdims, name, eldims)
+    return IntensityMap{eltype(storage), ndims(storage)}(storage, grid, refdims, name, eldims)
+end
+
+_rewrap(img::IntensityMap, storage) = _wrapstorage(storage, axisdims(img), refdims(img), DD.name(img), eldims(img))
+
+function _stokesstorage(x::AbstractArray{<:StokesParams})
+    storage = similar(x, eltype(eltype(x)), (axes(x)..., Base.OneTo(4)))
+    for I in CartesianIndices(x)
+        _setpoint!(storage, I, x[I])
+    end
+    return storage
+end
+function _stokesstorage(x::StructArray{<:StokesParams})
+    cs = values(StructArrays.components(x))
+    return cat(cs...; dims = Val(ndims(x) + 1))
 end
 
 """
@@ -212,7 +317,13 @@ DD._noname(::IntensityMap) = Symbol("")
 
 Base.parent(img::IntensityMap) = DD.data(img)
 
-baseimage(x::IntensityMap) = baseimage(parent(x))
+"""
+    baseimage(img::IntensityMap)
+
+Returns the storage array of `img`. For a [`StokesMap`](@ref) this is the dense array whose
+last dim is `Stokes`.
+"""
+baseimage(img::IntensityMap) = getfield(img, :data)
 
 @inline function DD.rebuild(
         img::IntensityMap, data, dims::Tuple = dims(img),
@@ -221,8 +332,10 @@ baseimage(x::IntensityMap) = baseimage(parent(x))
         metadata = metadata(img),
         executor = executor(img),
     )
-    grid = _rebuild_domain(axisdims(img), dims, executor, metadata)
-    return IntensityMap(data, grid, refdims, n)
+    domaindims, eldims = _splitdims(dims)
+    isempty(domaindims) && return DD.DimArray(data, dims; refdims, name = n, metadata)
+    grid = _rebuild_domain(axisdims(img), domaindims, executor, metadata)
+    return _wrapstorage(data, grid, refdims, n, eldims)
 end
 
 function _rebuild_domain(g::AbstractRectiGrid, dims, executor, metadata)
@@ -247,10 +360,12 @@ Base.@propagate_inbounds function DD.rebuildsliced(
     I1 = to_indices(img, I)
     newdims, newrefdims = DD.slicedims(f, img, I1)
     d = axisdims(img)
-    if !(:Pt in map(DD.name, newdims))
+    domaindims, eldims = _splitdims(newdims)
+    if !(:Pt in map(DD.name, domaindims))
         return DD.DimArray(data, newdims; refdims = newrefdims, name, metadata = metadata(img))
     end
-    return IntensityMap(data, _slice_domain(f, d, I1, newdims), newrefdims, name)
+    domainI = ntuple(k -> I1[k], Val(ndims(d)))
+    return _wrapstorage(data, _slice_domain(f, d, domainI, domaindims), newrefdims, name, eldims)
 end
 
 @inline function DD.rebuild(
@@ -269,10 +384,9 @@ function intensitymap_analytic_executor!(img::RectiMap, s::AbstractModel, ::Seri
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
     bimg = baseimage(img)
-    for I in eachindex(g, bimg)
-        bimg[I] = intensity_point(s, g[I]) * dx * dy
+    for I in _pointindices(bimg, g)
+        _setpoint!(bimg, I, intensity_point(s, g[I]) * dx * dy)
     end
-    # bimg .= intensity_point.(Ref(s), g) .* dx .* dy
     return nothing
 end
 
@@ -283,8 +397,9 @@ function intensitymap_analytic_executor!(
     g = domainpoints(img)
     e = executor(img)
     dx, dy = pixelsizes(img)
-    @threaded e for I in CartesianIndices(g)
-        img[I] = intensity_point(s, g[I]) * dx * dy
+    bimg = baseimage(img)
+    @threaded e for I in _pointindices(bimg, g)
+        _setpoint!(bimg, I, intensity_point(s, g[I]) * dx * dy)
     end
     return nothing
 end

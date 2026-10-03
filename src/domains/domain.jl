@@ -65,22 +65,34 @@ function allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
 end
 
 @inline function similartype(::IsPolarized, E, T)
-    return StructArray{StokesParams{T}}
+    return similartype(NotPolarized(), E, T)
 end
 
 @inline function similartype(::NotPolarized, E, T)
     return Array{T}
 end
 
+"""
+    allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain, eldims::Tuple = ())
+
+Allocates an uninitialized `IntensityMap` over `g` whose storage is an array of type `M` with
+the dims of `g` followed by the dims `eldims`, e.g. `(Stokes(...),)` for a [`StokesMap`](@ref).
+"""
+allocate_map(M, g) = allocate_map(M, g, ())
+function allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain, eldims::Tuple)
+    storage = similar(M, (size(g)..., map(length, eldims)...))
+    return _wrapstorage(storage, g, (), Symbol(""), eldims)
+end
+
 function allocate_vismap(p, m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
     M = similartype(p, E, complex(eltype(g)))
-    return allocate_map(M, g)
+    return allocate_map(M, g, _polarizationdims(p))
 end
 
 
 function allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
     M = similartype(p, E, eltype(g))
-    return allocate_map(M, g)
+    return allocate_map(M, g, _polarizationdims(p))
 end
 
 

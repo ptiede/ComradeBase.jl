@@ -22,4 +22,5 @@ import DimensionalData as DD
     include(joinpath(@__DIR__, "executors.jl"))
     include(joinpath(@__DIR__, "multidomain.jl"))
     include(joinpath(@__DIR__, "reactant.jl"))
+    include(joinpath(@__DIR__, "polarized.jl"))
 end

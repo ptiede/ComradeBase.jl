@@ -324,9 +324,6 @@ function _image_eltype(cs::NamedTuple, ::Val{K}) where {K}
 end
 
 create_map(array, d::StructuredDomain) = IntensityMap(array, d)
-function allocate_map(M::Type{<:AbstractArray{T}}, d::StructuredDomain) where {T}
-    return IntensityMap(similar(M, size(d)), d)
-end
 
 _colpositions(c::CoordColumn) = c.pos
 _colpositions(c::WavelengthColumn) = Tuple(sort!(unique!([c.pos..., c.fpos])))

@@ -5,11 +5,12 @@ using DimensionalData
 using Adapt
 
 function Adapt.adapt_structure(to, A::IntensityMap)
-    return IntensityMap(
-        Adapt.adapt_structure(to, DimensionalData.data(A)),
+    return ComradeBase._wrapstorage(
+        Adapt.adapt_structure(to, baseimage(A)),
         Adapt.adapt_structure(to, axisdims(A)),
         Adapt.adapt_structure(to, DimensionalData.refdims(A)),
-        DimensionalData.Name(name(A))
+        DimensionalData.Name(name(A)),
+        eldims(A)
     )
 end
 

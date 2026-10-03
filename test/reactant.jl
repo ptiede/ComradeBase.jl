@@ -86,7 +86,7 @@ Reactant.set_default_backend("cpu")
         @test all(==(1), Array(filled))
         function polsize(m, d)
             vis = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, d)
-            return size(stokes(baseimage(vis), :Q))
+            return size(baseimage(stokes(vis, :Q)))
         end
         @test @jit(polsize(m1, dr)) == (npt, 3, 2)
 
@@ -103,11 +103,8 @@ Reactant.set_default_backend("cpu")
                 dr = Reactant.to_rarray(d)
                 @test Array(baseimage(@jit(visibilitymap(m2, dr)))) ≈ baseimage(visibilitymap(m1, d))
                 vp = @jit(visibilitymap(mpr, dr))
-                hp = baseimage(visibilitymap(mp, d))
-                @test baseimage(vp) isa StructArray
-                for k in (:I, :Q, :U, :V)
-                    @test Array(getproperty(baseimage(vp), k)) ≈ getproperty(hp, k)
-                end
+                @test vp isa StokesMap
+                @test Array(baseimage(vp)) ≈ baseimage(visibilitymap(mp, d))
             end
             dxy = UnstructuredDomain((X = randn(npt), Y = randn(npt)))
             @test Array(baseimage(@jit(intensitymap(m2, Reactant.to_rarray(dxy))))) ≈ baseimage(intensitymap(m1, dxy))
@@ -221,11 +218,10 @@ end
             sa = StructArray{StokesParams{Float64}}((I = rand(nx, 4), Q = rand(nx, 4), U = rand(nx, 4), V = rand(nx, 4)))
             img = IntensityMap(sa, imagepixels(10.0, 10.0, nx, 4))
             simg = shard(img, ShardLayout(mesh; X = :d))
-            f(a) = sum(abs2, baseimage(a).Q) + sum(baseimage(a).V)
+            f(a) = sum(abs2, baseimage(stokes(a, :Q))) + sum(baseimage(stokes(a, :V)))
             @test Float64(@jit(f(simg))) ≈ f(img)
-            for c in StructArrays.components(baseimage(simg))
-                @test stored_blocks(c, 1) == split_blocks(nx, ndev)
-            end
+            @test stored_blocks(baseimage(simg), 1) == split_blocks(nx, ndev)
+            @test stored_blocks(baseimage(simg), 3) == [1:4]
         end
 
         @testset "Raw sharding of a (Pt,) StructuredDomain" begin

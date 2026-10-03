@@ -2,42 +2,14 @@ module ComradeBaseKernelAbstractionsExt
 
 using ComradeBase
 using KernelAbstractions: Backend, allocate
-using StructArrays
 
 function ComradeBase.allocate_map(
         ::Type{<:AbstractArray{T}},
-        g::ComradeBase.AbstractRectiGrid{D, <:Backend}
-    ) where {T, D}
-    return _allocate_backend_map(T, g)
-end
-
-function ComradeBase.allocate_map(
-        ::Type{<:AbstractArray{T}},
-        g::ComradeBase.StructuredDomain{<:Tuple, <:NamedTuple, <:NamedTuple, <:Backend}
+        g::ComradeBase.AbstractSingleDomain{<:Tuple, <:Backend},
+        eldims::Tuple
     ) where {T}
-    return _allocate_backend_map(T, g)
-end
-
-function ComradeBase.allocate_map(
-        ::Type{<:StructArray{T}},
-        g::ComradeBase.AbstractRectiGrid{D, <:Backend}
-    ) where {T, D}
-    return _allocate_backend_structmap(T, g)
-end
-
-function ComradeBase.allocate_map(
-        ::Type{<:StructArray{T}},
-        g::ComradeBase.StructuredDomain{<:Tuple, <:NamedTuple, <:NamedTuple, <:Backend}
-    ) where {T}
-    return _allocate_backend_structmap(T, g)
-end
-
-_allocate_backend_map(T, g) = IntensityMap(allocate(executor(g), T, size(g)), g)
-
-function _allocate_backend_structmap(T, g)
-    exec = executor(g)
-    arrs = StructArrays.buildfromschema(x -> allocate(exec, x, size(g)), T)
-    return IntensityMap(arrs, g)
+    storage = allocate(executor(g), T, (size(g)..., map(length, eldims)...))
+    return ComradeBase._wrapstorage(storage, g, (), Symbol(""), eldims)
 end
 
 function ComradeBase.intensitymap_analytic_executor!(
@@ -47,8 +19,10 @@ function ComradeBase.intensitymap_analytic_executor!(
     )
     dx, dy = pixelsizes(img)
     g = domainpoints(img)
-    bimg = baseimage(img)
-    bimg .= ComradeBase.intensity_point.(Ref(s), g) .* dx .* dy
+    f = p -> ComradeBase.intensity_point(s, p) * dx * dy
+    ComradeBase._foreach_component(baseimage(img), f, Val(ndims(g))) do slab, fk
+        slab .= fk.(g)
+    end
     return nothing
 end
 

@@ -111,15 +111,60 @@ end
 """
     _pointmap!(dest, f, d::AbstractSingleDomain, executor)
 
-Sets `dest[I] = f(domainpoints(d)[I])` for every index `I` of `dest`, using `executor`.
-Executor extensions add methods for their executor type.
+Writes `f(domainpoints(d)[I])` into the storage `dest` at every index `I` of `d` with
+[`_setpoint!`](@ref), using `executor`. Executor extensions add methods for their executor type.
 """
 function _pointmap!(dest, f, d, ::Serial)
     g = domainpoints(d)
-    for I in eachindex(dest, g)
-        dest[I] = f(g[I])
+    for I in _pointindices(dest, g)
+        _setpoint!(dest, I, f(g[I]))
     end
     return nothing
+end
+
+"""
+    _pointindices(dest, g)
+
+Returns `CartesianIndices(g)` after checking that the leading axes of the storage `dest` are
+the axes of the points `g`.
+"""
+function _pointindices(dest, g)
+    lead = ntuple(k -> axes(dest, k), Val(ndims(g)))
+    lead == axes(g) || throw(
+        DimensionMismatch("map storage with axes $(axes(dest)) does not start with the axes $(axes(g)) of the domain")
+    )
+    return CartesianIndices(g)
+end
+
+"""
+    _setpoint!(dest, I::CartesianIndex, v)
+
+Writes the point value `v` into the storage `dest` at the domain index `I`. A number is stored
+at `dest[I]`. A `StaticArray` such as `StokesParams` is stored at `dest[I, k]` for every index
+`k` of `v`; the dims of `dest` after those of `I` must have the size of `v`.
+"""
+@inline function _setpoint!(dest::AbstractArray{<:Any, M}, I::CartesianIndex{M}, v::Number) where {M}
+    dest[I] = v
+    return dest
+end
+
+@inline function _setpoint!(dest, I::CartesianIndex{M}, v::StaticArray) where {M}
+    _trailingsize(dest, Val(M)) == size(v) || _throw_pointsize(dest, Val(M), v)
+    ks = CartesianIndices(v)
+    ntuple(n -> (dest[I, ks[n]] = v[n]), Val(length(v)))
+    return dest
+end
+
+_setpoint!(dest, I::CartesianIndex{M}, v) where {M} = _throw_pointsize(dest, Val(M), v)
+
+_trailingsize(dest, ::Val{M}) where {M} = ntuple(k -> size(dest, M + k), Val(ndims(dest) - M))
+
+@noinline function _throw_pointsize(dest, ::Val{M}, v) where {M}
+    throw(
+        DimensionMismatch(
+            "a point value of type $(typeof(v)) cannot fill the trailing dims of size $(_trailingsize(dest, Val(M))) of the map storage"
+        )
+    )
 end
 
 function _pointmap!(dest, f, d, ::ThreadsEx{S}) where {S}
@@ -136,8 +181,8 @@ function _threads_pointmap! end
 
 for s in schedulers
     @eval function _threads_pointmap!(dest, f, g, ::Val{$s})
-        Threads.@threads $s for I in eachindex(dest, g)
-            dest[I] = f(g[I])
+        Threads.@threads $s for I in _pointindices(dest, g)
+            _setpoint!(dest, I, f(g[I]))
         end
         return nothing
     end
@@ -166,9 +211,41 @@ _pointbroadcast(f, d::AbstractSingleDomain) = Broadcast.broadcasted(f, domainpoi
     _broadcast_pointmap!(dest, f, d::AbstractSingleDomain)
 
 The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
-(KernelAbstractions, Reactant).
+(KernelAbstractions, Reactant): one broadcast per entry of the trailing dims of `dest`.
 """
 function _broadcast_pointmap!(dest, f, d)
-    Broadcast.materialize!(dest, _pointbroadcast(f, d))
+    _foreach_component(dest, f, Val(ndims(d))) do slab, fk
+        Broadcast.materialize!(slab, _pointbroadcast(fk, d))
+    end
+    return nothing
+end
+
+"""
+    ComponentFn(f, k)
+
+Returns entry `k` of the point value of `f`, in the order of [`_setpoint!`](@ref).
+"""
+struct ComponentFn{F}
+    f::F
+    k::Int
+end
+(c::ComponentFn)(xs...) = c.f(xs...)[c.k]
+
+"""
+    _foreach_component(h, dest, f, ::Val{M})
+
+Calls `h(slab, fk)` for every entry of the dims of `dest` after the first `M`, where `slab` is
+the view of `dest` at that entry and `fk` the matching [`ComponentFn`](@ref) of `f`. Without
+trailing dims it calls `h(dest, f)`.
+"""
+function _foreach_component(h, dest, f, ::Val{M}) where {M}
+    if ndims(dest) == M
+        h(dest, f)
+        return nothing
+    end
+    trailing = CartesianIndices(ntuple(k -> axes(dest, M + k), Val(ndims(dest) - M)))
+    for (n, k) in enumerate(trailing)
+        h(_slab(dest, Tuple(k)...), ComponentFn(f, n))
+    end
     return nothing
 end

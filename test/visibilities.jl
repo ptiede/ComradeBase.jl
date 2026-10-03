@@ -126,12 +126,12 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
 
     vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
     @test vmappol isa ComradeBase.IntensityMap
-    @test eltype(vmappol) <: StokesParams
+    @test vmappol isa StokesMap
 
     gim = imagepixels(10.0, 10.0, 64, 64)
     imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
     @test imgpol isa ComradeBase.IntensityMap
-    @test eltype(imgpol) <: StokesParams
+    @test imgpol isa StokesMap{Float64, 3}
 
     img = intensitymap(m, gim)
     vis = visibilitymap(m, g)

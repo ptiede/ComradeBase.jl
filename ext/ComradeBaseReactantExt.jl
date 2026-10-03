@@ -1,7 +1,6 @@
 module ComradeBaseReactantExt
 
 using ComradeBase
-using StructArrays
 using Reactant
 using StaticArrays
 
@@ -11,7 +10,7 @@ import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
 function ComradeBase.shard(img::IntensityMap, layout::ShardLayout)
     vals = Reactant.to_rarray(baseimage(img); sharding = _dimssharding(img, layout))
-    return IntensityMap(vals, ComradeBase.axisdims(img))
+    return ComradeBase._rewrap(img, vals)
 end
 
 function ComradeBase.shard(x, sh::Reactant.Sharding.AbstractSharding)
@@ -20,7 +19,7 @@ function ComradeBase.shard(x, sh::Reactant.Sharding.AbstractSharding)
 end
 function ComradeBase.shard(img::IntensityMap, sh::Reactant.Sharding.AbstractSharding)
     _check_sharding_supported(sh)
-    return IntensityMap(Reactant.to_rarray(baseimage(img); sharding = sh), ComradeBase.axisdims(img))
+    return ComradeBase._rewrap(img, Reactant.to_rarray(baseimage(img); sharding = sh))
 end
 
 function _check_runtime()
@@ -57,7 +56,7 @@ function _dimssharding(img::IntensityMap, layout::ShardLayout)
     _check_runtime()
     mesh = layout.mesh
     _check_mesh(mesh)
-    dnames = keys(ComradeBase.named_dims(img))
+    dnames = map(ComradeBase.DD.name, dims(img))
     positions = map(keys(layout.axes), values(layout.axes)) do dname, v
         p = findfirst(==(dname), dnames)
         p === nothing && throw(ArgumentError("ShardLayout dimension `$dname` is not a dimension of the image; available dimensions are $dnames"))
@@ -138,31 +137,8 @@ function Base.eltype(d::ComradeBase.AbstractRectiGrid{D, E}) where {D, E <: Reac
     end
 end
 
-@inline function ComradeBase.similartype(::IsPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
-    return StructArray{StokesParams{Reactant.TracedRNumber{unwrapped_eltype(T)}}}
-end
-
 @inline function ComradeBase.similartype(::NotPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
     return TracedRArray{unwrapped_eltype(T)}
-end
-
-
-function ComradeBase.allocate_map(
-        ::Type{<:StructArray{T}},
-        g::ComradeBase.AbstractRectiGrid{D, <:ReactantEx}
-    ) where {T <: StokesParams, D}
-    return IntensityMap(_traced_structarray(T, size(g)), g)
-end
-
-function ComradeBase.allocate_map(
-        ::Type{<:StructArray{T}},
-        g::StructuredDomain{<:Tuple, <:NamedTuple, <:NamedTuple, <:ReactantEx}
-    ) where {T <: StokesParams}
-    return IntensityMap(_traced_structarray(T, size(g)), g)
-end
-
-function _traced_structarray(T, sz)
-    return StructArrays.buildfromschema(x -> similar(Reactant.TracedRArray{unwrapped_eltype(x)}, sz), T)
 end
 
 # A StructuredDomain traces its coordinates and executor; its dims, spans and header stay on
@@ -241,8 +217,7 @@ function ComradeBase.intensitymap_analytic_executor!(
     ddims = ComradeBase.shapedims(values(dms))
     K = keys(dms)
     itp = ApplyIT{K}(Base.Fix1(ComradeBase.intensity_point, s), rotmat(axisdims(img)))
-    bimg = baseimage(img)
-    bimg .= giterate.(Ref(itp), ddims...) .* dx .* dy
+    _broadcast_into!(img, ScaledIT(itp, dx * dy), ddims)
     return nothing
 end
 
@@ -256,12 +231,13 @@ function ComradeBase.visibilitymap_analytic_executor!(
     ddims = ComradeBase.shapedims(values(dms))
     K = keys(dms)
     itp = ApplyIT{K}(Base.Fix1(ComradeBase.visibility_point, s), rotmat(axisdims(vis)))
-    bvis = baseimage(vis)
-    bvis .= giterate.(Ref(itp), ddims...)
+    _broadcast_into!(vis, Base.Fix1(giterate, itp), ddims)
     return nothing
 end
 
-function ComradeBase.centroid(im::ComradeBase.RectiMap{T, N}) where {T <: Reactant.RNumber, N}
+function ComradeBase.centroid(img::ComradeBase.RectiMap{T}) where {T <: Reactant.RNumber}
+    im = ComradeBase._stokesI(img)
+    N = ndims(im)
     f = flux(im)
     dp = domainpoints(im)
     A = dp.transform
@@ -285,17 +261,19 @@ function ComradeBase._pointmap!(dest, f, d, ::ReactantEx)
     return ComradeBase._broadcast_pointmap!(dest, f, d)
 end
 
-struct ComponentFn{K, F}
-    f::F
+struct ScaledIT{I, S}
+    itp::I
+    scale::S
 end
-ComponentFn{K}(f) where {K} = ComponentFn{K, typeof(f)}(f)
-(c::ComponentFn{K})(p) where {K} = getproperty(c.f(p), K)
+(g::ScaledIT)(ps...) = giterate(g.itp, ps...) * g.scale
 
-# Reactant cannot broadcast a struct-valued function into a StructArray, so each component
-# is broadcast on its own.
-function ComradeBase._pointmap!(dest::StructArray, f, d, ::ReactantEx)
-    for (k, c) in pairs(StructArrays.components(dest))
-        ComradeBase._broadcast_pointmap!(c, ComponentFn{k}(f), d)
+_callwith(f, xs...) = f(xs...)
+
+# Callables are broadcast as `Ref` arguments, since Reactant cannot broadcast a callable struct
+# that holds traced values.
+function _broadcast_into!(img::IntensityMap, f, args)
+    ComradeBase._foreach_component(baseimage(img), f, Val(ndims(axisdims(img)))) do slab, fk
+        slab .= _callwith.(Ref(fk), args...)
     end
     return nothing
 end
