@@ -16,6 +16,7 @@ import DimensionalData as DD
     include(joinpath(@__DIR__, "interface.jl"))
     include(joinpath(@__DIR__, "images.jl"))
     include(joinpath(@__DIR__, "visibilities.jl"))
+    include(joinpath(@__DIR__, "structured.jl"))
     include(joinpath(@__DIR__, "executors.jl"))
     include(joinpath(@__DIR__, "multidomain.jl"))
     include(joinpath(@__DIR__, "reactant.jl"))
