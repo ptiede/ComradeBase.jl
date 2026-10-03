@@ -33,6 +33,13 @@ Reactant.set_default_backend("cpu")
     @test baseimage(@jit(intensitymap(m2, go))) ≈ baseimage(intensitymap(m1, g))
     @test baseimage(@jit(visibilitymap(m2, guvr))) ≈ baseimage(visibilitymap(m1, guv))
 
+    for (mdims, posang) in (((Fr([230.0e9, 345.0e9]),), 0.0), ((), 0.3), ((Fr([230.0e9, 345.0e9]),), 0.3))
+        gf = imagepixels(10.0, 10.0, 8, 6; mdims, posang)
+        @test Array(baseimage(@jit(intensitymap(m2, @jit(identity(gf)))))) ≈ baseimage(intensitymap(m1, gf))
+        guvf = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), mdims...); posang)
+        @test Array(baseimage(@jit(visibilitymap(m2, @jit(identity(guvf)))))) ≈ baseimage(visibilitymap(m1, guvf))
+    end
+
     img1 = intensitymap(m1, g)
     img2 = @jit(intensitymap(m2, go))
 

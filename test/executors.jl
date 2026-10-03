@@ -164,3 +164,47 @@ end
     testexvis(vis, m, ThreadsEx(:Enzyme))
     testexvis(vism, m, ThreadsEx(:Enzyme))
 end
+
+@testset "executors on (X, Y, Fr) and rotated grids" begin
+    m = GaussTest()
+    mdims = (Fr([230.0e9, 345.0e9, 690.0e9]),)
+    for (mdims, posang) in (((), 0.3), (mdims, 0.0), (mdims, 0.3))
+        g = imagepixels(10.0, 12.0, 8, 6; mdims, posang)
+        img = intensitymap(m, g)
+        @test size(img) == size(g)
+        @test baseimage(img) ≈ map(p -> ComradeBase.intensity_point(m, p), domainpoints(g)) .* prod(pixelsizes(g))
+        guv = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), mdims...); posang)
+        vis = visibilitymap(m, guv)
+        for ex in (
+                ThreadsEx(), ThreadsEx(:static), DynamicScheduler(), StaticScheduler(),
+                SerialScheduler(), CPU(), ThreadsEx(:Enzyme), ThreadsEx(:Polyester),
+            )
+            testeximg(img, m, ex)
+            testexvis(vis, m, ex)
+        end
+    end
+end
+
+@testset "@threaded" begin
+    function threadsum(ex, n)
+        out = zeros(Int, n)
+        ComradeBase.@threaded ex for i in 1:n
+            out[i] = i
+        end
+        return sum(out)
+    end
+    function threadsum(n)
+        out = zeros(Int, n)
+        ComradeBase.@threaded for i in 1:n
+            out[i] = i
+        end
+        return sum(out)
+    end
+    @test threadsum(20) == 210
+    for ex in (Serial(), ThreadsEx(), ThreadsEx(:static), ThreadsEx(:dynamic))
+        @test threadsum(ex, 20) == 210
+    end
+    @test_throws "@threaded does not handle the executor ThreadsEx{:Polyester}()" threadsum(ThreadsEx(:Polyester), 20)
+    @test_throws "@threaded does not handle the executor CPU" threadsum(CPU(), 20)
+    @test_throws ArgumentError threadsum(DynamicScheduler(), 20)
+end

@@ -102,31 +102,27 @@ end
 
 EnzymeRules.inactive_type(::Type{<:StructuredDomain}) = true
 
-function _format_structured_dims(dims::Tuple)
-    isempty(dims) && throw(ArgumentError("StructuredDomain needs dims starting with `Pt`"))
-    for d in dims
-        d isa DD.Dimension || throw(
-            ArgumentError(
-                "StructuredDomain dims must be DimensionalData dimensions, got a $(typeof(d))"
-            )
-        )
-    end
-    first(dims) isa Pt || throw(
-        ArgumentError("the first dim of a StructuredDomain must be `Pt`, got `$(DD.name(first(dims)))`")
-    )
-    ds = map(_index_lookup, dims)
-    for d in ds
-        parent(d) isa AbstractVector || throw(
-            ArgumentError(
-                "dim `$(DD.name(d))` needs a vector lookup whose length gives its axis, got $(typeof(parent(d)))"
-            )
-        )
-    end
-    return DD.format(ds)
+function _format_structured_dims(::Tuple{})
+    throw(ArgumentError("StructuredDomain needs dims starting with `Pt`"))
 end
+_format_structured_dims(dims::Tuple) = DD.format(map(_index_lookup, dims))
 
-_index_lookup(d::DD.Dimension) = d
-_index_lookup(d::Pt) = parent(d) isa Integer ? Pt(Base.OneTo(parent(d))) : d
+_index_lookup(d::Pt{<:Integer}) = Pt(Base.OneTo(parent(d)))
+_index_lookup(d::DD.Dimension{<:AbstractVector}) = d
+function _index_lookup(d::DD.Dimension)
+    throw(
+        ArgumentError(
+            "dim `$(DD.name(d))` needs a vector lookup whose length gives its axis, got $(typeof(parent(d)))"
+        )
+    )
+end
+function _index_lookup(d)
+    throw(
+        ArgumentError(
+            "StructuredDomain dims must be DimensionalData dimensions, got a $(typeof(d))"
+        )
+    )
+end
 
 _coord_array(p::Pair) = first(p)
 _coord_array(a) = a
@@ -152,15 +148,9 @@ function _explicit_span(k, s)
 end
 
 function _infer_span(k, a::AbstractArray, dims)
+    candidates = _subspans(size(a), dims)
     names = map(DD.name, dims)
     sizes = map(length, dims)
-    candidates = Tuple{Vararg{Symbol}}[]
-    for mask in 0:(2^length(dims) - 1)
-        sel = [i for i in eachindex(dims) if isodd(mask >> (i - 1))]
-        if length(sel) == ndims(a) && all(j -> size(a, j) == sizes[sel[j]], eachindex(sel))
-            push!(candidates, Tuple(names[i] for i in sel))
-        end
-    end
     isempty(candidates) && throw(
         DimensionMismatch(
             "coordinate `$k` has size $(size(a)), which matches no ordered subset of the dims $names with sizes $sizes"
@@ -168,10 +158,27 @@ function _infer_span(k, a::AbstractArray, dims)
     )
     length(candidates) > 1 && throw(
         ArgumentError(
-            "the span of coordinate `$k` with size $(size(a)) is ambiguous; it could span any of $(Tuple(candidates)). Give it explicitly, e.g. `$k = $k => $(first(candidates))`"
+            "the span of coordinate `$k` with size $(size(a)) is ambiguous; it could span any of $candidates. Give it explicitly, e.g. `$k = $k => $(first(candidates))`"
         )
     )
     return only(candidates)
+end
+
+"""
+    _subspans(sz::Tuple, ds::Tuple)
+
+Returns a tuple of every ordered subset of the dims `ds`, as a tuple of dim names, whose
+lengths are `sz`.
+"""
+_subspans(::Tuple{}, ::Tuple) = ((),)
+_subspans(::Tuple, ::Tuple{}) = ()
+_subspans(::Tuple{}, ::Tuple{}) = ((),)
+function _subspans(sz::Tuple, ds::Tuple)
+    d = first(ds)
+    skip = _subspans(sz, Base.tail(ds))
+    first(sz) == length(d) || return skip
+    take = map(s -> (DD.name(d), s...), _subspans(Base.tail(sz), Base.tail(ds)))
+    return (take..., skip...)
 end
 
 function _check_structured(d::StructuredDomain)
@@ -367,11 +374,11 @@ end
 function _shaped(c::WavelengthColumn, target, sz)
     data = reshape(c.data, map(t -> t in c.pos ? sz[t] : 1, target))
     freq = reshape(c.freq, map(t -> t == c.fpos ? sz[t] : 1, target))
-    return data .* freq ./ speed_of_light
+    return Broadcast.broadcasted(/, Broadcast.broadcasted(*, data, freq), speed_of_light)
 end
 
 _materialize(c::CoordColumn, sz) = c.data
-_materialize(c::WavelengthColumn, sz) = _shaped(c, _colpositions(c), sz)
+_materialize(c::WavelengthColumn, sz) = Broadcast.materialize(_shaped(c, _colpositions(c), sz))
 
 _as_array(x::AbstractArray) = x
 _as_array(x) = fill(x)
@@ -385,20 +392,21 @@ function _slice_domain(f, d::StructuredDomain, I::Tuple, newdims::Tuple)
     position(s) = something(findfirst(==(s), names))
     cs = coords(d)
     sp = coordspans(d)
-    ks = map(k -> (k === :u || k === :v) && !(:Fr in kept) ? _point_name(k) : k, keys(cs))
+    frdropped = !(:Fr in kept)
     sliced = map(keys(cs)) do k
-        data, span = if (k === :u || k === :v) && !(:Fr in kept)
+        k2, data, span = if frdropped && (k === :u || k === :v)
             p = position(:Fr)
             col = WavelengthColumn(cs[k], map(position, sp[k]), basedim(dims(d)[p]), p)
             pos = _colpositions(col)
-            _materialize(col, size(d)), map(q -> names[q], pos)
+            _point_name(k), _materialize(col, size(d)), map(q -> names[q], pos)
         else
-            cs[k], sp[k]
+            k, cs[k], sp[k]
         end
         a = _as_array(f(data, map(s -> I[position(s)], span)...))
-        return a => filter(in(kept), span)
+        return (k2, a, filter(in(kept), span))
     end
-    newcoords = NamedTuple{ks}(map(first, sliced))
+    ks = map(first, sliced)
+    newcoords = NamedTuple{ks}(map(x -> x[2], sliced))
     newspans = NamedTuple{ks}(map(last, sliced))
     return StructuredDomain(newdims, newcoords, newspans, executor(d), header(d))
 end
@@ -452,7 +460,8 @@ domainpoints(d::StructuredDomain) = StructuredPoints(_columns(d), size(d))
 
 Returns a `NamedTuple` with the same names as the elements of `domainpoints(d)`, holding
 each coordinate reshaped to `ndims(d)` dims with singleton dims where the coordinate does
-not vary. Broadcasting over its values gives the full grid of points.
+not vary. `U`, `V` derived from `u`, `v` in meters are lazy `Broadcasted` objects.
+Broadcasting over its values gives the full grid of points.
 """
 function shapedcoords(d::StructuredDomain)
     target = ntuple(identity, ndims(d))

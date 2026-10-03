@@ -12,19 +12,7 @@ function ComradeBase.allocate_map(
     return ComradeBase._wrapstorage(storage, g, (), Symbol(""), eldims)
 end
 
-function ComradeBase.intensitymap_analytic_executor!(
-        img::ComradeBase.RectiMap,
-        s::ComradeBase.AbstractModel,
-        ::Backend
-    )
-    dx, dy = pixelsizes(img)
-    g = domainpoints(img)
-    f = p -> ComradeBase.intensity_point(s, p) * dx * dy
-    ComradeBase._foreach_component(baseimage(img), f, Val(ndims(g))) do slab, fk
-        slab .= fk.(g)
-    end
-    return nothing
-end
+ComradeBase._storage(b::Backend, ::Type{T}, sz) where {T} = allocate(b, T, sz)
 
 function ComradeBase._pointmap!(dest, f, d, ::Backend)
     return ComradeBase._broadcast_pointmap!(dest, f, d)

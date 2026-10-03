@@ -137,8 +137,8 @@ function Base.eltype(d::ComradeBase.AbstractRectiGrid{D, E}) where {D, E <: Reac
     end
 end
 
-@inline function ComradeBase.similartype(::NotPolarized, ::Type{<:ReactantEx}, ::Type{T}) where {T}
-    return TracedRArray{unwrapped_eltype(T)}
+function ComradeBase._storage(::ReactantEx, ::Type{T}, sz) where {T}
+    return similar(TracedRArray{unwrapped_eltype(T)}, sz)
 end
 
 # A StructuredDomain traces its coordinates and executor; its dims, spans and header stay on
@@ -167,22 +167,24 @@ Base.@nospecializeinfer function Reactant.make_tracer(
     )
     cs = ComradeBase.coords(prev)
     ex = ComradeBase.executor(prev)
+    ci = Base.fieldindex(StructuredDomain, :coords)
+    ei = Base.fieldindex(StructuredDomain, :executor)
     if mode == Reactant.TracedToTypes
         push!(path, Core.Typeof(prev))
         push!(path, map(d -> collect(basedim(d)), dims(prev)))
         push!(path, ComradeBase.coordspans(prev))
         push!(path, ComradeBase.header(prev))
-        Reactant.make_tracer(seen, cs, path, mode; sharding = Base.getproperty(sharding, 2), kwargs...)
-        Reactant.make_tracer(seen, ex, path, mode; sharding = Base.getproperty(sharding, 4), kwargs...)
+        Reactant.make_tracer(seen, cs, path, mode; sharding = Base.getproperty(sharding, ci), kwargs...)
+        Reactant.make_tracer(seen, ex, path, mode; sharding = Base.getproperty(sharding, ei), kwargs...)
         return nothing
     end
     tcs = Reactant.make_tracer(
-        seen, cs, Reactant.append_path(path, 2), mode;
-        sharding = Base.getproperty(sharding, 2), kwargs...
+        seen, cs, Reactant.append_path(path, ci), mode;
+        sharding = Base.getproperty(sharding, ci), kwargs...
     )
     tex = Reactant.make_tracer(
-        seen, ex, Reactant.append_path(path, 4), mode;
-        sharding = Base.getproperty(sharding, 4), kwargs...
+        seen, ex, Reactant.append_path(path, ei), mode;
+        sharding = Base.getproperty(sharding, ei), kwargs...
     )
     return StructuredDomain(dims(prev), tcs, ComradeBase.coordspans(prev), tex, ComradeBase.header(prev))
 end
@@ -207,32 +209,12 @@ end
 end
 
 
-function ComradeBase.intensitymap_analytic_executor!(
-        img::ComradeBase.RectiMap{T, N},
-        s::ComradeBase.AbstractModel,
-        ::ReactantEx
-    ) where {T, N}
-    dx, dy = pixelsizes(img)
-    dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(img))
-    ddims = ComradeBase.shapedims(values(dms))
-    K = keys(dms)
-    itp = ApplyIT{K}(Base.Fix1(ComradeBase.intensity_point, s), rotmat(axisdims(img)))
-    _broadcast_into!(img, ScaledIT(itp, dx * dy), ddims)
-    return nothing
-end
-
-function ComradeBase.visibilitymap_analytic_executor!(
-        vis::ComradeBase.RectiMap{T, N},
-        s::ComradeBase.AbstractModel,
-        ::ReactantEx
-    ) where {T, N}
-
-    dms = map(Reactant.materialize_traced_array ∘ ComradeBase.basedim, named_dims(vis))
-    ddims = ComradeBase.shapedims(values(dms))
-    K = keys(dms)
-    itp = ApplyIT{K}(Base.Fix1(ComradeBase.visibility_point, s), rotmat(axisdims(vis)))
-    _broadcast_into!(vis, Base.Fix1(giterate, itp), ddims)
-    return nothing
+# The point function is a broadcast argument, not the broadcast function, so that Reactant
+# accepts a model holding traced values.
+function ComradeBase._pointbroadcast(f, d::RectiGrid{<:Any, ReactantEx})
+    dms = map(Reactant.materialize_traced_array ∘ basedim, named_dims(d))
+    itp = ApplyIT{keys(dms)}(f, rotmat(d))
+    return Broadcast.broadcasted(giterate, Ref(itp), ComradeBase.shapedims(values(dms))...)
 end
 
 function ComradeBase.centroid(img::ComradeBase.RectiMap{T}) where {T <: Reactant.RNumber}
@@ -259,23 +241,6 @@ end
 
 function ComradeBase._pointmap!(dest, f, d, ::ReactantEx)
     return ComradeBase._broadcast_pointmap!(dest, f, d)
-end
-
-struct ScaledIT{I, S}
-    itp::I
-    scale::S
-end
-(g::ScaledIT)(ps...) = giterate(g.itp, ps...) * g.scale
-
-_callwith(f, xs...) = f(xs...)
-
-# Callables are broadcast as `Ref` arguments, since Reactant cannot broadcast a callable struct
-# that holds traced values.
-function _broadcast_into!(img::IntensityMap, f, args)
-    ComradeBase._foreach_component(baseimage(img), f, Val(ndims(axisdims(img)))) do slab, fk
-        slab .= _callwith.(Ref(fk), args...)
-    end
-    return nothing
 end
 
 end

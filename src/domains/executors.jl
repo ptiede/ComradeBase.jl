@@ -74,38 +74,57 @@ Requires Reactant to be loaded with its IFRT runtime (the Reactant preference
 function shard end
 
 
-#TODO can this be made nicer?
 @static if VERSION ≥ v"1.11"
-    const schedulers = (:(:dynamic), :(:static), :(:greedy))
+    const schedulers = (:dynamic, :static, :greedy)
 else
-    const schedulers = (:(:dynamic), :(:static))
+    const schedulers = (:dynamic, :static)
 end
 
 """
     @threaded executor expr
 
-Threads the for-loop expression `expr` using the specified `executor`. The executor must be one of
-`ThreadsEx` or `Serial`. Note that if the `Threads.nthreads() == 1` we automatically default to 
-a regular for-loop to prevent overhead.
+Threads the for-loop expression `expr` using the specified `executor`, which must be `Serial()`
+or a `ThreadsEx` with one of Julia's `Threads.@threads` schedulers; any other executor throws an
+`ArgumentError`. When `Threads.nthreads() == 1` the loop runs as a regular for-loop.
 """
 macro threaded(executor, expr)
+    ex = gensym(:executor)
+    threaded = nothing
+    for s in schedulers
+        threaded = :(
+            if $ex === $(ThreadsEx){$(QuoteNode(s))}()
+                Base.Threads.@threads $(QuoteNode(s)) $expr
+            else
+                $threaded
+            end
+        )
+    end
     return esc(
         quote
-            if Threads.nthreads() > 1 && $(executor) != Serial()
-                if $(executor) == ThreadsEx{:static}()
-                    Threads.@threads :static $(expr)
-                elseif $(executor) == ThreadsEx{:dynamic}()
-                    Threads.@threads :dynamic $(expr)
-                end
+            $ex = $(_check_threaded)($executor)
+            if $ex === $(Serial)() || Base.Threads.nthreads() == 1
+                $expr
             else
-                $(expr)
+                $threaded
             end
         end
     )
 end
 
 macro threaded(expr)
-    return :(@threaded(ThreadsEx(), $(expr)))
+    return esc(:($(@__MODULE__).@threaded $(ThreadsEx)() $expr))
+end
+
+_check_threaded(ex::Serial) = ex
+_check_threaded(ex::ThreadsEx{S}) where {S} = S in schedulers ? ex : _throw_threaded(ex)
+_check_threaded(ex) = _throw_threaded(ex)
+
+@noinline function _throw_threaded(ex)
+    throw(
+        ArgumentError(
+            "@threaded does not handle the executor $ex; use `Serial()` or `ThreadsEx(s)` with `s` one of $schedulers"
+        )
+    )
 end
 
 """
@@ -180,8 +199,8 @@ schedulers or `:Enzyme`, `:Polyester` when that package is loaded.
 function _threads_pointmap! end
 
 for s in schedulers
-    @eval function _threads_pointmap!(dest, f, g, ::Val{$s})
-        Threads.@threads $s for I in _pointindices(dest, g)
+    @eval function _threads_pointmap!(dest, f, g, ::Val{$(QuoteNode(s))})
+        Threads.@threads $(QuoteNode(s)) for I in _pointindices(dest, g)
             _setpoint!(dest, I, f(g[I]))
         end
         return nothing
@@ -208,19 +227,6 @@ Returns the lazy broadcast of `f` over the points of `d`, with the axes of `d`.
 _pointbroadcast(f, d::AbstractSingleDomain) = Broadcast.broadcasted(f, domainpoints(d))
 
 """
-    _broadcast_pointmap!(dest, f, d::AbstractSingleDomain)
-
-The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
-(KernelAbstractions, Reactant): one broadcast per entry of the trailing dims of `dest`.
-"""
-function _broadcast_pointmap!(dest, f, d)
-    _foreach_component(dest, f, Val(ndims(d))) do slab, fk
-        Broadcast.materialize!(slab, _pointbroadcast(fk, d))
-    end
-    return nothing
-end
-
-"""
     ComponentFn(f, k)
 
 Returns entry `k` of the point value of `f`, in the order of [`_setpoint!`](@ref).
@@ -232,20 +238,22 @@ end
 (c::ComponentFn)(xs...) = c.f(xs...)[c.k]
 
 """
-    _foreach_component(h, dest, f, ::Val{M})
+    _broadcast_pointmap!(dest, f, d::AbstractSingleDomain)
 
-Calls `h(slab, fk)` for every entry of the dims of `dest` after the first `M`, where `slab` is
-the view of `dest` at that entry and `fk` the matching [`ComponentFn`](@ref) of `f`. Without
-trailing dims it calls `h(dest, f)`.
+The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
+(KernelAbstractions, Reactant). Storage with dims after those of `d` gets one broadcast per
+entry of those dims, of the matching [`ComponentFn`](@ref) of `f`.
 """
-function _foreach_component(h, dest, f, ::Val{M}) where {M}
-    if ndims(dest) == M
-        h(dest, f)
-        return nothing
-    end
+function _broadcast_pointmap!(dest::AbstractArray{<:Any, N}, f, d::AbstractSingleDomain{<:NTuple{N, Any}}) where {N}
+    Broadcast.materialize!(dest, _pointbroadcast(f, d))
+    return nothing
+end
+
+function _broadcast_pointmap!(dest, f, d::AbstractSingleDomain)
+    M = ndims(d)
     trailing = CartesianIndices(ntuple(k -> axes(dest, M + k), Val(ndims(dest) - M)))
     for (n, k) in enumerate(trailing)
-        h(_slab(dest, Tuple(k)...), ComponentFn(f, n))
+        Broadcast.materialize!(_slab(dest, Tuple(k)...), _pointbroadcast(ComponentFn(f, n), d))
     end
     return nothing
 end

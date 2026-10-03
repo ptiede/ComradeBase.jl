@@ -317,3 +317,18 @@ end
         @test axisdims(res) === g
     end
 end
+
+@testset "IntensityMap keywords and domain checks" begin
+    g = imagepixels(10.0, 10.0, 4, 3)
+    rd = (Ti(1.0),)
+    img = IntensityMap(rand(4, 3), g; refdims = rd, name = :flux)
+    @test DD.refdims(img) == rd
+    @test DD.name(img) == :flux
+    d = UnstructuredDomain((; U = randn(5), V = randn(5)))
+    vis = IntensityMap(rand(5), d; refdims = rd, name = :vis)
+    @test DD.refdims(vis) == rd
+    @test DD.name(vis) == :vis
+    @test IntensityMap(img, g) === img
+    @test_throws "the domain of the IntensityMap is not the RectiGrid given" IntensityMap(img, imagepixels(10.0, 10.0, 4, 3; posang = 0.1))
+    @test_throws "the domain of the IntensityMap is not the StructuredDomain given" IntensityMap(vis, UnstructuredDomain((; U = randn(5), V = randn(5))))
+end

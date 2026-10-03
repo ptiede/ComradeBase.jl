@@ -27,7 +27,8 @@ end
 end
 
 
-function shapedims(dims::NTuple{N}) where {N}
+function shapedims(dims::Tuple)
+    N = length(dims)
     return ntuple(Val(N)) do n
         Base.@_inline_meta
         reshape(dims[n], ntuple(i -> i == n ? Base.Colon() : 1, Val(N)))
@@ -81,10 +82,10 @@ Base.@propagate_inbounds @inline function Base.getindex(
     return get_pos(A, I...)
 end
 
-@inline getstyle(A1, A2, Arest...) = getstyle(A1, getstyle(A2, Arest...))
-@inline getstyle(A1, A2) = Broadcast.BroadcastStyle(getstyle(A1), getstyle(A2))
-@inline getstyle(A) = Broadcast.BroadcastStyle(A)
 @inline getstyle() = Broadcast.DefaultArrayStyle{0}()
+@inline function getstyle(A, Arest...)
+    return Broadcast.result_style(Broadcast.BroadcastStyle(A), getstyle(Arest...))
+end
 
 function Base.Broadcast.BroadcastStyle(::Type{<:LazyGrid{T, N, A}}) where {T, N, A}
     inner_style = getstyle(fieldtypes(A)...)

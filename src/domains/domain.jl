@@ -56,7 +56,7 @@ Allocate the default map specialized by the grid `g`
 """
 function allocate_vismap end
 
-function allocate_vismap(m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
+function allocate_vismap(m::AbstractModel, g::AbstractSingleDomain)
     return allocate_vismap(ispolarized(typeof(m)), m, g)
 end
 
@@ -64,13 +64,13 @@ function allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
     return allocate_imgmap(ispolarized(typeof(m)), m, g)
 end
 
-@inline function similartype(::IsPolarized, E, T)
-    return similartype(NotPolarized(), E, T)
-end
+"""
+    _storage(executor, T, sz)
 
-@inline function similartype(::NotPolarized, E, T)
-    return Array{T}
-end
+Allocates uninitialized map storage with element type `T` and size `sz` for `executor`.
+Executor extensions add methods for their executor type.
+"""
+_storage(executor, ::Type{T}, sz) where {T} = Array{T}(undef, sz)
 
 """
     allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain, eldims::Tuple = ())
@@ -84,16 +84,14 @@ function allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain, eldims:
     return _wrapstorage(storage, g, (), Symbol(""), eldims)
 end
 
-function allocate_vismap(p, m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
-    M = similartype(p, E, complex(eltype(g)))
-    return allocate_map(M, g, _polarizationdims(p))
+function _allocate_map(p, ::Type{T}, g::AbstractSingleDomain) where {T}
+    eldims = _polarizationdims(p)
+    storage = _storage(executor(g), T, (size(g)..., map(length, eldims)...))
+    return _wrapstorage(storage, g, (), Symbol(""), eldims)
 end
 
-
-function allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
-    M = similartype(p, E, eltype(g))
-    return allocate_map(M, g, _polarizationdims(p))
-end
+allocate_vismap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, complex(eltype(g)), g)
+allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, eltype(g), g)
 
 
 """

@@ -191,6 +191,15 @@ slabloss(a) = sum(abs2, stokes(a, :Q)) + sum(stokes(a, :V))
         @test (@allocated pointmap_into(dest, f, dpt, Serial())) == 0
         JET.@test_opt target_modules = (ComradeBase,) pointmap_into(dest, f, dpt, Serial())
         JET.@test_opt target_modules = (ComradeBase,) visibilitymap(m, dpt)
+        dptf = StructuredDomain(
+            (Pt(7), Ti([0.0, 1.0]), Fr([230.0e9, 345.0e9, 690.0e9]));
+            u = 3.0e4 .* randn(7, 2), v = 3.0e4 .* randn(7, 2)
+        )
+        for mv in (m, GaussTest())
+            vis = visibilitymap(mv, dptf)
+            visibilitymap!(vis, mv)
+            @test (@allocated visibilitymap!(vis, mv)) == 0
+        end
         @test_throws "cannot fill the trailing dims of size ()" pointmap_into(zeros(ComplexF64, 7), f, dpt, Serial())
         @test_throws "does not start with the axes" pointmap_into(zeros(ComplexF64, 6, 4), f, dpt, Serial())
     end
