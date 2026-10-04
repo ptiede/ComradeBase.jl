@@ -1,7 +1,6 @@
 export RectiGrid, refinespatial
 
 abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
-create_map(array, g::AbstractRectiGrid) = IntensityMap(array, g)
 
 function fieldofview(dims::AbstractRectiGrid)
     (; X, Y) = dims

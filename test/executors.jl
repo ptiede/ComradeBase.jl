@@ -16,6 +16,11 @@ function testexvis(img, m, ex)
     return @test img ≈ img2
 end
 
+const loopexecutors = (
+    ThreadsEx(), ThreadsEx(:static), DynamicScheduler(), StaticScheduler(), SerialScheduler(),
+    CPU(), ThreadsEx(:Enzyme), ThreadsEx(:Polyester),
+)
+
 @testset "executors" begin
     u = 0.1 * randn(60)
     v = 0.1 * randn(60)
@@ -33,14 +38,7 @@ end
         intensitymap!(img, m)
         @test img ≈ img0
 
-        testeximg(img, m, ThreadsEx())
-        testeximg(img, m, ThreadsEx(:static))
-        testeximg(img, m, DynamicScheduler())
-        testeximg(img, m, StaticScheduler())
-        testeximg(img, m, SerialScheduler())
-        testeximg(img, m, CPU())
-        testeximg(img, m, ThreadsEx(:Enzyme))
-        testeximg(img, m, ThreadsEx(:Polyester))
+        foreach(ex -> testeximg(img, m, ex), loopexecutors)
 
         puv = (U = range(-2.0, 2.0; length = 128), V = range(-2.0, 2.0; length = 64))
         vis = visibilitymap(m, RectiGrid(puv))
@@ -49,14 +47,7 @@ end
         @test vis ≈ vis0
 
         @test size(vis) == size(RectiGrid(puv))
-        testexvis(vis, m, ThreadsEx())
-        testexvis(vis, m, ThreadsEx(:static))
-        testexvis(vis, m, DynamicScheduler())
-        testexvis(vis, m, StaticScheduler())
-        testexvis(vis, m, SerialScheduler())
-        testexvis(vis, m, CPU())
-        testexvis(vis, m, ThreadsEx(:Enzyme))
-        testexvis(vis, m, ThreadsEx(:Polyester))
+        foreach(ex -> testexvis(vis, m, ex), loopexecutors)
     end
 
     @testset "StructuredDomain (Pt,)" begin
@@ -68,28 +59,14 @@ end
         intensitymap!(img, m)
         @test img ≈ img0
 
-        testeximg(img, m, ThreadsEx())
-        testeximg(img, m, ThreadsEx(:static))
-        testeximg(img, m, DynamicScheduler())
-        testeximg(img, m, StaticScheduler())
-        testeximg(img, m, SerialScheduler())
-        testeximg(img, m, CPU())
-        testeximg(img, m, ThreadsEx(:Enzyme))
-        testeximg(img, m, ThreadsEx(:Polyester))
+        foreach(ex -> testeximg(img, m, ex), loopexecutors)
 
         vis = visibilitymap(m, UnstructuredDomain(puv))
         vis0 = copy(vis)
         visibilitymap!(vis, m)
         @test vis ≈ vis0
         @test size(vis) == size(UnstructuredDomain(puv))
-        testexvis(vis, m, ThreadsEx())
-        testexvis(vis, m, ThreadsEx(:static))
-        testexvis(vis, m, DynamicScheduler())
-        testexvis(vis, m, StaticScheduler())
-        testexvis(vis, m, SerialScheduler())
-        testexvis(vis, m, CPU())
-        testexvis(vis, m, ThreadsEx(:Enzyme))
-        testexvis(vis, m, ThreadsEx(:Polyester))
+        foreach(ex -> testexvis(vis, m, ex), loopexecutors)
     end
 end
 
@@ -175,10 +152,7 @@ end
         @test baseimage(img) ≈ map(p -> ComradeBase.intensity_point(m, p), domainpoints(g)) .* prod(pixelsizes(g))
         guv = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), mdims...); posang)
         vis = visibilitymap(m, guv)
-        for ex in (
-                ThreadsEx(), ThreadsEx(:static), DynamicScheduler(), StaticScheduler(),
-                SerialScheduler(), CPU(), ThreadsEx(:Enzyme), ThreadsEx(:Polyester),
-            )
+        for ex in loopexecutors
             testeximg(img, m, ex)
             testexvis(vis, m, ex)
         end

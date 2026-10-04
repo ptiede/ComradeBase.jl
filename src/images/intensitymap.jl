@@ -198,7 +198,7 @@ end
 end
 
 const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
-const SpatialIntensityMap{T, A, G} = IntensityMap{T, 2, <:SpatialDims, A, G} where {T, A <: AbstractRectiGrid, G}
+const SpatialIntensityMap{T, G <: AbstractRectiGrid, A} = IntensityMap{T, 2, <:SpatialDims, G, A}
 
 """
     IntensityMap(data::AbstractArray, g::AbstractSingleDomain; refdims=(), name=Symbol(""))

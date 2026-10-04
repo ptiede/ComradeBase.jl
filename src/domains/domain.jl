@@ -24,7 +24,7 @@ visdomain(d::AbstractDualDomain) = getfield(d, :visdomain)
 
 Create a map of values specialized by the grid `g`.
 """
-function create_map end
+create_map(array, g::AbstractSingleDomain) = IntensityMap(array, g)
 
 """
     create_vismap(array, g::AbstractSingleDomain)

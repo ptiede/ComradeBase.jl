@@ -330,8 +330,6 @@ function _image_eltype(cs::NamedTuple, ::Val{K}) where {K}
     )
 end
 
-create_map(array, d::StructuredDomain) = IntensityMap(array, d)
-
 _colpositions(c::CoordColumn) = c.pos
 _colpositions(c::WavelengthColumn) = Tuple(sort!(unique!([c.pos..., c.fpos])))
 
