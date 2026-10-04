@@ -40,6 +40,16 @@ Reactant.set_default_backend("cpu")
         @test Array(baseimage(@jit(visibilitymap(m2, @jit(identity(guvf)))))) ≈ baseimage(visibilitymap(m1, guvf))
     end
 
+    g32 = RectiGrid(
+        (X(range(-1.0f0, 1.0f0; length = 4)), Y(range(-2.0f0, 2.0f0; length = 3)), Fr([230.0e9, 345.0e9]));
+        posang = 0.3f0
+    )
+    g32r = @jit(identity(g32))
+    img32 = @jit(intensitymap(PointSum(), g32r))
+    @test eltype(baseimage(img32)) === Float32
+    @test Array(baseimage(img32)) ≈ baseimage(intensitymap(PointSum(), g32))
+    @test !occursin("f64", repr(@code_hlo intensitymap(PointSum(), g32r)))
+
     img1 = intensitymap(m1, g)
     img2 = @jit(intensitymap(m2, go))
 

@@ -332,3 +332,61 @@ end
     @test_throws "the domain of the IntensityMap is not the RectiGrid given" IntensityMap(img, imagepixels(10.0, 10.0, 4, 3; posang = 0.1))
     @test_throws "the domain of the IntensityMap is not the StructuredDomain given" IntensityMap(vis, UnstructuredDomain((; U = randn(5), V = randn(5))))
 end
+
+struct PointSum <: ComradeBase.AbstractModel end
+ComradeBase.visanalytic(::Type{<:PointSum}) = ComradeBase.IsAnalytic()
+ComradeBase.imanalytic(::Type{<:PointSum}) = ComradeBase.IsAnalytic()
+ComradeBase.ispolarized(::Type{<:PointSum}) = ComradeBase.NotPolarized()
+ComradeBase.intensity_point(::PointSum, p) = p.X + 2 * p.Y
+
+lazygrid_getindex(p, I...) = p[I...]
+function lazygrid_allocated(p::AbstractArray{<:Any, N}) where {N}
+    I = ntuple(_ -> 2, Val(N))
+    p[I...]
+    return @allocated p[I...]
+end
+
+@testset "domainpoints of a RectiGrid" begin
+    x32 = X(range(-1.0f0, 1.0f0; length = 4))
+    y32 = Y(range(-2.0f0, 2.0f0; length = 3))
+    x64 = X(range(-1.0, 1.0; length = 4))
+    y64 = Y(range(-2.0, 2.0; length = 3))
+    fr = Fr([230.0e9, 345.0e9])
+    cases = (
+        (RectiGrid((x32, y32)), @NamedTuple{X::Float32, Y::Float32}),
+        (RectiGrid((x32, y32, fr)), @NamedTuple{X::Float32, Y::Float32, Fr::Float64}),
+        (RectiGrid((x32, y32, fr); posang = 0.3f0), @NamedTuple{X::Float32, Y::Float32, Fr::Float64}),
+        (RectiGrid((x32, y32, fr); posang = 0.3), @NamedTuple{X::Float64, Y::Float64, Fr::Float64}),
+        (RectiGrid((x32, y64)), @NamedTuple{X::Float64, Y::Float64}),
+        (RectiGrid((x64, y64, Ti([1, 2]))), @NamedTuple{X::Float64, Y::Float64, Ti::Int}),
+        (RectiGrid((x64, y64, Ti([1, 2]), fr); posang = 0.3), @NamedTuple{X::Float64, Y::Float64, Ti::Int, Fr::Float64}),
+    )
+    for (g, T) in cases
+        p = @inferred domainpoints(g)
+        I = ntuple(_ -> 2, ndims(g))
+        @test eltype(p) === T
+        @test typeof(@inferred(lazygrid_getindex(p, I...))) === T
+        @test all(q -> typeof(q) === T, p)
+        @test eltype(collect(p)) === T
+        @test map(q -> q.X, p) == (q -> q.X).(p)
+        @test eltype(map(q -> q.X, p)) === eltype((q -> q.X).(p)) === fieldtype(T, :X)
+        @test lazygrid_allocated(p) == 0
+        rot = ComradeBase.rotmat(g)
+        xy = rot * SVector(g.X[2], g.Y[2])
+        @test p[I...].X ≈ xy[1]
+        @test p[I...].Y ≈ xy[2]
+        ndims(g) > 2 && @test p[I...][3] === ComradeBase.basedim(dims(g)[3])[2]
+    end
+    p = domainpoints(RectiGrid((x32, y32, fr)))
+    @test_throws "BoundsError: attempt to access 4×3×2 ComradeBase.LazyGrid" p[5, 1, 1]
+    @test_throws BoundsError p[1, 1, 3]
+
+    g32 = RectiGrid((x32, y32, fr); posang = 0.3f0)
+    ref = map(q -> ComradeBase.intensity_point(PointSum(), q), domainpoints(g32)) .* prod(pixelsizes(g32))
+    @test eltype(ref) === Float32
+    for ex in (Serial(), ThreadsEx(), CPU())
+        img = intensitymap(PointSum(), DD.rebuild(g32; executor = ex))
+        @test eltype(img) === Float32
+        @test baseimage(img) ≈ ref
+    end
+end

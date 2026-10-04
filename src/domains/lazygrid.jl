@@ -1,20 +1,23 @@
+"""
+    LazyGrid(dirs::NamedTuple, transform::SMatrix{2, 2})
+
+The lazy array of points of a rectilinear grid with the lookups `dirs`. Element `I` is a
+`NamedTuple` with the names of `dirs`: the first two entries are `transform` applied to the
+first two lookup values at `I`, the other entries are the lookup values themselves.
+"""
 struct LazyGrid{T, N, Dirs <: NamedTuple, TR <: SMatrix{2, 2}} <: AbstractArray{T, N}
     dirs::Dirs
     transform::TR
     @inline function LazyGrid(dirs::NamedTuple, transform)
-        T = geteltype(typeof(dirs))
-        N = length(dirs)
-        return new{T, N, typeof(dirs), typeof(transform)}(dirs, transform)
+        T = _pointtype(typeof(dirs), eltype(transform))
+        return new{T, length(dirs), typeof(dirs), typeof(transform)}(dirs, transform)
     end
 end
 
-@inline function geteltype(::Type{<:NamedTuple{N, A}}) where {N, A}
-    return NamedTuple{N, geteltype(A)}
-end
-
-@inline function geteltype(T::Type{<:Tuple})
-    et = map(eltype, fieldtypes(T))
-    return Tuple{et...}
+@inline function _pointtype(::Type{<:NamedTuple{K, A}}, ::Type{R}) where {K, A, R}
+    ts = map(eltype, fieldtypes(A))
+    S = promote_type(R, ts[1], ts[2])
+    return NamedTuple{K, Tuple{S, S, Base.tail(Base.tail(ts))...}}
 end
 
 function shapedims(dims::Tuple)
@@ -32,25 +35,15 @@ end
 
 Base.size(g::LazyGrid) = values(map(length, g.dirs))
 
-function apply_transform(rot::SMatrix{2, 2}, pos)
-    pos0 = rot * SVector{2}((pos[1], pos[2]))
-    pos1 = @set pos[1] = pos0[1]
-    pos2 = @set pos1[2] = pos0[2]
-    return pos2
+function apply_transform(rot::SMatrix{2, 2}, pos::Tuple)
+    xy = rot * SVector{2}(pos[1], pos[2])
+    return (xy[1], xy[2], Base.tail(Base.tail(pos))...)
 end
 
-Base.@propagate_inbounds function get_pos(A::LazyGrid{T, N}, I::Vararg{Int, N}) where {T, N}
-    pos0 = SVector{N}(ntuple(n -> rgetindex(A.dirs[n], I[n]), Val(N)))
-    pos = apply_transform(A.transform, pos0)
-    return Tuple(parent(pos))
-end
-
-
-Base.@propagate_inbounds @inline function Base.getindex(
-        A::LazyGrid{T, N, <:NamedTuple{K}},
-        I::Vararg{Int, N}
-    ) where {T, N, K}
-    return NamedTuple{K}(get_pos(A, I...))
+Base.@propagate_inbounds function Base.getindex(A::LazyGrid{T, N}, I::Vararg{Int, N}) where {T, N}
+    @boundscheck checkbounds(A, I...)
+    pos = map(rgetindex, values(A.dirs), I)
+    return T(apply_transform(A.transform, pos))
 end
 
 @inline getstyle() = Broadcast.DefaultArrayStyle{0}()
