@@ -131,7 +131,8 @@ end
     _pointmap!(dest, f, d::AbstractSingleDomain, executor)
 
 Writes `f(domainpoints(d)[I])` into the storage `dest` at every index `I` of `d` with
-[`_setpoint!`](@ref), using `executor`. Executor extensions add methods for their executor type.
+[`_setpoint!`](@ref), using `executor`. Executor extensions add methods for their executor type;
+an executor without one throws an `ArgumentError`.
 """
 function _pointmap!(dest, f, d, ::Serial)
     g = domainpoints(d)
@@ -190,13 +191,23 @@ function _pointmap!(dest, f, d, ::ThreadsEx{S}) where {S}
     return _threads_pointmap!(dest, f, domainpoints(d), Val(S))
 end
 
+_pointmap!(dest, f, d, executor) = _throw_executor(executor)
+
 """
     _threads_pointmap!(dest, f, points, ::Val{S})
 
 The loop of [`_pointmap!`](@ref) for `ThreadsEx{S}`. `S` is one of Julia's `Threads.@threads`
 schedulers or `:Enzyme`, `:Polyester` when that package is loaded.
 """
-function _threads_pointmap! end
+_threads_pointmap!(dest, f, g, ::Val{S}) where {S} = _throw_executor(ThreadsEx(S))
+
+@noinline function _throw_executor(executor)
+    throw(
+        ArgumentError(
+            "the executor $executor cannot run a loop; use `Serial()`, `ThreadsEx(s)` with `s` one of $schedulers, `ThreadsEx(:Enzyme)` or `ThreadsEx(:Polyester)` with Enzyme or Polyester loaded, or an OhMyThreads scheduler with OhMyThreads loaded"
+        )
+    )
+end
 
 for s in schedulers
     @eval function _threads_pointmap!(dest, f, g, ::Val{$(QuoteNode(s))})

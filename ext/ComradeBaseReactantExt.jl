@@ -219,22 +219,11 @@ end
 
 function ComradeBase.centroid(img::ComradeBase.RectiMap{T}) where {T <: Reactant.RNumber}
     im = ComradeBase._stokesI(img)
-    N = ndims(im)
     f = flux(im)
-    dp = domainpoints(im)
-    A = dp.transform
-    dms = ComradeBase.shapedims(dp.dirs)
-    itrx = ApplyIT{(:X, :Y)}(Base.Fix2(getproperty, :X), A)
-    itry = ApplyIT{(:X, :Y)}(Base.Fix2(getproperty, :Y), A)
-
-    if N == 2
-        dims = Colon()
-    else
-        dims = (X, Y)
-    end
-
-    xcent = sum(giterate.(Ref(itrx), dms.X, dms.Y) .* im; dims = dims)
-    ycent = sum(giterate.(Ref(itry), dms.X, dms.Y) .* im; dims = dims)
+    g = axisdims(im)
+    dims = ndims(im) == 2 ? Colon() : (X, Y)
+    xcent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :X), g) .* im; dims)
+    ycent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :Y), g) .* im; dims)
     return xcent ./ f, ycent ./ f
 end
 

@@ -207,4 +207,41 @@ end
     @test_throws "@threaded does not handle the executor ThreadsEx{:Polyester}()" threadsum(ThreadsEx(:Polyester), 20)
     @test_throws "@threaded does not handle the executor CPU" threadsum(CPU(), 20)
     @test_throws ArgumentError threadsum(DynamicScheduler(), 20)
+
+    function spectrum!(ex, ns, a, k)
+        ComradeBase.@threaded ex for i in eachindex(k)
+            for j in eachindex(k)
+                ns[j, i] = inv(1 + (k[j]^2 + k[i]^2)^a)
+            end
+        end
+        return nothing
+    end
+    function spectrumloss(a, ex, k)
+        ns = zeros(typeof(a), length(k), length(k))
+        spectrum!(ex, ns, a, k)
+        return sum(abs2, ns)
+    end
+    k = collect(range(0.1, 2.0; length = 12))
+    fd = (spectrumloss(1.3 + 1.0e-6, Serial(), k) - spectrumloss(1.3 - 1.0e-6, Serial(), k)) / 2.0e-6
+    # Without runtime activity: the Serial loop must not put `k` and `ns` in one closure.
+    rev = Enzyme.autodiff(Enzyme.Reverse, spectrumloss, Enzyme.Active, Enzyme.Active(1.3), Enzyme.Const(Serial()), Enzyme.Const(k))[1][1]
+    fwd = Enzyme.autodiff(Enzyme.Forward, spectrumloss, Enzyme.Duplicated(1.3, 1.0), Enzyme.Const(Serial()), Enzyme.Const(k))[1]
+    @test rev ≈ fd rtol = 1.0e-5
+    @test fwd ≈ fd rtol = 1.0e-5
+end
+
+@testset "unknown executor" begin
+    m = GaussTest()
+    @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" intensitymap(m, imagepixels(10.0, 10.0, 4, 4; executor = ThreadsEx(:nope)))
+    @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" visibilitymap(m, UnstructuredDomain((; U = randn(4), V = randn(4)); executor = ThreadsEx(:nope)))
+end
+
+@testset "image executor allocation" begin
+    m = GaussTest()
+    for g in (imagepixels(10.0, 10.0, 8, 6), imagepixels(10.0, 10.0, 8, 6; mdims = (Fr([230.0e9, 345.0e9]),), posang = 0.3))
+        img = intensitymap(m, g)
+        intensitymap!(img, m)
+        @test (@allocated intensitymap!(img, m)) == 0
+        JET.@test_opt target_modules = (ComradeBase,) intensitymap!(img, m)
+    end
 end

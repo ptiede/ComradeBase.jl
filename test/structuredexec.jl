@@ -112,6 +112,6 @@ end
     end
 
     @testset "unknown ThreadsEx scheduler throws" begin
-        @test_throws MethodError visibilitymap(GaussTest(), DD.rebuild(d1; executor = ThreadsEx(:nonexistent)))
+        @test_throws "the executor ThreadsEx{:nonexistent}() cannot run a loop" visibilitymap(GaussTest(), DD.rebuild(d1; executor = ThreadsEx(:nonexistent)))
     end
 end

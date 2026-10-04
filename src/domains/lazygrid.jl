@@ -1,12 +1,10 @@
 struct LazyGrid{T, N, Dirs <: NamedTuple, TR <: SMatrix{2, 2}} <: AbstractArray{T, N}
     dirs::Dirs
-    dims::Dims{N}
     transform::TR
     @inline function LazyGrid(dirs::NamedTuple, transform)
         T = geteltype(typeof(dirs))
         N = length(dirs)
-        dims = values(map(length, dirs))
-        return new{T, N, typeof(dirs), typeof(transform)}(dirs, dims, transform)
+        return new{T, N, typeof(dirs), typeof(transform)}(dirs, transform)
     end
 end
 
@@ -32,7 +30,7 @@ function shapedims(dims::NamedTuple{N}) where {N}
 end
 
 
-Base.size(g::LazyGrid) = g.dims
+Base.size(g::LazyGrid) = values(map(length, g.dirs))
 
 function apply_transform(rot::SMatrix{2, 2}, pos)
     pos0 = rot * SVector{2}((pos[1], pos[2]))

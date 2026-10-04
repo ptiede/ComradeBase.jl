@@ -360,8 +360,17 @@ function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, ex
     return nothing
 end
 
-_intensityfn(s, ::StructuredDomain) = Base.Fix1(intensity_point, s)
-function _intensityfn(s, g::AbstractRectiGrid)
-    dA = prod(pixelsizes(g))
-    return p -> intensity_point(s, p) * dA
+"""
+    PixelFlux(model, area)
+
+Called with a point `p`, returns `intensity_point(model, p) * area`: the flux in a pixel of
+that area.
+"""
+struct PixelFlux{M, T}
+    model::M
+    area::T
 end
+@inline (f::PixelFlux)(p) = intensity_point(f.model, p) * f.area
+
+_intensityfn(s, ::StructuredDomain) = Base.Fix1(intensity_point, s)
+_intensityfn(s, g::AbstractRectiGrid) = PixelFlux(s, prod(pixelsizes(g)))
