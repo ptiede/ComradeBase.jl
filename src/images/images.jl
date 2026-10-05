@@ -4,6 +4,7 @@ export IntensityMap, SpatialIntensityMap,
     phasecenter, baseimage, stokes
 
 include("intensitymap.jl")
+include("coherency.jl")
 
 
 export flux, centroid, second_moment, named_axisdims, axisdims,

@@ -15,7 +15,7 @@ using PrecompileTools
 export visibility,
     intensitymap, intensitymap!,
     visibilitymap, visibilitymap!,
-    StokesParams, CoherencyMatrix,
+    StokesParams, CoherencyMatrix, CirBasis, LinBasis,
     flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
     named_dims
 

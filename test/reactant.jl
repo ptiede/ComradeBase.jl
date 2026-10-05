@@ -1,6 +1,14 @@
 using Reactant
 Reactant.set_default_backend("cpu")
 
+# The optimized module of a map computation is plain elementwise work over full arrays.
+function test_clean_hlo(hlo)
+    for op in ("stablehlo.while", "stablehlo.scatter", "enzyme.batch", "dynamic_slice", "dynamic_update_slice")
+        @test !occursin(op, hlo)
+    end
+    return nothing
+end
+
 @testset "Reactant" begin
     x = rand(54, 32)
     r = Reactant.to_rarray(x)
@@ -32,12 +40,16 @@ Reactant.set_default_backend("cpu")
 
     @test baseimage(@jit(intensitymap(m2, go))) ≈ baseimage(intensitymap(m1, g))
     @test baseimage(@jit(visibilitymap(m2, guvr))) ≈ baseimage(visibilitymap(m1, guv))
+    test_clean_hlo(repr(@code_hlo intensitymap(m2, go)))
+    test_clean_hlo(repr(@code_hlo visibilitymap(m2, guvr)))
 
     for (mdims, posang) in (((Fr([230.0e9, 345.0e9]),), 0.0), ((), 0.3), ((Fr([230.0e9, 345.0e9]),), 0.3))
         gf = imagepixels(10.0, 10.0, 8, 6; mdims, posang)
         @test Array(baseimage(@jit(intensitymap(m2, @jit(identity(gf)))))) ≈ baseimage(intensitymap(m1, gf))
         guvf = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), mdims...); posang)
         @test Array(baseimage(@jit(visibilitymap(m2, @jit(identity(guvf)))))) ≈ baseimage(visibilitymap(m1, guvf))
+        test_clean_hlo(repr(@code_hlo intensitymap(m2, @jit(identity(gf)))))
+        test_clean_hlo(repr(@code_hlo visibilitymap(m2, @jit(identity(guvf)))))
     end
 
     g32 = RectiGrid(
@@ -122,9 +134,16 @@ Reactant.set_default_backend("cpu")
                 vp = @jit(visibilitymap(mpr, dr))
                 @test vp isa StokesMap
                 @test Array(baseimage(vp)) ≈ baseimage(visibilitymap(mp, d))
+                test_clean_hlo(repr(@code_hlo visibilitymap(m2, dr)))
+                test_clean_hlo(repr(@code_hlo visibilitymap(mpr, dr)))
             end
+            dpt = UnstructuredDomain((; U = 0.2 .* randn(npt), V = 0.2 .* randn(npt)))
+            vpt = @jit(visibilitymap(mpr, Reactant.to_rarray(dpt)))
+            @test Array(baseimage(vpt)) ≈ baseimage(visibilitymap(mp, dpt))
+            test_clean_hlo(repr(@code_hlo visibilitymap(mpr, Reactant.to_rarray(dpt))))
             dxy = UnstructuredDomain((X = randn(npt), Y = randn(npt)))
             @test Array(baseimage(@jit(intensitymap(m2, Reactant.to_rarray(dxy))))) ≈ baseimage(intensitymap(m1, dxy))
+            test_clean_hlo(repr(@code_hlo intensitymap(m2, Reactant.to_rarray(dxy))))
         end
     end
 end
@@ -253,6 +272,15 @@ end
             vis = @jit(visibilitymap(mr, sdvis))
             @test Array(baseimage(vis)) ≈ baseimage(visibilitymap(m, dvis))
             @test stored_blocks(ComradeBase.coords(sdvis).U, 1) == split_blocks(nvis, ndev)
+            @test stored_blocks(baseimage(vis), 1) == split_blocks(nvis, ndev)
+            test_clean_hlo(repr(@code_hlo visibilitymap(mr, sdvis)))
+            mp = PolTest(1.5)
+            mpr = @jit PolTest(ConcreteRNumber(mp.size))
+            vp = @jit(visibilitymap(mpr, sdvis))
+            @test Array(baseimage(vp)) ≈ baseimage(visibilitymap(mp, dvis))
+            @test stored_blocks(baseimage(vp), 1) == split_blocks(nvis, ndev)
+            @test stored_blocks(baseimage(vp), 2) == [1:4]
+            test_clean_hlo(repr(@code_hlo visibilitymap(mpr, sdvis)))
         end
 
         @testset "Raw sharding of an IntensityMap keeps the grid on the host" begin

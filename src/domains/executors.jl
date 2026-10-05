@@ -128,13 +128,14 @@ _check_threaded(ex) = _throw_threaded(ex)
 end
 
 """
-    _pointmap!(dest, f, d::AbstractSingleDomain, executor)
+    _pointmap!(img::IntensityMap, f, d::AbstractSingleDomain, executor)
 
-Writes `f(domainpoints(d)[I])` into the storage `dest` at every index `I` of `d` with
-[`_setpoint!`](@ref), using `executor`. Executor extensions add methods for their executor type;
-an executor without one throws an `ArgumentError`.
+Writes `f(domainpoints(d)[I])` into the map `img` at every index `I` of `d`, using `executor`.
+Loop executors write into the storage of `img` with [`_setpoint!`](@ref). Executor extensions
+add methods for their executor type; an executor without one throws an `ArgumentError`.
 """
-function _pointmap!(dest, f, d, ::Serial)
+function _pointmap!(img, f, d, ::Serial)
+    dest = baseimage(img)
     g = domainpoints(d)
     for I in _pointindices(dest, g)
         _setpoint!(dest, I, f(g[I]))
@@ -187,11 +188,11 @@ _trailingsize(dest, ::Val{M}) where {M} = ntuple(k -> size(dest, M + k), Val(ndi
     )
 end
 
-function _pointmap!(dest, f, d, ::ThreadsEx{S}) where {S}
-    return _threads_pointmap!(dest, f, domainpoints(d), Val(S))
+function _pointmap!(img, f, d, ::ThreadsEx{S}) where {S}
+    return _threads_pointmap!(baseimage(img), f, domainpoints(d), Val(S))
 end
 
-_pointmap!(dest, f, d, executor) = _throw_executor(executor)
+_pointmap!(img, f, d, executor) = _throw_executor(executor)
 
 """
     _threads_pointmap!(dest, f, points, ::Val{S})
@@ -249,22 +250,12 @@ end
 (c::ComponentFn)(xs...) = c.f(xs...)[c.k]
 
 """
-    _broadcast_pointmap!(dest, f, d::AbstractSingleDomain)
+    _broadcast_pointmap!(img::IntensityMap, f, d::AbstractSingleDomain)
 
 The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
-(KernelAbstractions, Reactant). Storage with dims after those of `d` gets one broadcast per
-entry of those dims, of the matching [`ComponentFn`](@ref) of `f`.
+(KernelAbstractions, Reactant). A [`StokesMap`](@ref) gets one broadcast per Stokes component.
 """
-function _broadcast_pointmap!(dest::AbstractArray{<:Any, N}, f, d::AbstractSingleDomain{<:NTuple{N, Any}}) where {N}
-    Broadcast.materialize!(dest, _pointbroadcast(f, d))
-    return nothing
-end
-
-function _broadcast_pointmap!(dest, f, d::AbstractSingleDomain)
-    M = ndims(d)
-    trailing = CartesianIndices(ntuple(k -> axes(dest, M + k), Val(ndims(dest) - M)))
-    for (n, k) in enumerate(trailing)
-        Broadcast.materialize!(_slab(dest, Tuple(k)...), _pointbroadcast(ComponentFn(f, n), d))
-    end
+function _broadcast_pointmap!(img, f, d)
+    img .= _pointbroadcast(f, d)
     return nothing
 end

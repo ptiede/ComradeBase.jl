@@ -485,8 +485,9 @@ function Base.show(io::IO, mime::MIME"text/plain", d::StructuredDomain)
     return print(io, ")")
 end
 
-# The point function is a broadcast argument, not the broadcast function, so that Reactant
-# accepts a model holding traced values.
+# `f` is passed in a `Ref` broadcast argument: under Reactant, broadcasting a callable that
+# holds traced values (a model with traced parameters) fails with
+# `AssertionError: input shapes are Tuple{Vararg{Int64}}[(), (6, 2), (6, 2), (6, 2)]`.
 function _pointbroadcast(f, d::StructuredDomain)
     sc = shapedcoords(d)
     return Broadcast.broadcasted(_applynamed, Ref(NamedPointFn{keys(sc)}(f)), values(sc)...)

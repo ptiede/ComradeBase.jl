@@ -3,7 +3,8 @@ module ComradeBaseOhMyThreadsExt
 using ComradeBase
 using OhMyThreads
 
-function ComradeBase._pointmap!(dest, f, d, executor::OhMyThreads.Scheduler)
+function ComradeBase._pointmap!(img, f, d, executor::OhMyThreads.Scheduler)
+    dest = baseimage(img)
     g = domainpoints(d)
     cis = ComradeBase._pointindices(dest, g)
     @tasks for i in eachindex(IndexLinear(), cis)

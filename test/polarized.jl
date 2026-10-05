@@ -1,4 +1,4 @@
-using ComradeBase: StokesMap, IsPolarized, Pt, StructuredDomain
+using ComradeBase: StokesMap, CoherencyMap, IsPolarized, Pt, StructuredDomain
 
 pointmap_into(dest, f, d, ex) = (ComradeBase._pointmap!(dest, f, d, ex); dest)
 readpoint(img, i, j, k) = img[i, j, k]
@@ -6,6 +6,28 @@ writepoint!(img, v, i, j, k) = (img[i, j, k] = v; nothing)
 stokescomponent(img, k) = stokes(img, k)
 times2(img) = img .* 2
 slabloss(a) = sum(abs2, stokes(a, :Q)) + sum(stokes(a, :V))
+coherencyroundtrip(img, b) = stokesmap(coherencymap(img, b), b)
+coherencyroundtrip!(img, b) = stokesmap!(coherencymap!(img, b), b)
+
+function test_convert_loop(f, b, d, src)
+    ComradeBase._convert!(f, b, d, src, Serial())
+    @test (@allocated ComradeBase._convert!(f, b, d, src, Serial())) == 0
+    JET.@test_opt target_modules = (ComradeBase,) ComradeBase._convert!(f, b, d, src, Serial())
+    JET.@test_opt target_modules = (ComradeBase,) ComradeBase._convert!(f, b, d, src, ThreadsEx())
+    return nothing
+end
+
+# A coherency map returned from `@jit` holds a host `ReshapedArray` around the device array.
+function test_jit_coherency_storage(c, cref, vis, b)
+    @test c isa CoherencyMap
+    @test baseimage(c) isa Base.ReshapedArray
+    @test Array(baseimage(c)) ≈ baseimage(cref)
+    s = @jit stokesmap(c, b)
+    @test Array(baseimage(s)) ≈ baseimage(vis)
+    r = @jit times2(c)
+    @test Array(baseimage(r)) ≈ 2 .* baseimage(cref)
+    return nothing
+end
 
 @testset "Polarized maps" begin
     g = imagepixels(10.0, 12.0, 6, 5)
@@ -183,10 +205,10 @@ slabloss(a) = sum(abs2, stokes(a, :Q)) + sum(stokes(a, :V))
         dpt = UnstructuredDomain((; U = 0.1 .* randn(7), V = 0.1 .* randn(7)))
         m = PolTest(1.5)
         f = Base.Fix1(ComradeBase.visibility_point, m)
-        dest = baseimage(ComradeBase.allocate_vismap(m, dpt))
+        dest = ComradeBase.allocate_vismap(m, dpt)
         @test @inferred(pointmap_into(dest, f, dpt, Serial())) === dest
         ref = map(p -> ComradeBase.visibility_point(m, p), domainpoints(dpt))
-        @test dest ≈ asstorage(ref)
+        @test baseimage(dest) ≈ asstorage(ref)
         pointmap_into(dest, f, dpt, Serial())
         @test (@allocated pointmap_into(dest, f, dpt, Serial())) == 0
         JET.@test_opt target_modules = (ComradeBase,) pointmap_into(dest, f, dpt, Serial())
@@ -200,8 +222,8 @@ slabloss(a) = sum(abs2, stokes(a, :Q)) + sum(stokes(a, :V))
             visibilitymap!(vis, mv)
             @test (@allocated visibilitymap!(vis, mv)) == 0
         end
-        @test_throws "cannot fill the trailing dims of size ()" pointmap_into(zeros(ComplexF64, 7), f, dpt, Serial())
-        @test_throws "does not start with the axes" pointmap_into(zeros(ComplexF64, 6, 4), f, dpt, Serial())
+        @test_throws "cannot fill the trailing dims of size ()" ComradeBase._setpoint!(zeros(ComplexF64, 7), CartesianIndex(1), f(first(domainpoints(dpt))))
+        @test_throws "does not start with the axes" ComradeBase._pointindices(zeros(ComplexF64, 6, 4), domainpoints(dpt))
     end
 
     @testset "analytic polarized maps on every executor" begin
@@ -222,6 +244,226 @@ slabloss(a) = sum(abs2, stokes(a, :Q)) + sum(stokes(a, :V))
     end
 end
 
+@testset "Coherency maps" begin
+    g = imagepixels(10.0, 12.0, 6, 5)
+    img = IntensityMap(rand(6, 5, 4), g, Stokes())
+    dfr = StructuredDomain((Pt(5), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(5), v = 3.0e4 .* randn(5))
+    vis = visibilitymap(PolTest(1.5), dfr)
+    bases = (CirBasis(), LinBasis())
+
+    @testset "construction and dims" begin
+        S = rand(6, 5, 2, 2)
+        c = @inferred IntensityMap(S, g, Fa(), Fb())
+        @test c isa CoherencyMap{Float64, 4}
+        @test !(c isa StokesMap)
+        @test baseimage(c) === S
+        @test axisdims(c) === g
+        feeds = (Fa(DD.NoLookup(Base.OneTo(2))), Fb(DD.NoLookup(Base.OneTo(2))))
+        @test dims(c) == (dims(g)..., feeds...)
+        @test @inferred(eldims(c)) isa Tuple{Fa, Fb}
+        @test_throws "with trailing dims (:Fa, :Fb) needs size (6, 5, 2, 2)" IntensityMap(rand(6, 5, 2), g, Fa(), Fb())
+        @test_throws "with trailing dims (:Fa, :Fb) needs size (6, 5, 2, 2)" IntensityMap(rand(6, 5, 4), g, Fa(), Fb())
+
+        for x in (img, vis), b in bases
+            cx = @inferred coherencymap(x, b)
+            @test cx isa CoherencyMap{complex(eltype(x)), ndims(x) + 1}
+            @test axisdims(cx) === axisdims(x)
+            @test dims(cx) == (dims(axisdims(x))..., feeds...)
+            @test @inferred(eldims(cx)) isa Tuple{Fa, Fb}
+        end
+    end
+
+    @testset "round trip and agreement with PolarizedTypes" begin
+        for x in (img, vis), b in bases
+            c = coherencymap(x, b)
+            r = @inferred stokesmap(c, b)
+            @test r isa StokesMap{complex(eltype(x)), ndims(x)}
+            @test axisdims(r) === axisdims(x)
+            @test baseimage(r) ≈ baseimage(x)
+            P = baseimage(x)
+            C = baseimage(c)
+            for I in CartesianIndices(baseimage(stokes(x, :I)))
+                s = StokesParams(P[I, 1], P[I, 2], P[I, 3], P[I, 4])
+                @test C[I, :, :] ≈ CoherencyMatrix(s, b)
+            end
+        end
+    end
+
+    @testset "components" begin
+        c = coherencymap(vis, CirBasis())
+        e12 = @inferred coherency(c, 1, 2)
+        @test e12 isa IntensityMap{ComplexF64, 2}
+        @test !(e12 isa CoherencyMap)
+        @test axisdims(e12) === dfr
+        @test e12 == baseimage(c)[:, :, 1, 2]
+        @test e12 ≈ stokes(vis, :Q) .+ im .* stokes(vis, :U)
+        e12[1, 1] = 0
+        @test baseimage(c)[1, 1, 1, 2] == 0
+        @test typeof(coherency(c, 2, 1)) === typeof(e12)
+        coherency(c, 2, 1)
+        @test (@allocated coherency(c, 2, 1)) == 0
+        JET.@test_opt target_modules = (ComradeBase,) coherency(c, 2, 1)
+        q = @inferred stokescomponent(vis, :Q)
+        @test axisdims(q) === dfr
+        stokescomponent(vis, :Q)
+        @test (@allocated stokescomponent(vis, :Q)) == 0
+        JET.@test_opt target_modules = (ComradeBase,) stokescomponent(vis, :Q)
+        @test axisdims(view(vis, Stokes(2))) === dfr
+        @test axisdims(img[Stokes = 3]) === g
+    end
+
+    @testset "unsupported basis" begin
+        c = coherencymap(img, CirBasis())
+        msg = "the supported bases are CirBasis() and LinBasis()"
+        @test_throws msg coherencymap(img, (CirBasis(), LinBasis()))
+        @test_throws msg coherencymap(img, :circular)
+        @test_throws msg stokesmap(c, (CirBasis(), CirBasis()))
+    end
+
+    @testset "slicing and rebuild" begin
+        c = coherencymap(img, CirBasis())
+        @test @inferred(ComradeBase._splitdims(dims(c))) == (dims(g), eldims(c))
+        @test @inferred(ComradeBase._splitdims(dims(c)[[1, 2, 4]])) == ((), dims(c)[[1, 2, 4]])
+        @test @inferred(ComradeBase._splitdims(dims(c)[1:3])) == ((), dims(c)[1:3])
+        @test @inferred(ComradeBase._splitdims((dims(g)..., Fb(1:2)))) == ((), (dims(g)..., Fb(1:2)))
+        @test @inferred(ComradeBase._splitdims(dims(c)[3:4])) == ((), dims(c)[3:4])
+
+        e21 = c[Fa = 2, Fb = 1]
+        @test e21 isa IntensityMap{ComplexF64, 2}
+        @test dims(e21) == dims(g)
+        @test e21 == coherency(c, 2, 1)
+        @test c[Fa = 1] isa DD.DimArray
+        @test !(c[Fa = 1] isa IntensityMap)
+        @test c[Fb = 2] isa DD.DimArray
+        @test !(c[Fb = 2] isa IntensityMap)
+        @test c[Fb = 2] == baseimage(c)[:, :, :, 2]
+        sx = c[X = 2:4]
+        @test sx isa CoherencyMap{ComplexF64, 4}
+        @test baseimage(sx) == baseimage(c)[2:4, :, :, :]
+        @test c[X = 2, Y = 3] isa DD.DimMatrix
+
+        cs = coherencymap(vis, LinBasis())
+        sp = cs[Pt(2:4)]
+        @test sp isa CoherencyMap{ComplexF64, 4}
+        @test ComradeBase.coords(axisdims(sp)).u == ComradeBase.coords(dfr).u[2:4]
+        @test cs[Fa = 1] isa DD.DimArray
+        @test !(cs[Fa = 1] isa IntensityMap)
+        @test cs[Fb = 1] isa DD.DimArray
+        @test cs[Pt(2)] isa DD.DimArray
+        @test cs[Fr(1)] isa CoherencyMap{ComplexF64, 3}
+        @test cs[Fa = 1, Fb = 1] == coherency(cs, 1, 1)
+    end
+
+    @testset "similar, copy and broadcasting" begin
+        c = coherencymap(img, CirBasis())
+        s = @inferred similar(c)
+        @test typeof(s) === typeof(c)
+        @test baseimage(s) !== baseimage(c)
+        cc = @inferred copy(c)
+        @test typeof(cc) === typeof(c)
+        @test baseimage(cc) == baseimage(c)
+        r = @inferred times2(c)
+        @test typeof(r) === typeof(c)
+        @test baseimage(r) ≈ 2 .* baseimage(c)
+        @test conj.(c) isa CoherencyMap
+    end
+
+    @testset "image reductions fail fast" begin
+        c = coherencymap(img, CirBasis())
+        @test_throws "`flux` is not defined for a map with trailing dims (:Fa, :Fb)" flux(c)
+        @test_throws "`second_moment` is not defined for a map with trailing dims (:Fa, :Fb)" second_moment(c)
+        creal = IntensityMap(rand(6, 5, 2, 2), g, Fa(), Fb())
+        @test_throws "`centroid` is not defined for a map with trailing dims (:Fa, :Fb)" centroid(creal)
+        @test_throws "a Stokes I component is not defined" ComradeBase._stokesI(creal)
+    end
+
+    @testset "in-place conversions" begin
+        for b in bases
+            v = copy(vis)
+            S = baseimage(v)
+            c = @inferred coherencymap!(v, b)
+            @test c isa CoherencyMap{ComplexF64, 4}
+            @test axisdims(c) === dfr
+            @test baseimage(c) ≈ baseimage(coherencymap(vis, b))
+            @test pointer(baseimage(c)) == pointer(S)
+            S[2] = 7
+            @test baseimage(c)[2] == 7
+            c = coherencymap!(copy(vis), b)
+            Sc = baseimage(c)
+            s = @inferred stokesmap!(c, b)
+            @test s isa StokesMap{ComplexF64, 3}
+            @test axisdims(s) === dfr
+            @test baseimage(s) ≈ baseimage(vis)
+            @test pointer(baseimage(s)) == pointer(Sc)
+            @test baseimage(coherencyroundtrip!(copy(vis), b)) ≈ baseimage(vis)
+            @test baseimage(stokesmap!(coherencymap(vis, b), b)) ≈ baseimage(vis)
+        end
+
+        for b in bases
+            v = copy(vis)
+            coherencymap!(v, b)
+            @test (@allocated stokesmap!(coherencymap!(v, b), b)) <= 512
+            src = ComradeBase._stokesslabs(v)
+            dest = ComradeBase._stokesslabs(similar(v))
+            test_convert_loop(ComradeBase._coherencypoint, b, src, src)
+            test_convert_loop(ComradeBase._coherencypoint, b, dest, src)
+            test_convert_loop(ComradeBase._stokespoint, b, src, src)
+            test_convert_loop(ComradeBase._stokespoint, b, dest, src)
+            @test all(s -> s isa SubArray && Base.IndexStyle(s) isa IndexLinear, src)
+        end
+        JET.@test_opt target_modules = (ComradeBase,) coherencymap!(copy(vis), CirBasis())
+        JET.@test_opt target_modules = (ComradeBase,) stokesmap!(coherencymap(vis, LinBasis()), LinBasis())
+
+        executors = (
+            Serial(), ThreadsEx(), ThreadsEx(:static), ThreadsEx(:Polyester), ThreadsEx(:Enzyme),
+            DynamicScheduler(), StaticScheduler(), CPU(),
+        )
+        for ex in executors, b in bases
+            vex = IntensityMap(copy(baseimage(vis)), DD.rebuild(dfr; executor = ex), Stokes())
+            cex = coherencymap(vex, b)
+            @test baseimage(cex) ≈ baseimage(coherencymap(vis, b))
+            @test baseimage(stokesmap(cex, b)) ≈ baseimage(vis)
+            c = coherencymap!(vex, b)
+            @test baseimage(c) ≈ baseimage(coherencymap(vis, b))
+            @test baseimage(stokesmap!(c, b)) ≈ baseimage(vis)
+        end
+
+        kaalloc(n) = begin
+            x = IntensityMap(rand(ComplexF64, n, 4), UnstructuredDomain((; U = randn(n), V = randn(n))), Stokes())
+            src = ComradeBase._stokesslabs(x)
+            dest = ComradeBase._stokesslabs(similar(x))
+            ComradeBase._convert!(ComradeBase._coherencypoint, CirBasis(), dest, src, CPU())
+            @allocated ComradeBase._convert!(ComradeBase._coherencypoint, CirBasis(), dest, src, CPU())
+        end
+        @test kaalloc(10) == kaalloc(10_000)
+
+        img32 = IntensityMap(rand(Float32, 6, 5, 4), g, Stokes())
+        for b in bases
+            c32 = coherencymap(img32, b)
+            @test eltype(c32) === ComplexF32
+            s32 = stokesmap(c32, b)
+            @test eltype(s32) === ComplexF32
+            @test eltype(stokesmap!(coherencymap!(s32, b), b)) === ComplexF32
+        end
+
+        @test_throws "`coherencymap!` needs complex storage, but the map has element type Float64; use `coherencymap` instead" coherencymap!(copy(img), CirBasis())
+        creal = IntensityMap(rand(6, 5, 2, 2), g, Fa(), Fb())
+        @test_throws "`stokesmap!` needs complex storage, but the map has element type Float64; use `stokesmap` instead" stokesmap!(creal, CirBasis())
+        msg = "the supported bases are CirBasis() and LinBasis()"
+        @test_throws msg coherencymap!(copy(vis), :circular)
+        @test_throws msg stokesmap!(coherencymap(vis, CirBasis()), :circular)
+    end
+
+    @testset "type stability" begin
+        JET.@test_opt target_modules = (ComradeBase,) coherencymap(img, CirBasis())
+        JET.@test_opt target_modules = (ComradeBase,) coherencymap(vis, LinBasis())
+        c = coherencymap(vis, CirBasis())
+        JET.@test_opt target_modules = (ComradeBase,) stokesmap(c, CirBasis())
+        JET.@test_opt target_modules = (ComradeBase,) stokesmap(c, LinBasis())
+        @test @inferred(coherencyroundtrip(img, LinBasis())) isa StokesMap{ComplexF64, 3}
+    end
+end
+
 @testset "Polarized maps under Reactant" begin
     m = PolTest(1.5)
     mr = Reactant.to_rarray(m; track_numbers = Number)
@@ -231,17 +473,18 @@ end
     ip = @jit intensitymap(mr, gr)
     @test ip isa StokesMap
     @test Array(baseimage(ip)) ≈ baseimage(intensitymap(m, g))
-    @test !occursin("stablehlo.while", repr(@code_hlo intensitymap(mr, gr)))
+    test_clean_hlo(repr(@code_hlo intensitymap(mr, gr)))
 
     guv = RectiGrid((U(range(-0.2, 0.2; length = 6)), V(range(-0.2, 0.2; length = 5))))
     @test Array(baseimage(@jit visibilitymap(mr, Reactant.to_rarray(guv)))) ≈ baseimage(visibilitymap(m, guv))
+    test_clean_hlo(repr(@code_hlo visibilitymap(mr, Reactant.to_rarray(guv))))
 
     dfr = StructuredDomain((Pt(6), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(6), v = 3.0e4 .* randn(6))
     dfrr = Reactant.to_rarray(dfr)
     vp = @jit visibilitymap(mr, dfrr)
     @test vp isa StokesMap
     @test Array(baseimage(vp)) ≈ baseimage(visibilitymap(m, dfr))
-    @test !occursin("stablehlo.while", repr(@code_hlo visibilitymap(mr, dfrr)))
+    test_clean_hlo(repr(@code_hlo visibilitymap(mr, dfrr)))
 
     img = IntensityMap(rand(8, 6, 4), g, Stokes())
     rimg = Reactant.to_rarray(img)
@@ -250,6 +493,39 @@ end
     @test dims(r) == dims(img)
     @test Array(baseimage(r)) ≈ 2 .* baseimage(img)
     @test Float64(@jit slabloss(rimg)) ≈ slabloss(img)
+
+    for b in (CirBasis(), LinBasis())
+        rc = @jit coherencymap(rimg, b)
+        @test dims(rc) == dims(coherencymap(img, b))
+        test_jit_coherency_storage(rc, coherencymap(img, b), img, b)
+        rs = @jit stokesmap(rc, b)
+        @test rs isa StokesMap
+        @test !(baseimage(rs) isa Base.ReshapedArray)
+        test_clean_hlo(repr(@code_hlo coherencymap(rimg, b)))
+        test_clean_hlo(repr(@code_hlo stokesmap(rc, b)))
+
+        img32 = IntensityMap(rand(Float32, 8, 6, 4), g, Stokes())
+        rc32 = @jit coherencymap(Reactant.to_rarray(img32), b)
+        @test eltype(baseimage(rc32)) === ComplexF32
+        @test Array(baseimage(rc32)) ≈ baseimage(coherencymap(img32, b))
+        @test eltype(baseimage(@jit stokesmap(rc32, b))) === ComplexF32
+        @test !occursin("f64", repr(@code_hlo coherencymap(Reactant.to_rarray(img32), b)))
+
+        cv = visibilitymap(m, dfr)
+        rcv = @jit coherencymap!(Reactant.to_rarray(cv), b)
+        test_jit_coherency_storage(rcv, coherencymap(cv, b), cv, b)
+        test_clean_hlo(repr(@code_hlo coherencymap!(Reactant.to_rarray(cv), b)))
+        dpt = UnstructuredDomain((; U = 0.1 .* randn(9), V = 0.1 .* randn(9)))
+        vpt = visibilitymap(m, dpt)
+        rpt = Reactant.to_rarray(vpt)
+        @test Array(baseimage(@jit coherencymap(rpt, b))) ≈ baseimage(coherencymap(vpt, b))
+        @test Array(baseimage(@jit stokesmap(Reactant.to_rarray(coherencymap(vpt, b)), b))) ≈ baseimage(vpt)
+        @test Array(baseimage(@jit coherencymap!(Reactant.to_rarray(vpt), b))) ≈ baseimage(coherencymap(vpt, b))
+        test_clean_hlo(repr(@code_hlo coherencymap(rpt, b)))
+        test_clean_hlo(repr(@code_hlo stokesmap(Reactant.to_rarray(coherencymap(vpt, b)), b)))
+        test_clean_hlo(repr(@code_hlo coherencymap!(Reactant.to_rarray(vpt), b)))
+        @test_throws "`stokesmap!` does not run under Reactant" @jit stokesmap!(Reactant.to_rarray(coherencymap(cv, b)), b)
+    end
 end
 
 @testset "Sharding polarized maps" begin
@@ -309,6 +585,39 @@ end
             simg = shard(img, ShardLayout(mesh; Stokes = :d))
             @test stored_blocks(baseimage(simg), 3) == split_blocks(4, ndev)
             @test Array(baseimage(@jit times2(simg))) ≈ 2 .* baseimage(img)
+        end
+
+        @testset "coherency of a (Pt, Fr) map along Fr" begin
+            nf = 2ndev
+            d = StructuredDomain(
+                (Pt(6), Fr(range(86.0e9, 345.0e9; length = nf)));
+                u = 3.0e4 .* randn(6), v = 3.0e4 .* randn(6)
+            )
+            vis = visibilitymap(PolTest(1.5), d)
+            svis = shard(vis, ShardLayout(mesh; Fr = :d))
+            @test stored_blocks(baseimage(svis), 2) == split_blocks(nf, ndev)
+            c = coherencymap(vis, CirBasis())
+            test_clean_hlo(repr(@code_hlo coherencymap(svis, CirBasis())))
+            test_clean_hlo(repr(@code_hlo coherencymap!(shard(vis, ShardLayout(mesh; Fr = :d)), CirBasis())))
+            test_clean_hlo(repr(@code_hlo stokesmap(shard(c, ShardLayout(mesh; Fr = :d)), CirBasis())))
+            rt = @jit coherencyroundtrip(svis, CirBasis())
+            @test stored_blocks(baseimage(rt), 2) == split_blocks(nf, ndev)
+            @test stored_blocks(baseimage(rt), 3) == [1:4]
+            @test Array(baseimage(rt)) ≈ baseimage(vis)
+            for convert in (coherencymap, coherencymap!), sharded in (false, true)
+                x = sharded ? shard(vis, ShardLayout(mesh; Fr = :d)) : Reactant.to_rarray(vis)
+                sc = @jit convert(x, CirBasis())
+                test_jit_coherency_storage(sc, c, vis, CirBasis())
+                if sharded
+                    @test stored_blocks(parent(baseimage(sc)), 2) == split_blocks(nf, ndev)
+                    @test stored_blocks(parent(baseimage(sc)), 3) == [1:4]
+                end
+            end
+            shc = shard(c, ShardLayout(mesh; Fr = :d))
+            @test shc isa CoherencyMap
+            @test stored_blocks(baseimage(shc), 2) == split_blocks(nf, ndev)
+            @test stored_blocks(baseimage(shc), 3) == [1:2]
+            @test_throws "available dimensions are (:Pt, :Fr, :Fa, :Fb)" shard(c, ShardLayout(mesh; Stokes = :d))
         end
     end
 end

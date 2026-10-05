@@ -46,7 +46,7 @@ function visibilitymap_analytic!(vis, m::AbstractModel)
 end
 
 function visibilitymap_analytic_executor!(vis, m::AbstractModel, executor)
-    _pointmap!(baseimage(vis), Base.Fix1(visibility_point, m), axisdims(vis), executor)
+    _pointmap!(vis, Base.Fix1(visibility_point, m), axisdims(vis), executor)
     return nothing
 end
 
