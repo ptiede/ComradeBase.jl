@@ -3,6 +3,13 @@ export domainpoints,
     named_dims, dims, header, axisdims, executor,
     posang, update_spat, rotmat, imgdomain, visdomain
 
+"""
+    AbstractDomain
+
+The supertype of the domains a model is evaluated on: single domains such as
+[`RectiGrid`](@ref) and [`StructuredDomain`](@ref), and [`AbstractDualDomain`](@ref)s that
+pair an image domain with a visibility domain.
+"""
 abstract type AbstractDomain end
 abstract type AbstractSingleDomain{D, E} <: AbstractDomain end
 

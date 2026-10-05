@@ -10,6 +10,28 @@ DD.@dim Stokes "Stokes"
 DD.@dim Fa "feed a"
 DD.@dim Fb "feed b"
 
+"""
+    Stokes
+
+The polarization dim of a [`StokesMap`](@ref): a trailing dim of length 4 holding Stokes
+I, Q, U, V in that order.
+"""
+Stokes
+
+"""
+    Fa
+
+The feed dim of antenna a in a [`CoherencyMap`](@ref), of length 2.
+"""
+Fa
+
+"""
+    Fb
+
+The feed dim of antenna b in a [`CoherencyMap`](@ref), of length 2.
+"""
+Fb
+
 export IntensityMap, StokesMap, CoherencyMap, Fr, X, Y, Ti, U, V, Stokes, Fa, Fb, eldims,
     coherency, coherencymap, stokesmap, coherencymap!, stokesmap!
 
