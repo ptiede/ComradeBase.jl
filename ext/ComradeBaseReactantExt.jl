@@ -125,6 +125,13 @@ Base.@propagate_inbounds function ComradeBase.rgetindex(I::AbstractArray, i::TIn
     return @allowscalar I[i...]
 end
 
+# A range at a traced index steps from its start instead of calling `getindex`: Reactant's
+# own range indexing lowers a `LinRange` lookup to `Base.lerpi`, which accepts only plain
+# integers.
+Base.@propagate_inbounds function ComradeBase.rgetindex(I::AbstractRange, i::TInt)
+    return first(I) + (i - one(i)) * step(I)
+end
+
 Base.@propagate_inbounds function ComradeBase.rgetindex(I::Reactant.AnyTracedRArray, i::TInt...)
     return @allowscalar I[i...]
 end

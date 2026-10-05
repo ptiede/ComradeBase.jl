@@ -33,7 +33,7 @@ The feed dim of antenna b in a [`CoherencyMap`](@ref), of length 2.
 Fb
 
 export IntensityMap, StokesMap, CoherencyMap, Fr, X, Y, Ti, U, V, Stokes, Fa, Fb, eldims,
-    coherency, coherencymap, stokesmap, coherencymap!, stokesmap!
+    coherency, coherencymap, stokesmap, coherencymap!, stokesmap!, spatialdims
 
 """
     $(TYPEDEF)
@@ -260,6 +260,23 @@ end
 
 const SpatialDims = Tuple{<:DD.Dimensions.X, <:DD.Dimensions.Y}
 const SpatialIntensityMap{T, G <: AbstractRectiGrid, A} = IntensityMap{T, 2, <:SpatialDims, G, A}
+
+"""
+    spatialdims(g::AbstractRectiGrid)
+    spatialdims(img::IntensityMap)
+
+Return the sub-grid spanned by the *first two* dimensions of `g`, dropping any additional
+dimensions such as frequency (`Fr`) or time (`Ti`).
+
+Grids here place the two spatial dimensions first (see `SpatialDims`), so those two
+are `X` and `Y` for any conventionally constructed grid. The names are not checked:
+whatever the first two dimensions are is what you get back.
+"""
+function spatialdims(g::AbstractRectiGrid)
+    ds = dims(g)
+    return rebuild(g; dims = ds[1:2])
+end
+spatialdims(img::IntensityMap) = spatialdims(axisdims(img))
 
 """
     IntensityMap(data::AbstractArray, g::AbstractSingleDomain; refdims=(), name=Symbol(""))

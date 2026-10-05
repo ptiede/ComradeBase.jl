@@ -198,3 +198,17 @@ ComradeBase.build_param(param::ExpParams, p) = exp(param.scale) * p.Fr
 
     @test ComradeBase.build_param(4.0, (; Fr = 3.0)) ≈ 4.0
 end
+
+@testset "paramtype separates fields from values" begin
+    # A field of values over the grid unwraps to its element type; a single value does not.
+    # `StokesParams` is a `FieldVector`, so it is a value despite being an `AbstractVector`.
+    @test ComradeBase.paramtype(Matrix{Float64}) === Float64
+    @test ComradeBase.paramtype(StokesParams{Float64}) === StokesParams{Float64}
+    @test ComradeBase.paramtype(Matrix{StokesParams{Float64}}) === StokesParams{Float64}
+    @test ComradeBase.paramtype(typeof(view(rand(8, 8), 2:4, 2:4))) === Float64
+
+    # An array-valued `DomainParams` still reports the element type, so it promotes with
+    # the numbers it is combined with.
+    @test ComradeBase.paramtype(ExpParams{Matrix{Float64}}) === Float64
+    @test promote_type(ComradeBase.paramtype(ExpParams{Matrix{Float64}}), Float64) === Float64
+end
