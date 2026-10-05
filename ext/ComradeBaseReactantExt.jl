@@ -212,7 +212,7 @@ end
 # `f` is passed in a `Ref` broadcast argument: broadcasting a callable that holds traced
 # values (a model with traced parameters) fails with
 # `AssertionError: input shapes are Tuple{Vararg{Int64}}[(), (8, 6), (8, 6)]`.
-function ComradeBase._pointbroadcast(f, d::RectiGrid{<:Any, ReactantEx})
+function ComradeBase._pointbroadcast(f::F, d::RectiGrid{<:Any, ReactantEx}) where {F}
     dms = map(Reactant.materialize_traced_array ∘ basedim, named_dims(d))
     itp = ApplyIT{keys(dms)}(f, rotmat(d))
     return Broadcast.broadcasted(giterate, Ref(itp), ComradeBase.shapedims(values(dms))...)
@@ -231,13 +231,13 @@ end
 
 ComradeBase._numbertype(P::AnyTracedRArray) = unwrapped_eltype(P)
 
-function ComradeBase._pointmap!(img, f, d, ::ReactantEx)
+function ComradeBase._pointmap!(img, f::F, d, ::ReactantEx) where {F}
     return ComradeBase._broadcast_pointmap!(img, f, d)
 end
 
 # Writes into the slabs of a 2-d traced array lower to `scatter`; building the whole storage
 # with `cat` does not.
-function ComradeBase._pointmap!(img::ComradeBase.StokesMap, f, d, ::ReactantEx)
+function ComradeBase._pointmap!(img::ComradeBase.StokesMap, f::F, d, ::ReactantEx) where {F}
     P = baseimage(img)
     c1 = Broadcast.materialize(ComradeBase._pointbroadcast(ComradeBase.ComponentFn(f, 1), d))
     c2 = Broadcast.materialize(ComradeBase._pointbroadcast(ComradeBase.ComponentFn(f, 2), d))

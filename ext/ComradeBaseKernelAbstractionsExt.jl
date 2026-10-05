@@ -14,7 +14,7 @@ end
 
 ComradeBase._storage(b::Backend, ::Type{T}, sz) where {T} = allocate(b, T, sz)
 
-function ComradeBase._pointmap!(img, f, d, ::Backend)
+function ComradeBase._pointmap!(img, f::F, d, ::Backend) where {F}
     return ComradeBase._broadcast_pointmap!(img, f, d)
 end
 

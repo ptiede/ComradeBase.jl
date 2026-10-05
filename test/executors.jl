@@ -219,3 +219,17 @@ end
         JET.@test_opt target_modules = (ComradeBase,) intensitymap!(img, m)
     end
 end
+
+@testset "broadcast executor allocation" begin
+    d = StructuredDomain((Pt(9), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(9), v = 3.0e4 .* randn(9), executor = CPU())
+    ComradeBase.shapedcoords(d)
+    shaped = @allocated ComradeBase.shapedcoords(d)
+    for (m, ncomp) in ((GaussTest(), 1), (PolTest(1.5), 4))
+        vis = visibilitymap(m, d)
+        visibilitymap!(vis, m)
+        @test (@allocated visibilitymap!(vis, m)) <= ncomp * shaped
+        img = intensitymap(m, imagepixels(10.0, 10.0, 8, 6; executor = CPU()))
+        intensitymap!(img, m)
+        @test (@allocated intensitymap!(img, m)) == 0
+    end
+end

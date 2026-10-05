@@ -208,7 +208,7 @@ end
     throw(ArgumentError("`$K` is not a Stokes component; the components are I, Q, U, V"))
 end
 
-function _broadcast_pointmap!(img::StokesMap, f, d)
+function _broadcast_pointmap!(img::StokesMap, f::F, d) where {F}
     for k in 1:4
         img[Stokes(k)] .= _pointbroadcast(ComponentFn(f, k), d)
     end

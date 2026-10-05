@@ -236,7 +236,7 @@ NamedPointFn{K}(f) where {K} = NamedPointFn{K, typeof(f)}(f)
 
 Returns the lazy broadcast of `f` over the points of `d`, with the axes of `d`.
 """
-_pointbroadcast(f, d::AbstractSingleDomain) = Broadcast.broadcasted(f, domainpoints(d))
+_pointbroadcast(f::F, d::AbstractSingleDomain) where {F} = Broadcast.broadcasted(f, domainpoints(d))
 
 """
     ComponentFn(f, k)
@@ -255,7 +255,7 @@ end
 The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
 (KernelAbstractions, Reactant). A [`StokesMap`](@ref) gets one broadcast per Stokes component.
 """
-function _broadcast_pointmap!(img, f, d)
+function _broadcast_pointmap!(img, f::F, d) where {F}
     img .= _pointbroadcast(f, d)
     return nothing
 end

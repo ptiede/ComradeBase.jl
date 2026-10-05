@@ -41,7 +41,6 @@ function apply_transform(rot::SMatrix{2, 2}, pos::Tuple)
 end
 
 Base.@propagate_inbounds function Base.getindex(A::LazyGrid{T, N}, I::Vararg{Int, N}) where {T, N}
-    @boundscheck checkbounds(A, I...)
     pos = map(rgetindex, values(A.dirs), I)
     return T(apply_transform(A.transform, pos))
 end

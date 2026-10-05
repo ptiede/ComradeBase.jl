@@ -378,7 +378,7 @@ end
         ndims(g) > 2 && @test p[I...][3] === ComradeBase.basedim(dims(g)[3])[2]
     end
     p = domainpoints(RectiGrid((x32, y32, fr)))
-    @test_throws "BoundsError: attempt to access 4×3×2 ComradeBase.LazyGrid" p[5, 1, 1]
+    @test_throws BoundsError p[5, 1, 1]
     @test_throws BoundsError p[1, 1, 3]
 
     g32 = RectiGrid((x32, y32, fr); posang = 0.3f0)
