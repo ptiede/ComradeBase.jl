@@ -63,10 +63,23 @@ _ismeshaxes(_) = false
     shard(x, layout::ShardLayout)
     shard(x, sharding::Reactant.Sharding.AbstractSharding)
 
-Return a copy of `x` whose values are placed on the device mesh, split along the dimensions
-named in `layout`. For an `IntensityMap` only the pixel values are placed; the grid stays on
-the host. The second form passes `sharding` directly to `Reactant.to_rarray`. A dimension
-whose length is not a multiple of the number of devices along its mesh axes is padded.
+Return a copy of `x` whose arrays are placed on the device mesh, split along the dimensions
+named in `layout` and replicated along the rest. Dim lookups stay on the host.
+
+With a `ShardLayout`, `x` is an `IntensityMap`, a `RectiGrid`, a `StructuredDomain`, an
+`AbstractDualDomain`, or a `Tuple` or `NamedTuple` of these, which is sharded element by
+element. Every dimension named in `layout` must be a dimension of `x` (of either domain, for
+a dual domain); for a collection, of every element.
+
+- `IntensityMap`: its values, and the coordinates of a `StructuredDomain` it is defined on.
+- `StructuredDomain`: each coordinate along the dims it spans; the executor becomes
+  `ReactantEx()`.
+- `RectiGrid`: returned unchanged.
+- `AbstractDualDomain`: both domains, rebuilt with `Accessors.@set` on the fields
+  `imgdomain` and `visdomain`. Dual domains that hold more device data add a method.
+
+The second form passes `sharding` directly to `Reactant.to_rarray`. A dimension whose
+length is not a multiple of the number of devices along its mesh axes is padded.
 
 Requires Reactant to be loaded with its IFRT runtime (the Reactant preference
 `xla_runtime = "IFRT"`) and a mesh of at least two devices.

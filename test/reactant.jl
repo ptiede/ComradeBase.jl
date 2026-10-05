@@ -196,7 +196,7 @@ end
         mesh2 = Reactant.Sharding.Mesh(reshape(Reactant.devices(), ndev, 1), (:a, :b))
 
         @testset "Validation" begin
-            @test_throws "dimension `Fr` is not a dimension of the image; available dimensions are (:X, :Y)" shard(img0, ShardLayout(mesh; Fr = :d))
+            @test_throws "dimension `Fr` is not a dimension of the IntensityMap; available dimensions are (:X, :Y)" shard(img0, ShardLayout(mesh; Fr = :d))
             @test_throws "mesh axis `q` (for dimension `X`) is not in the mesh; available mesh axes are (:d,)" shard(img0, ShardLayout(mesh; X = :q))
             @test_throws "mesh axis `c` (for dimension `X`) is not in the mesh" shard(img0, ShardLayout(mesh2; X = (:a, :c)))
         end
@@ -281,6 +281,117 @@ end
             @test stored_blocks(baseimage(vp), 1) == split_blocks(nvis, ndev)
             @test stored_blocks(baseimage(vp), 2) == [1:4]
             test_clean_hlo(repr(@code_hlo visibilitymap(mpr, sdvis)))
+        end
+
+        npt = 10
+        nf = 2ndev
+        frs = Fr(range(200.0e9, 300.0e9; length = nf))
+        dvf = StructuredDomain((Pt(npt), frs); u = 1.0e5 .* randn(npt, nf), v = 1.0e5 .* randn(npt, nf), Ti = rand(npt))
+
+        @testset "StructuredDomain along Fr" begin
+            sd = shard(dvf, ShardLayout(mesh; Fr = :d))
+            @test dims(sd) === dims(dvf)
+            @test executor(sd) === ReactantEx()
+            cs = ComradeBase.coords(sd)
+            @test Array(cs.u) == ComradeBase.coords(dvf).u
+            @test stored_blocks(cs.u, 2) == split_blocks(nf, ndev)
+            @test stored_blocks(cs.u, 1) == [1:npt]
+            @test stored_blocks(cs.Ti, 1) == [1:npt]
+            m = BlobTest(4.0)
+            vis = @jit(visibilitymap(m, sd))
+            @test Array(baseimage(vis)) ≈ baseimage(visibilitymap(m, dvf))
+            @test stored_blocks(baseimage(vis), 2) == split_blocks(nf, ndev)
+            @test_throws "dimension `Ti` is not a dimension of the StructuredDomain; available dimensions are (:Pt, :Fr)" shard(dvf, ShardLayout(mesh; Ti = :d))
+        end
+
+        @testset "StructuredDomain along Pt" begin
+            dpt = UnstructuredDomain((; U = 0.2 .* randn(4ndev), V = 0.2 .* randn(4ndev)))
+            sd = shard(dpt, ShardLayout(mesh; Pt = :d))
+            @test stored_blocks(ComradeBase.coords(sd).U, 1) == split_blocks(4ndev, ndev)
+            m = BlobTest(4.0)
+            @test Array(baseimage(@jit(visibilitymap(m, sd)))) ≈ baseimage(visibilitymap(m, dpt))
+        end
+
+        @testset "IntensityMap over a StructuredDomain" begin
+            vis = visibilitymap(BlobTest(4.0), dvf)
+            svis = shard(vis, ShardLayout(mesh; Fr = :d))
+            @test stored_blocks(baseimage(svis), 2) == split_blocks(nf, ndev)
+            @test stored_blocks(ComradeBase.coords(axisdims(svis)).v, 2) == split_blocks(nf, ndev)
+            @test Array(baseimage(svis)) == baseimage(vis)
+
+            c = IntensityMap(rand(ComplexF64, npt, nf, 2, 2), dvf, Fa(), Fb())
+            sc = shard(c, ShardLayout(mesh; Fr = :d))
+            @test sc isa CoherencyMap
+            @test stored_blocks(baseimage(sc), 2) == split_blocks(nf, ndev)
+            @test stored_blocks(baseimage(sc), 3) == [1:2]
+            @test stored_blocks(baseimage(sc), 4) == [1:2]
+            @test stored_blocks(ComradeBase.coords(axisdims(sc)).u, 2) == split_blocks(nf, ndev)
+            f(c) = sum(abs2, baseimage(coherency(c, 1, 2)))
+            @test Float64(@jit(f(sc))) ≈ f(c)
+        end
+
+        if ndev == 4
+            @testset "Image stack on a 2×2 (Ti, Fr) mesh" begin
+                mesh22 = Reactant.Sharding.Mesh(reshape(Reactant.devices(), 2, 2), (:t, :f))
+                g = RectiGrid((X(range(-10.0, 10.0; length = 6)), Y(range(-10.0, 10.0; length = 6)), Ti([0.0, 0.5, 0.8, 1.2]), Fr([86.0e9, 230.0e9])))
+                img = IntensityMap(rand(6, 6, 4, 2), g)
+                simg = shard(img, ShardLayout(mesh22; Ti = :t, Fr = :f))
+                @test axisdims(simg) === g
+                @test stored_blocks(baseimage(simg), 3) == split_blocks(4, 2)
+                @test stored_blocks(baseimage(simg), 4) == split_blocks(2, 2)
+                @test stored_blocks(baseimage(simg), 1) == [1:6]
+                f(a) = sum(baseimage(a); dims = (1, 2))
+                @test Array(@jit(f(simg))) ≈ f(img)
+            end
+        end
+
+        @testset "Collections and dual domains" begin
+            dvf2 = StructuredDomain((Pt(npt + 3), frs); U = randn(npt + 3, nf), V = randn(npt + 3, nf))
+            layout = ShardLayout(mesh; Fr = :d)
+            st = shard((dvf, dvf2), layout)
+            @test st isa Tuple{<:StructuredDomain, <:StructuredDomain}
+            @test stored_blocks(ComradeBase.coords(st[2]).U, 2) == split_blocks(nf, ndev)
+            snt = shard((; a = dvf, b = dvf2), layout)
+            @test keys(snt) == (:a, :b)
+            @test stored_blocks(ComradeBase.coords(snt.a).u, 2) == split_blocks(nf, ndev)
+            @test_throws "dimension `Fr` is not a dimension of the StructuredDomain" shard((dvf, UnstructuredDomain((; U = randn(3), V = randn(3)))), layout)
+
+            gim = RectiGrid((X(range(-10.0, 10.0; length = 6)), Y(range(-10.0, 10.0; length = 6)), Ti([0.0, 0.5, 0.8, 1.2]), frs))
+            dd = DualDomain(gim, dvf)
+            sdd = shard(dd, ShardLayout(mesh; Ti = :d, Fr = :d))
+            @test sdd isa DualDomain
+            @test imgdomain(sdd) === gim
+            @test stored_blocks(ComradeBase.coords(visdomain(sdd)).u, 2) == split_blocks(nf, ndev)
+            @test_throws "dimension `Pol` is not a dimension of the DualDomain" shard(dd, ShardLayout(mesh; Pol = :d))
+        end
+
+        @testset "Masked gather from a Ti-sharded stack" begin
+            nt = 2ndev
+            G = randn(ComplexF64, 16, 16, nt)
+            n = 200
+            idx = hcat(rand(1:16, n), rand(1:16, n), rand(1:nt, n))
+            Gs = Reactant.to_rarray(G; sharding = Reactant.Sharding.DimsSharding(mesh, (3,), (:d,)))
+            idxr = Reactant.to_rarray(idx; sharding = Reactant.Sharding.Replicated(mesh))
+            gather(G, idx) = Reactant.Ops.gather_getindex(G, idx)
+            @test Array(@jit(gather(Gs, idxr))) ≈ [G[idx[p, 1], idx[p, 2], idx[p, 3]] for p in 1:n]
+            hlo = repr(@code_xla shardy_passes = :to_mhlo_shardings gather(Gs, idxr))
+            @test !occursin("all-gather", hlo)
+            @test occursin("all-reduce", hlo)
+
+            loss(G, idx) = sum(abs2, gather(G, idx))
+            function grad!(dG, G, idx)
+                Enzyme.autodiff(Reverse, loss, Active, Duplicated(G, dG), Const(idx))
+                return dG
+            end
+            dGs = Reactant.to_rarray(zero(G); sharding = Reactant.Sharding.DimsSharding(mesh, (3,), (:d,)))
+            dG = @jit(grad!(dGs, Gs, idxr))
+            host = zero(G)
+            for p in 1:n
+                host[idx[p, 1], idx[p, 2], idx[p, 3]] += 2G[idx[p, 1], idx[p, 2], idx[p, 3]]
+            end
+            @test Array(dG) ≈ host
+            @test stored_blocks(dG, 3) == split_blocks(nt, ndev)
+            @test !occursin("all-gather", repr(@code_xla shardy_passes = :to_mhlo_shardings grad!(dGs, Gs, idxr)))
         end
 
         @testset "Raw sharding of an IntensityMap keeps the grid on the host" begin

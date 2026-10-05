@@ -607,10 +607,17 @@ end
             for convert in (coherencymap, coherencymap!), sharded in (false, true)
                 x = sharded ? shard(vis, ShardLayout(mesh; Fr = :d)) : Reactant.to_rarray(vis)
                 sc = @jit convert(x, CirBasis())
-                test_jit_coherency_storage(sc, c, vis, CirBasis())
                 if sharded
+                    @test sc isa CoherencyMap
+                    @test Array(baseimage(sc)) ≈ baseimage(c)
                     @test stored_blocks(parent(baseimage(sc)), 2) == split_blocks(nf, ndev)
                     @test stored_blocks(parent(baseimage(sc)), 3) == [1:4]
+                    # The returned domain coordinates are replicated arrays that come back
+                    # without a sharding; passing them through a second `@jit` next to sharded
+                    # arrays throws Reactant's `TODO(#2234)` error.
+                    @test_broken (@jit(stokesmap(sc, CirBasis())); true)
+                else
+                    test_jit_coherency_storage(sc, c, vis, CirBasis())
                 end
             end
             shc = shard(c, ShardLayout(mesh; Fr = :d))

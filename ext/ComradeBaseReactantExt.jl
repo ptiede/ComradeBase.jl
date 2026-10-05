@@ -5,13 +5,18 @@ using Reactant
 using StaticArrays
 
 import ComradeBase: AbstractSingleDomain, basedim, dims
-using ComradeBase: ReactantEx, ShardLayout, StructuredDomain
+using ComradeBase: AbstractDualDomain, AbstractRectiGrid, DD, ReactantEx, ShardLayout, StructuredDomain
+using Accessors: @set
 import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
-function ComradeBase.shard(img::IntensityMap, layout::ShardLayout)
-    vals = Reactant.to_rarray(baseimage(img); sharding = _dimssharding(img, layout))
-    return ComradeBase._rewrap(img, vals)
+const Shardable = Union{IntensityMap, AbstractRectiGrid, StructuredDomain, AbstractDualDomain}
+
+function ComradeBase.shard(x::Shardable, layout::ShardLayout)
+    _check_layout(x, layout)
+    return _place(x, layout)
 end
+
+ComradeBase.shard(xs::Union{Tuple, NamedTuple}, layout::ShardLayout) = map(x -> shard(x, layout), xs)
 
 function ComradeBase.shard(x, sh::Reactant.Sharding.AbstractSharding)
     _check_sharding_supported(sh)
@@ -52,20 +57,48 @@ end
 _meshaxes(v::Symbol) = (v,)
 _meshaxes(v::Tuple) = v
 
-function _dimssharding(img::IntensityMap, layout::ShardLayout)
+_dimnames(x::Union{IntensityMap, AbstractRectiGrid, StructuredDomain}) = map(DD.name, dims(x))
+_dimnames(d::AbstractDualDomain) = (_dimnames(imgdomain(d))..., _dimnames(visdomain(d))...)
+
+function _check_layout(x, layout::ShardLayout)
     _check_runtime()
     mesh = layout.mesh
     _check_mesh(mesh)
-    dnames = map(ComradeBase.DD.name, dims(img))
-    positions = map(keys(layout.axes), values(layout.axes)) do dname, v
-        p = findfirst(==(dname), dnames)
-        p === nothing && throw(ArgumentError("ShardLayout dimension `$dname` is not a dimension of the image; available dimensions are $dnames"))
+    dnames = _dimnames(x)
+    for (dname, v) in pairs(layout.axes)
+        dname in dnames || throw(ArgumentError("ShardLayout dimension `$dname` is not a dimension of the $(nameof(typeof(x))); available dimensions are $(Tuple(unique(dnames)))"))
         for m in _meshaxes(v)
             m in mesh || throw(ArgumentError("ShardLayout mesh axis `$m` (for dimension `$dname`) is not in the mesh; available mesh axes are $(mesh.axis_names)"))
         end
-        return p
     end
-    return Reactant.Sharding.DimsSharding(mesh, positions, values(layout.axes))
+    return nothing
+end
+
+# The sharding of an array whose dims are named `dnames`; layout dims it lacks are ignored.
+function _sharding(dnames, layout::ShardLayout)
+    ks = filter(in(dnames), keys(layout.axes))
+    isempty(ks) && return Reactant.Sharding.Replicated(layout.mesh)
+    positions = map(k -> findfirst(==(k), dnames), ks)
+    return Reactant.Sharding.DimsSharding(layout.mesh, positions, map(k -> layout.axes[k], ks))
+end
+
+function _place(img::IntensityMap, layout::ShardLayout)
+    vals = Reactant.to_rarray(baseimage(img); sharding = _sharding(_dimnames(img), layout))
+    return ComradeBase._wrapstorage(vals, _place(axisdims(img), layout), DD.refdims(img), DD.name(img), eldims(img))
+end
+
+_place(g::AbstractRectiGrid, ::ShardLayout) = g
+
+function _place(d::StructuredDomain, layout::ShardLayout)
+    cs = map(ComradeBase.coords(d), ComradeBase.coordspans(d)) do c, span
+        Reactant.to_rarray(c; sharding = _sharding(span, layout))
+    end
+    return ComradeBase.rebuild(d; coords = cs, executor = ReactantEx())
+end
+
+function _place(d::AbstractDualDomain, layout::ShardLayout)
+    d = @set d.imgdomain = _place(imgdomain(d), layout)
+    return @set d.visdomain = _place(visdomain(d), layout)
 end
 
 # Tracing paths into an `IntensityMap` address struct fields, not array elements.
