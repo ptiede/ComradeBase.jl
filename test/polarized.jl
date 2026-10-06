@@ -37,6 +37,8 @@ end
         img = @inferred IntensityMap(P, g, Stokes())
         @test img isa StokesMap{Float64, 3}
         @test img isa IntensityMap{Float64, 3}
+        @test StokesMap <: IntensityMap
+        @test StokesMap{Float64, 3} <: IntensityMap{Float64, 3}
         @test eltype(img) === Float64
         @test size(img) == (6, 5, 4)
         @test dims(img) == (dims(g)..., Stokes(DD.NoLookup(Base.OneTo(4))))
@@ -255,6 +257,7 @@ end
         S = rand(6, 5, 2, 2)
         c = @inferred IntensityMap(S, g, Fa(), Fb())
         @test c isa CoherencyMap{Float64, 4}
+        @test CoherencyMap <: IntensityMap
         @test !(c isa StokesMap)
         @test baseimage(c) === S
         @test axisdims(c) === g

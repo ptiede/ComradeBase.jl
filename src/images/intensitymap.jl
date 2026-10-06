@@ -106,7 +106,7 @@ followed by a [`Stokes`](@ref) dim of length 4 holding Stokes I, Q, U, V in that
 Base reductions and element-wise functions act on plain numbers across all dims, Stokes
 included; [`flux`](@ref) sums each component and [`stokes`](@ref) selects one.
 """
-const StokesMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractSingleDomain, <:AbstractArray, <:Tuple, <:Any, <:Tuple{Stokes}}
+const StokesMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractSingleDomain, <:AbstractArray{T, N}, <:Tuple, <:Any, <:Tuple{Stokes}}
 
 """
     CoherencyMap{T, N}
@@ -118,7 +118,7 @@ feed of antenna a and column `b` the feed of antenna b, as in the fields `e11, e
 of a `CoherencyMatrix`. The dims carry no polarization basis; [`coherencymap`](@ref) and
 [`stokesmap`](@ref) take it as an argument. [`coherency`](@ref) selects one element.
 """
-const CoherencyMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractSingleDomain, <:AbstractArray, <:Tuple, <:Any, <:Tuple{Fa, Fb}}
+const CoherencyMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractSingleDomain, <:AbstractArray{T, N}, <:Tuple, <:Any, <:Tuple{Fa, Fb}}
 
 _stokesdim() = Stokes(DD.NoLookup(Base.OneTo(4)))
 _feeddims() = (Fa(DD.NoLookup(Base.OneTo(2))), Fb(DD.NoLookup(Base.OneTo(2))))
