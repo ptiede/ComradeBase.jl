@@ -74,7 +74,7 @@ const StructuredMap{T, N} = IntensityMap{T, N, <:Tuple, <:StructuredDomain}
     StokesMap{T, N}
 
 An `N`-dimensional `IntensityMap` whose elements are `StokesParams{T}`. The data can be any
-array of `StokesParams`; ComradeBase allocates a `ViewStructArray` over dense storage of size
+array of `StokesParams`; ComradeBase allocates a `FieldDimArray` over dense storage of size
 `(size(domain)..., 4)` holding Stokes I, Q, U, V along its last dim. [`flux`](@ref) sums the
 elements and [`stokes`](@ref) selects one component.
 """
@@ -87,7 +87,7 @@ An `N`-dimensional `IntensityMap` whose elements are 2×2 coherency matrices
 `SMatrix{2, 2, T, 4}`: row `a` is the feed of antenna a and column `b` the feed of antenna b,
 as in the fields `e11, e21, e12, e22` of a `CoherencyMatrix`. The elements carry no
 polarization basis; [`coherencymap`](@ref) and [`stokesmap`](@ref) take it as an argument.
-ComradeBase allocates a `ViewStructArray` over dense storage of size `(size(domain)..., 2, 2)`.
+ComradeBase allocates a `FieldDimArray` over dense storage of size `(size(domain)..., 2, 2)`.
 [`coherency`](@ref) selects one element.
 """
 const CoherencyMap{T, N} = IntensityMap{SMatrix{2, 2, T, 4}, N}
@@ -141,7 +141,7 @@ EnzymeRules.inactive(::typeof(executor), ::IntensityMap) = nothing
     stokes(img::StokesMap, K::Symbol)
 
 Returns the Stokes `K` component (`:I`, `:Q`, `:U` or `:V`) of `img` as an unpolarized
-`IntensityMap` over the same domain. For `ViewStructArray` and `StructArray` data this is a
+`IntensityMap` over the same domain. For `FieldDimArray` and `StructArray` data this is a
 view of the data; other arrays are copied.
 """
 @inline function stokes(img::StokesMap, K::Symbol)
@@ -183,7 +183,7 @@ Creates an `IntensityMap` with the values `data` on the domain `g`, e.g. pixel f
 [`RectiGrid`](@ref) or values at the points of a [`StructuredDomain`](@ref). `size(data)` must
 equal `size(g)`. Optionally, you can specify a set of reference dimensions `refdims` as a tuple
 and a name for array `name`. `data` is not copied; an array of `StokesParams` gives a
-[`StokesMap`](@ref), e.g. `IntensityMap(ViewStructArray{StokesParams}(P), g)` for dense storage
+[`StokesMap`](@ref), e.g. `IntensityMap(FieldDimArray{StokesParams}(P), g)` for dense storage
 `P` of size `(size(g)..., 4)`.
 """
 function IntensityMap(
@@ -246,7 +246,7 @@ Base.parent(img::IntensityMap) = DD.data(img)
 """
     baseimage(img::IntensityMap)
 
-Returns the data array of `img`. For a map over a `ViewStructArray` the dense storage is
+Returns the data array of `img`. For a map over a `FieldDimArray` the dense storage is
 `parent(baseimage(img))`.
 """
 baseimage(img::IntensityMap) = getfield(img, :data)

@@ -7,7 +7,7 @@ stokescomponent(img, k) = stokes(img, k)
 times2(img) = img .* 2
 slabloss(a) = sum(abs2, stokes(a, :Q)) + sum(stokes(a, :V))
 coherencyroundtrip(img, b) = stokesmap(coherencymap(img, b), b)
-stokesview(P, g) = IntensityMap(ViewStructArray{StokesParams}(P), g)
+stokesview(P, g) = IntensityMap(FieldDimArray{StokesParams}(P), g)
 dense(img) = parent(baseimage(img))
 fluxQ(img) = flux(img).Q
 fluxQmap(img) = baseimage(flux(img)).Q
@@ -21,7 +21,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
     arr = collect(sa)
 
     @testset "construction" begin
-        v = ViewStructArray{StokesParams}(P)
+        v = FieldDimArray{StokesParams}(P)
         img = @inferred IntensityMap(v, g)
         @test img isa StokesMap{Float64, 2}
         @test img isa IntensityMap{StokesParams{Float64}, 2}
@@ -173,7 +173,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
         m = PolTest(1.5)
         vr = @inferred ComradeBase.allocate_vismap(m, g)
         @test vr isa StokesMap{ComplexF64, 2}
-        @test baseimage(vr) isa ViewStructArray{StokesParams{ComplexF64}, 2, Array{ComplexF64, 3}}
+        @test baseimage(vr) isa FieldDimArray{StokesParams{ComplexF64}, 2, Array{ComplexF64, 3}}
         @test size(dense(vr)) == (6, 5, 4)
         @test axisdims(vr) === g
         @test @inferred(ComradeBase.allocate_imgmap(m, g)) isa StokesMap{Float64, 2}
@@ -244,13 +244,13 @@ end
             c = @inferred coherencymap(x, b)
             @test c isa CoherencyMap{ComplexF64, 2}
             @test !(c isa StokesMap)
-            @test baseimage(c) isa ViewStructArray
+            @test baseimage(c) isa FieldDimArray
             @test size(dense(c)) == (size(x)..., 2, 2)
             @test axisdims(c) === axisdims(x)
             @test dims(c) == dims(axisdims(x))
         end
         S = rand(ComplexF64, 6, 5, 2, 2)
-        c = IntensityMap(ViewStructArray{SMatrix{2, 2}}(S), g)
+        c = IntensityMap(FieldDimArray{SMatrix{2, 2}}(S), g)
         @test c isa CoherencyMap{ComplexF64, 2}
         @test dense(c) === S
     end
@@ -451,7 +451,7 @@ end
             img = stokesview(P, g)
             simg = shard(img, ShardLayout(mesh; X = :d))
             @test simg isa StokesMap
-            @test baseimage(simg) isa ViewStructArray
+            @test baseimage(simg) isa FieldDimArray
             @test axisdims(simg) === axisdims(img)
             @test stored_blocks(dense(simg), 1) == split_blocks(nx, ndev)
             @test stored_blocks(dense(simg), 3) == [1:4]

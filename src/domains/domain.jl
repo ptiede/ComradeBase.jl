@@ -89,7 +89,7 @@ allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain) = IntensityMap(s
 _allocate_map(::NotPolarized, ::Type{T}, g::AbstractSingleDomain) where {T} = IntensityMap(_storage(executor(g), T, size(g)), g)
 function _allocate_map(::IsPolarized, ::Type{T}, g::AbstractSingleDomain) where {T}
     storage = _storage(executor(g), T, (size(g)..., 4))
-    return IntensityMap(ViewStructArray{StokesParams}(storage), g)
+    return IntensityMap(FieldDimArray{StokesParams}(storage), g)
 end
 
 allocate_vismap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, complex(eltype(g)), g)

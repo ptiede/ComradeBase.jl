@@ -2,7 +2,7 @@
     coherency(c::CoherencyMap, a, b)
 
 Returns the coherency element `e_ab` of `c` (`a`, `b` ∈ 1:2, the feed of antenna a and of
-antenna b) as an unpolarized `IntensityMap` over the same domain. For `ViewStructArray` and
+antenna b) as an unpolarized `IntensityMap` over the same domain. For `FieldDimArray` and
 `StructArray` data this is a view of the data; other arrays are copied.
 """
 @inline function coherency(c::CoherencyMap, a::Integer, b::Integer)
@@ -10,7 +10,7 @@ antenna b) as an unpolarized `IntensityMap` over the same domain. For `ViewStruc
     return IntensityMap(_element(baseimage(c), a + 2 * (b - 1)), axisdims(c), refdims(c), DD.name(c))
 end
 
-_element(x::ViewStructArray, k) = fieldview(x, k)
+_element(x::FieldDimArray, k) = fieldview(x, k)
 _element(x::StructArray, k) = StructArrays.component(x, k)
 _element(x::AbstractArray, k) = getindex.(x, k)
 

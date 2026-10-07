@@ -132,7 +132,7 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
     @test imgpol isa ComradeBase.IntensityMap
     @test imgpol isa StokesMap{Float64, 2}
-    @test baseimage(imgpol) isa ViewStructArray{StokesParams{Float64}, 2, Array{Float64, 3}}
+    @test baseimage(imgpol) isa FieldDimArray{StokesParams{Float64}, 2, Array{Float64, 3}}
 
     img = intensitymap(m, gim)
     vis = visibilitymap(m, g)

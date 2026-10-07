@@ -40,9 +40,9 @@ layout = ShardLayout(mesh; Ti = :t, Fr = :f)
 
 What `shard` places for each object:
 
-- `IntensityMap`: its storage, including trailing `Stokes` or `Fa`, `Fb` dims, which are
-  replicated unless the layout names them. A map over a `StructuredDomain` also has its
-  domain coordinates placed.
+- `IntensityMap`: its storage. The trailing Stokes or feed dims of the storage of a
+  polarized map are always replicated. A map over a `StructuredDomain` also has its domain
+  coordinates placed.
 - `StructuredDomain`: each coordinate array, split along the layout dims it spans and
   replicated along the rest. The executor becomes `ReactantEx()`.
 - `RectiGrid`: returned unchanged. Dim lookups always stay on the host.

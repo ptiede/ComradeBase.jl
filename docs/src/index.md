@@ -10,7 +10,7 @@ and the `IntensityMap` array type that holds images and visibilities.
 
 - [Domains and maps](domains.md): image grids, point domains with `Pt`, `Ti` and `Fr`
   dims, and executors.
-- [Polarized maps](polarization.md): the `Stokes` dim, coherency maps with feed dims, and
+- [Polarized maps](polarization.md): maps of `StokesParams` and of coherency matrices, and
   conversion between them.
 - [Sharding with Reactant](sharding.md): placing maps and domains on several devices.
 - [API](api.md): every documented name.

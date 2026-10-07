@@ -160,7 +160,7 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
             @test im isa IntensityMap{Float64, 3}
             vp = allocate_vismap(IsPolarized(), m, d)
             @test vp isa StokesMap{ComplexF64, 3}
-            @test baseimage(vp) isa ViewStructArray{StokesParams{ComplexF64}, 3, Array{ComplexF64, 4}}
+            @test baseimage(vp) isa FieldDimArray{StokesParams{ComplexF64}, 3, Array{ComplexF64, 4}}
             @test size(vp) == size(d)
             @test size(parent(baseimage(vp))) == (size(d)..., 4)
             @test stokes(vp, :I) isa IntensityMap{ComplexF64, 3}

@@ -14,11 +14,11 @@ Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-ViewStructArrays = "8162b97e-af21-446d-9d6e-57a067fd3c83"
+FieldDimArrays = "8162b97e-af21-446d-9d6e-57a067fd3c83"
 
 [sources]
 ComradeBase = {path = ".."}
-ViewStructArrays = {url = "https://github.com/ptiede/PseudoStructArrays.jl", rev = "main"}
+FieldDimArrays = {url = "https://github.com/ptiede/FieldDimArrays.jl", rev = "main"}
 
 [compat]
 Adapt = "4"

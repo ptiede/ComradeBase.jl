@@ -251,7 +251,7 @@ end
 
         @testset "Polarized IntensityMap along X" begin
             nx = 2ndev
-            img = IntensityMap(ViewStructArray{StokesParams}(rand(nx, 4, 4)), imagepixels(10.0, 10.0, nx, 4))
+            img = IntensityMap(FieldDimArray{StokesParams}(rand(nx, 4, 4)), imagepixels(10.0, 10.0, nx, 4))
             simg = shard(img, ShardLayout(mesh; X = :d))
             f(a) = sum(abs2, baseimage(stokes(a, :Q))) + sum(baseimage(stokes(a, :V)))
             @test Float64(@jit(f(simg))) ≈ f(img)
@@ -318,7 +318,7 @@ end
             @test stored_blocks(ComradeBase.coords(axisdims(svis)).v, 2) == split_blocks(nf, ndev)
             @test Array(baseimage(svis)) == baseimage(vis)
 
-            c = IntensityMap(ViewStructArray{SMatrix{2, 2}}(rand(ComplexF64, npt, nf, 2, 2)), dvf)
+            c = IntensityMap(FieldDimArray{SMatrix{2, 2}}(rand(ComplexF64, npt, nf, 2, 2)), dvf)
             sc = shard(c, ShardLayout(mesh; Fr = :d))
             @test sc isa CoherencyMap
             @test stored_blocks(parent(baseimage(sc)), 2) == split_blocks(nf, ndev)
