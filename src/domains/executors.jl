@@ -213,11 +213,12 @@ NamedPointFn{K}(f) where {K} = NamedPointFn{K, typeof(f)}(f)
 @inline _applynamed(p::NamedPointFn{K}, xs...) where {K} = p.f(NamedTuple{K}(xs))
 
 """
-    _pointbroadcast(f, d::AbstractSingleDomain)
+    pointbroadcasted(f, d::AbstractSingleDomain)
 
-Returns the lazy broadcast of `f` over the points of `d`, with the axes of `d`.
+Returns the lazy broadcast of `f` over the points of `d`, with the axes of `d`. Use it to
+map a point function over a domain on any executor, including inside Reactant.
 """
-_pointbroadcast(f::F, d::AbstractSingleDomain) where {F} = Broadcast.broadcasted(f, domainpoints(d))
+pointbroadcasted(f::F, d::AbstractSingleDomain) where {F} = Broadcast.broadcasted(f, domainpoints(d))
 
 """
     _broadcast_pointmap!(img::IntensityMap, f, d::AbstractSingleDomain)
@@ -226,6 +227,6 @@ The broadcasting form of [`_pointmap!`](@ref), for executors that compile array 
 (KernelAbstractions, Reactant).
 """
 function _broadcast_pointmap!(img, f::F, d) where {F}
-    img .= _pointbroadcast(f, d)
+    img .= pointbroadcasted(f, d)
     return nothing
 end

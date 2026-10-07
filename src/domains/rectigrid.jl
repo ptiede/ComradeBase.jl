@@ -1,5 +1,11 @@
 export RectiGrid, refinespatial
 
+"""
+    AbstractRectiGrid{D, E}
+
+A rectilinear grid whose first two dims are spatial (`X`, `Y` in the image plane or `U`, `V`
+in the visibility plane), followed by any non-spatial dims.
+"""
 abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
 
 function fieldofview(dims::AbstractRectiGrid)

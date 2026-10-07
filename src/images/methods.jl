@@ -8,6 +8,11 @@ This is useful for broadcasting a model across an abritrary grid.
 domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
 
+"""
+    basedim(x)
+
+Returns the plain values underneath a dim or lookup, and `x` itself for anything else.
+"""
 @inline basedim(x::DD.Dimension) = basedim(parent(x))
 @inline basedim(x::DD.Lookups.LookupArray) = basedim(parent(x))
 @inline basedim(x) = x

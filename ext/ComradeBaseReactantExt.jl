@@ -271,7 +271,7 @@ end
 # `f` is passed in a `Ref` broadcast argument: broadcasting a callable that holds traced
 # values (a model with traced parameters) fails with
 # `AssertionError: input shapes are Tuple{Vararg{Int64}}[(), (8, 6), (8, 6)]`.
-function ComradeBase._pointbroadcast(f::F, d::RectiGrid{<:Any, ReactantEx}) where {F}
+function ComradeBase.pointbroadcasted(f::F, d::RectiGrid{<:Any, ReactantEx}) where {F}
     dms = map(Reactant.materialize_traced_array ∘ basedim, named_dims(d))
     itp = ApplyIT{keys(dms)}(f, rotmat(d))
     return Broadcast.broadcasted(giterate, Ref(itp), ComradeBase.shapedims(values(dms))...)
@@ -281,8 +281,8 @@ function ComradeBase.centroid(img::ComradeBase.RectiMap{T}) where {T <: Reactant
     f = flux(img)
     g = axisdims(img)
     dims = ndims(img) == 2 ? Colon() : (X, Y)
-    xcent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :X), g) .* img; dims)
-    ycent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :Y), g) .* img; dims)
+    xcent = sum(ComradeBase.pointbroadcasted(Base.Fix2(getproperty, :X), g) .* img; dims)
+    ycent = sum(ComradeBase.pointbroadcasted(Base.Fix2(getproperty, :Y), g) .* img; dims)
     return xcent ./ f, ycent ./ f
 end
 

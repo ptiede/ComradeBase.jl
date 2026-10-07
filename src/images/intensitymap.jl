@@ -68,6 +68,11 @@ struct IntensityMap{T, N, D <: Tuple, G <: AbstractSingleDomain, A <: AbstractAr
 end
 
 const RectiMap{T, N} = IntensityMap{T, N, <:Tuple, <:AbstractRectiGrid}
+"""
+    StructuredMap{T, N}
+
+An `IntensityMap` over a [`StructuredDomain`](@ref).
+"""
 const StructuredMap{T, N} = IntensityMap{T, N, <:Tuple, <:StructuredDomain}
 
 """
@@ -306,6 +311,12 @@ end
     return rebuild(img, data, dims, refdims, name, metadata, executor)
 end
 
+"""
+    intensitymap_analytic_executor!(img, model, executor)
+
+Fills `img` with the intensity of `model` at each pixel using `executor`. Extend it to give a
+model a specialized implementation on one executor.
+"""
 function intensitymap_analytic_executor!(img::IntensityMap, s::AbstractModel, executor)
     g = axisdims(img)
     _pointmap!(img, _intensityfn(s, g), g, executor)

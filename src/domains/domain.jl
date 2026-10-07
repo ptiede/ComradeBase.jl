@@ -1,7 +1,7 @@
 # In this file we will define our base image class. This is entirely based on
 export domainpoints,
     named_dims, dims, header, axisdims, executor,
-    posang, update_spat, rotmat, imgdomain, visdomain
+    posang, rotmat, imgdomain, visdomain
 
 """
     AbstractDomain
@@ -11,6 +11,13 @@ The supertype of the domains a model is evaluated on: single domains such as
 pair an image domain with a visibility domain.
 """
 abstract type AbstractDomain end
+
+"""
+    AbstractSingleDomain{D, E}
+
+A domain that is a single set of points with dims `D` and executor type `E`, such as
+[`RectiGrid`](@ref) or [`StructuredDomain`](@ref).
+"""
 abstract type AbstractSingleDomain{D, E} <: AbstractDomain end
 
 """
