@@ -145,14 +145,15 @@ end
         imgU = rand(64, 64, 3, 3)
         imgV = rand(64, 64, 3, 3)
 
-        imgP = StructArray{StokesParams}(; I = imgI, Q = imgQ, U = imgU, V = imgV)
+        imgP = StructArray{StokesParams{Float64}}(; I = imgI, Q = imgQ, U = imgU, V = imgV)
         img1 = IntensityMap(imgP[:, :, 1, 1], RectiGrid((; X = x, Y = y)))
         img2 = IntensityMap(imgP, RectiGrid((x, y, t, f)))
 
-        @test img1 * 2 ≈ img2[:, :, 1, 1, :] * 2
-        @test img1 .* imgI[:, :, 1, 1] ≈ img2[:, :, 1, 1, :] .* imgI[:, :, 1, 1]
+        @test baseimage(img2) === imgP
+        @test img1 * 2 ≈ img2[:, :, 1, 1] * 2
+        @test img1 .* imgI[:, :, 1, 1] ≈ img2[:, :, 1, 1] .* imgI[:, :, 1, 1]
 
-        @test flux(img1) ≈ StokesParams(map(c -> c[1, 1, 1, 1], Tuple(flux(img2)))...)
+        @test flux(img1) ≈ flux(img2)[1, 1, 1, 1]
         @test centroid(img1) == centroid(stokes(img1, :I))
         @test second_moment(img1) == second_moment(stokes(img1, :I))
 
@@ -286,19 +287,19 @@ end
         @test parent(dest) == parent(img) .+ parent(img)
     end
 
-    @testset "broadcast with a StructArray converted to Stokes storage" begin
+    @testset "broadcast a map over a StructArray" begin
         sdata = StructArray{StokesParams{Float64}}(
             (
                 I = rand(128), Q = rand(128), U = rand(128), V = rand(128),
             )
         )
         simg = IntensityMap(sdata, g)
-        @test simg isa StokesMap{Float64, 2}
-        @test baseimage(simg) isa Matrix{Float64}
-        @test baseimage(simg) == hcat(sdata.I, sdata.Q, sdata.U, sdata.V)
+        @test simg isa StokesMap{Float64, 1}
+        @test baseimage(simg) === sdata
         res = simg .+ simg
         @test res isa StokesMap
-        @test baseimage(res) ≈ 2 .* baseimage(simg)
+        @test baseimage(res) isa StructArray
+        @test baseimage(res) ≈ 2 .* sdata
     end
 
     @testset "broadcast bare StructArray against a scalar map" begin

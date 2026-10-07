@@ -144,14 +144,14 @@ end
     _pointmap!(img::IntensityMap, f, d::AbstractSingleDomain, executor)
 
 Writes `f(domainpoints(d)[I])` into the map `img` at every index `I` of `d`, using `executor`.
-Loop executors write into the storage of `img` with [`_setpoint!`](@ref). Executor extensions
-add methods for their executor type; an executor without one throws an `ArgumentError`.
+Executor extensions add methods for their executor type; an executor without one throws an
+`ArgumentError`.
 """
 function _pointmap!(img, f, d, ::Serial)
     dest = baseimage(img)
     g = domainpoints(d)
     for I in _pointindices(dest, g)
-        _setpoint!(dest, I, f(g[I]))
+        dest[I] = f(g[I])
     end
     return nothing
 end
@@ -159,46 +159,14 @@ end
 """
     _pointindices(dest, g)
 
-Returns `CartesianIndices(g)` after checking that the leading axes of the storage `dest` are
-the axes of the points `g`.
+Returns `CartesianIndices(g)` after checking that the map data `dest` has the axes of the
+points `g`.
 """
 function _pointindices(dest, g)
-    lead = ntuple(k -> axes(dest, k), Val(ndims(g)))
-    lead == axes(g) || throw(
-        DimensionMismatch("map storage with axes $(axes(dest)) does not start with the axes $(axes(g)) of the domain")
+    axes(dest) == axes(g) || throw(
+        DimensionMismatch("map data with axes $(axes(dest)) does not have the axes $(axes(g)) of the domain")
     )
     return CartesianIndices(g)
-end
-
-"""
-    _setpoint!(dest, I::CartesianIndex, v)
-
-Writes the point value `v` into the storage `dest` at the domain index `I`. A number is stored
-at `dest[I]`. A `StaticArray` such as `StokesParams` is stored at `dest[I, k]` for every index
-`k` of `v`; the dims of `dest` after those of `I` must have the size of `v`.
-"""
-@inline function _setpoint!(dest::AbstractArray{<:Any, M}, I::CartesianIndex{M}, v::Number) where {M}
-    dest[I] = v
-    return dest
-end
-
-@inline function _setpoint!(dest, I::CartesianIndex{M}, v::StaticArray) where {M}
-    _trailingsize(dest, Val(M)) == size(v) || _throw_pointsize(dest, Val(M), v)
-    ks = CartesianIndices(v)
-    ntuple(n -> (dest[I, ks[n]] = v[n]), Val(length(v)))
-    return dest
-end
-
-_setpoint!(dest, I::CartesianIndex{M}, v) where {M} = _throw_pointsize(dest, Val(M), v)
-
-_trailingsize(dest, ::Val{M}) where {M} = ntuple(k -> size(dest, M + k), Val(ndims(dest) - M))
-
-@noinline function _throw_pointsize(dest, ::Val{M}, v) where {M}
-    throw(
-        DimensionMismatch(
-            "a point value of type $(typeof(v)) cannot fill the trailing dims of size $(_trailingsize(dest, Val(M))) of the map storage"
-        )
-    )
 end
 
 function _pointmap!(img, f, d, ::ThreadsEx{S}) where {S}
@@ -226,7 +194,7 @@ end
 for s in schedulers
     @eval function _threads_pointmap!(dest, f, g, ::Val{$(QuoteNode(s))})
         Threads.@threads $(QuoteNode(s)) for I in _pointindices(dest, g)
-            _setpoint!(dest, I, f(g[I]))
+            dest[I] = f(g[I])
         end
         return nothing
     end
@@ -252,21 +220,10 @@ Returns the lazy broadcast of `f` over the points of `d`, with the axes of `d`.
 _pointbroadcast(f::F, d::AbstractSingleDomain) where {F} = Broadcast.broadcasted(f, domainpoints(d))
 
 """
-    ComponentFn(f, k)
-
-Returns entry `k` of the point value of `f`, in the order of [`_setpoint!`](@ref).
-"""
-struct ComponentFn{F}
-    f::F
-    k::Int
-end
-(c::ComponentFn)(xs...) = c.f(xs...)[c.k]
-
-"""
     _broadcast_pointmap!(img::IntensityMap, f, d::AbstractSingleDomain)
 
 The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
-(KernelAbstractions, Reactant). A [`StokesMap`](@ref) gets one broadcast per Stokes component.
+(KernelAbstractions, Reactant).
 """
 function _broadcast_pointmap!(img, f::F, d) where {F}
     img .= _pointbroadcast(f, d)

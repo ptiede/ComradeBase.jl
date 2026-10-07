@@ -71,6 +71,8 @@ function stokes(m::StructArray{<:StokesParams}, p::Symbol)
     return getproperty(m, p)
 end
 
+stokes(m::ViewStructArray{<:StokesParams}, p::Symbol) = fieldview(m, p)
+
 function stokes(m::StokesParams, p::Symbol)
     return getfield(m, p)
 end

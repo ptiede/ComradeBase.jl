@@ -33,9 +33,6 @@ end
 
 pointref(f, m, d) = map(p -> f(m, p), domainpoints(d))
 
-asstorage(ref::AbstractArray{<:Number}) = ref
-asstorage(ref::AbstractArray{<:StokesParams}) = cat(ntuple(k -> getindex.(ref, k), 4)...; dims = ndims(ref) + 1)
-
 function test_pointmaps(mapfn, mapfn!, pointfn, m, d)
     ref = pointref(pointfn, m, d)
     for ex in structured_executors()
@@ -43,10 +40,10 @@ function test_pointmaps(mapfn, mapfn!, pointfn, m, d)
         out = mapfn(m, dex)
         @test out isa IntensityMap
         @test axisdims(out) === dex
-        @test collect(baseimage(out)) ≈ asstorage(ref)
+        @test collect(baseimage(out)) ≈ ref
         fill!(baseimage(out), zero(eltype(out)))
         mapfn!(out, m)
-        @test collect(baseimage(out)) ≈ asstorage(ref)
+        @test collect(baseimage(out)) ≈ ref
     end
     return nothing
 end
@@ -84,7 +81,7 @@ end
         test_pointmaps(visibilitymap, visibilitymap!, ComradeBase.visibility_point, PolTest(1.5), d)
         vp = visibilitymap(PolTest(1.5), d)
         @test vp isa StokesMap
-        @test size(baseimage(vp)) == (size(d)..., 4)
+        @test size(parent(baseimage(vp))) == (size(d)..., 4)
     end
 
     @testset "view coordinates" begin

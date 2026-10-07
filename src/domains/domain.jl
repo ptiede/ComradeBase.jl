@@ -80,21 +80,16 @@ Executor extensions add methods for their executor type.
 _storage(executor, ::Type{T}, sz) where {T} = Array{T}(undef, sz)
 
 """
-    allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain, eldims::Tuple = ())
+    allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain)
 
-Allocates an uninitialized `IntensityMap` over `g` whose storage is an array of type `M` with
-the dims of `g` followed by the dims `eldims`, e.g. `(Stokes(...),)` for a [`StokesMap`](@ref).
+Allocates an uninitialized `IntensityMap` over `g` whose data is an array of type `M`.
 """
-allocate_map(M, g) = allocate_map(M, g, ())
-function allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain, eldims::Tuple)
-    storage = similar(M, (size(g)..., map(length, eldims)...))
-    return _wrapstorage(storage, g, (), Symbol(""), eldims)
-end
+allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain) = IntensityMap(similar(M, size(g)), g)
 
-function _allocate_map(p, ::Type{T}, g::AbstractSingleDomain) where {T}
-    eldims = _polarizationdims(p)
-    storage = _storage(executor(g), T, (size(g)..., map(length, eldims)...))
-    return _wrapstorage(storage, g, (), Symbol(""), eldims)
+_allocate_map(::NotPolarized, ::Type{T}, g::AbstractSingleDomain) where {T} = IntensityMap(_storage(executor(g), T, size(g)), g)
+function _allocate_map(::IsPolarized, ::Type{T}, g::AbstractSingleDomain) where {T}
+    storage = _storage(executor(g), T, (size(g)..., 4))
+    return IntensityMap(ViewStructArray{StokesParams}(storage), g)
 end
 
 allocate_vismap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, complex(eltype(g)), g)

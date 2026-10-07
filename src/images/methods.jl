@@ -108,18 +108,21 @@ pixelsizes(img::RectiMap) = pixelsizes(axisdims(img))
 """
     flux(im::IntensityMap)
 
-Computes the flux of a intensity map. For a [`StokesMap`](@ref) the result is a
-`StokesParams` holding the flux of each Stokes component.
+Computes the flux of a intensity map: the sum over `X` and `Y`, a map over the other dims if
+there are any. For a [`StokesMap`](@ref) the flux of each Stokes component is summed separately
+and the result has `StokesParams` elements.
 """
-flux(im::RectiMap) = _flux(im, eldims(im))
+flux(im::RectiMap) = sum(im; dims = (:X, :Y))
 
-_flux(im, ::Tuple{}) = sum(im; dims = (:X, :Y))
-function _flux(im, ::Tuple{Stokes})
-    return StokesParams(flux(stokes(im, :I)), flux(stokes(im, :Q)), flux(stokes(im, :U)), flux(stokes(im, :V)))
+flux(im::SpatialIntensityMap{<:Number}) = sum(parent(im))
+
+flux(im::RectiMap{<:StokesParams}) = _stokesflux(map(K -> flux(stokes(im, K)), (:I, :Q, :U, :V)))
+
+_stokesflux(f::NTuple{4, Number}) = StokesParams(f...)
+function _stokesflux(f::NTuple{4, IntensityMap})
+    data = StructArray{StokesParams{eltype(first(f))}}(map(baseimage, f))
+    return IntensityMap(data, axisdims(first(f)), refdims(first(f)), DD.name(first(f)))
 end
-_flux(im, eldims::Tuple) = _unsupported_eldims("`flux`", eldims)
-
-flux(im::SpatialIntensityMap) = sum(parent(im))
 
 """
     centroid(im::AbstractIntensityMap)
@@ -128,14 +131,11 @@ Computes the image centroid aka the center of light of the image.
 
 For polarized maps we return the centroid for Stokes I only.
 """
-centroid(im::RectiMap{<:Real}) = _centroid(im, eldims(im))
-
-_centroid(im, ::Tuple{Stokes}) = centroid(stokes(im, :I))
-_centroid(im, eldims::Tuple) = _unsupported_eldims("`centroid`", eldims)
-function _centroid(im, ::Tuple{})
+function centroid(im::RectiMap{<:Real})
     (; X, Y) = named_dims(im)
     return mapslices(x -> centroid(IntensityMap(x, RectiGrid((; X, Y)))), im; dims = (:X, :Y))
 end
+centroid(im::StokesMap) = centroid(stokes(im, :I))
 
 function centroid(im::RectiMap{T, 2})::Tuple{T, T} where {T <: Real}
     f = flux(im)
@@ -159,18 +159,13 @@ second moment, which is specified by the `center` argument.
 For polarized maps we return the second moment for Stokes I only.
 """
 function second_moment(im::RectiMap{T, N}; center = true) where {T <: Number, N}
-    return _second_moment(im, eldims(im); center)
-end
-
-_second_moment(im, ::Tuple{Stokes}; center) = second_moment(stokes(im, :I); center)
-_second_moment(im, eldims::Tuple; center) = _unsupported_eldims("`second_moment`", eldims)
-function _second_moment(im, ::Tuple{}; center)
     (; X, Y) = named_dims(im)
     return mapslices(
         x -> second_moment(IntensityMap(x, RectiGrid((; X, Y))); center), im;
         dims = (:X, :Y)
     )
 end
+second_moment(im::StokesMap; center = true) = second_moment(stokes(im, :I); center)
 
 """
     second_moment(im::IntensityMap; center=true)

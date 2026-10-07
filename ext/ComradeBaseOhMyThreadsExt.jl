@@ -10,7 +10,7 @@ function ComradeBase._pointmap!(img, f, d, executor::OhMyThreads.Scheduler)
     @tasks for i in eachindex(IndexLinear(), cis)
         @set scheduler = executor
         I = cis[i]
-        ComradeBase._setpoint!(dest, I, f(g[I]))
+        dest[I] = f(g[I])
     end
     return nothing
 end

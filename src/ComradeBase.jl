@@ -10,6 +10,7 @@ using StructArrays
 using Reexport
 using Accessors: @set
 @reexport using PolarizedTypes
+@reexport using ViewStructArrays
 using PrecompileTools
 
 export visibility,

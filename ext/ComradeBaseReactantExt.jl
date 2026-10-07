@@ -84,7 +84,7 @@ end
 
 function _place(img::IntensityMap, layout::ShardLayout)
     vals = Reactant.to_rarray(baseimage(img); sharding = _sharding(_dimnames(img), layout))
-    return ComradeBase._wrapstorage(vals, _place(axisdims(img), layout), DD.refdims(img), DD.name(img), eldims(img))
+    return IntensityMap(vals, _place(axisdims(img), layout), DD.refdims(img), DD.name(img))
 end
 
 _place(g::AbstractRectiGrid, ::ShardLayout) = g
@@ -103,6 +103,25 @@ end
 
 # Tracing paths into an `IntensityMap` address struct fields, not array elements.
 Reactant.traced_getfield(@nospecialize(obj::IntensityMap), field) = getfield(obj, field)
+
+# The element type and dims type of a traced map follow its traced data and domain.
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+        @nospecialize(M::Type{<:IntensityMap}),
+        seen,
+        mode::Reactant.TraceMode,
+        @nospecialize(track_numbers::Type),
+        @nospecialize(ndevices),
+        @nospecialize(runtime)
+    )
+    M isa DataType || return M
+    T, N, D, G, A, R, Na = M.parameters
+    A2 = Reactant.traced_type_inner(A, seen, mode, track_numbers, ndevices, runtime)
+    G2 = Reactant.traced_type_inner(G, seen, mode, track_numbers, ndevices, runtime)
+    R2 = Reactant.traced_type_inner(R, seen, mode, track_numbers, ndevices, runtime)
+    return IntensityMap{eltype(A2), N, _dimstype(G2), G2, A2, R2, Na}
+end
+
+_dimstype(::Type{<:AbstractSingleDomain{D}}) where {D} = D
 
 const RInt = Union{Integer, Reactant.TracedRNumber{<:Integer}}
 const TInt = Reactant.TracedRNumber{<:Integer}
@@ -259,32 +278,17 @@ function ComradeBase._pointbroadcast(f::F, d::RectiGrid{<:Any, ReactantEx}) wher
 end
 
 function ComradeBase.centroid(img::ComradeBase.RectiMap{T}) where {T <: Reactant.RNumber}
-    im = ComradeBase._stokesI(img)
-    f = flux(im)
-    g = axisdims(im)
-    dims = ndims(im) == 2 ? Colon() : (X, Y)
-    xcent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :X), g) .* im; dims)
-    ycent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :Y), g) .* im; dims)
+    f = flux(img)
+    g = axisdims(img)
+    dims = ndims(img) == 2 ? Colon() : (X, Y)
+    xcent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :X), g) .* img; dims)
+    ycent = sum(ComradeBase._pointbroadcast(Base.Fix2(getproperty, :Y), g) .* img; dims)
     return xcent ./ f, ycent ./ f
 end
 
 
-ComradeBase._numbertype(P::AnyTracedRArray) = unwrapped_eltype(P)
-
 function ComradeBase._pointmap!(img, f::F, d, ::ReactantEx) where {F}
     return ComradeBase._broadcast_pointmap!(img, f, d)
-end
-
-# Writes into the slabs of a 2-d traced array lower to `scatter`; building the whole storage
-# with `cat` does not.
-function ComradeBase._pointmap!(img::ComradeBase.StokesMap, f::F, d, ::ReactantEx) where {F}
-    P = baseimage(img)
-    c1 = Broadcast.materialize(ComradeBase._pointbroadcast(ComradeBase.ComponentFn(f, 1), d))
-    c2 = Broadcast.materialize(ComradeBase._pointbroadcast(ComradeBase.ComponentFn(f, 2), d))
-    c3 = Broadcast.materialize(ComradeBase._pointbroadcast(ComradeBase.ComponentFn(f, 3), d))
-    c4 = Broadcast.materialize(ComradeBase._pointbroadcast(ComradeBase.ComponentFn(f, 4), d))
-    P .= cat(c1, c2, c3, c4; dims = Val(ndims(P)))
-    return nothing
 end
 
 end

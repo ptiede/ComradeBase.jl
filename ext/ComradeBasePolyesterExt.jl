@@ -6,7 +6,7 @@ function ComradeBase._threads_pointmap!(dest, f, g, ::Val{:Polyester})
     cis = ComradeBase._pointindices(dest, g)
     @batch for i in eachindex(IndexLinear(), cis)
         I = cis[i]
-        ComradeBase._setpoint!(dest, I, f(g[I]))
+        dest[I] = f(g[I])
     end
     return nothing
 end

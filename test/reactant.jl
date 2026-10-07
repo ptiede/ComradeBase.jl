@@ -133,13 +133,13 @@ end
                 @test Array(baseimage(@jit(visibilitymap(m2, dr)))) ≈ baseimage(visibilitymap(m1, d))
                 vp = @jit(visibilitymap(mpr, dr))
                 @test vp isa StokesMap
-                @test Array(baseimage(vp)) ≈ baseimage(visibilitymap(mp, d))
+                @test Array(parent(baseimage(vp))) ≈ parent(baseimage(visibilitymap(mp, d)))
                 test_clean_hlo(repr(@code_hlo visibilitymap(m2, dr)))
                 test_clean_hlo(repr(@code_hlo visibilitymap(mpr, dr)))
             end
             dpt = UnstructuredDomain((; U = 0.2 .* randn(npt), V = 0.2 .* randn(npt)))
             vpt = @jit(visibilitymap(mpr, Reactant.to_rarray(dpt)))
-            @test Array(baseimage(vpt)) ≈ baseimage(visibilitymap(mp, dpt))
+            @test Array(parent(baseimage(vpt))) ≈ parent(baseimage(visibilitymap(mp, dpt)))
             test_clean_hlo(repr(@code_hlo visibilitymap(mpr, Reactant.to_rarray(dpt))))
             dxy = UnstructuredDomain((X = randn(npt), Y = randn(npt)))
             @test Array(baseimage(@jit(intensitymap(m2, Reactant.to_rarray(dxy))))) ≈ baseimage(intensitymap(m1, dxy))
@@ -251,13 +251,12 @@ end
 
         @testset "Polarized IntensityMap along X" begin
             nx = 2ndev
-            sa = StructArray{StokesParams{Float64}}((I = rand(nx, 4), Q = rand(nx, 4), U = rand(nx, 4), V = rand(nx, 4)))
-            img = IntensityMap(sa, imagepixels(10.0, 10.0, nx, 4))
+            img = IntensityMap(ViewStructArray{StokesParams}(rand(nx, 4, 4)), imagepixels(10.0, 10.0, nx, 4))
             simg = shard(img, ShardLayout(mesh; X = :d))
             f(a) = sum(abs2, baseimage(stokes(a, :Q))) + sum(baseimage(stokes(a, :V)))
             @test Float64(@jit(f(simg))) ≈ f(img)
-            @test stored_blocks(baseimage(simg), 1) == split_blocks(nx, ndev)
-            @test stored_blocks(baseimage(simg), 3) == [1:4]
+            @test stored_blocks(parent(baseimage(simg)), 1) == split_blocks(nx, ndev)
+            @test stored_blocks(parent(baseimage(simg)), 3) == [1:4]
         end
 
         @testset "Raw sharding of a (Pt,) StructuredDomain" begin
@@ -277,9 +276,9 @@ end
             mp = PolTest(1.5)
             mpr = @jit PolTest(ConcreteRNumber(mp.size))
             vp = @jit(visibilitymap(mpr, sdvis))
-            @test Array(baseimage(vp)) ≈ baseimage(visibilitymap(mp, dvis))
-            @test stored_blocks(baseimage(vp), 1) == split_blocks(nvis, ndev)
-            @test stored_blocks(baseimage(vp), 2) == [1:4]
+            @test Array(parent(baseimage(vp))) ≈ parent(baseimage(visibilitymap(mp, dvis)))
+            @test stored_blocks(parent(baseimage(vp)), 1) == split_blocks(nvis, ndev)
+            @test stored_blocks(parent(baseimage(vp)), 2) == [1:4]
             test_clean_hlo(repr(@code_hlo visibilitymap(mpr, sdvis)))
         end
 
@@ -319,12 +318,12 @@ end
             @test stored_blocks(ComradeBase.coords(axisdims(svis)).v, 2) == split_blocks(nf, ndev)
             @test Array(baseimage(svis)) == baseimage(vis)
 
-            c = IntensityMap(rand(ComplexF64, npt, nf, 2, 2), dvf, Fa(), Fb())
+            c = IntensityMap(ViewStructArray{SMatrix{2, 2}}(rand(ComplexF64, npt, nf, 2, 2)), dvf)
             sc = shard(c, ShardLayout(mesh; Fr = :d))
             @test sc isa CoherencyMap
-            @test stored_blocks(baseimage(sc), 2) == split_blocks(nf, ndev)
-            @test stored_blocks(baseimage(sc), 3) == [1:2]
-            @test stored_blocks(baseimage(sc), 4) == [1:2]
+            @test stored_blocks(parent(baseimage(sc)), 2) == split_blocks(nf, ndev)
+            @test stored_blocks(parent(baseimage(sc)), 3) == [1:2]
+            @test stored_blocks(parent(baseimage(sc)), 4) == [1:2]
             @test stored_blocks(ComradeBase.coords(axisdims(sc)).u, 2) == split_blocks(nf, ndev)
             f(c) = sum(abs2, baseimage(coherency(c, 1, 2)))
             @test Float64(@jit(f(sc))) ≈ f(c)
