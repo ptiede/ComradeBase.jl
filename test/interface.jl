@@ -30,7 +30,7 @@ end
         :create_map, :create_imgmap, :create_vismap,
         :allocate_map, :allocate_imgmap, :allocate_vismap,
         :basedim, :NoHeader, :MinimalHeader,
-        :DomainParams, :paramtype,
+        :DomainParams, :paramtype, :restrict_params,
         :rgetindex, :rsetindex!, :pointbroadcasted,
     )
     for n in model_interface

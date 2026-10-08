@@ -1,4 +1,4 @@
-export getparam, @unpack_params, build_param, apply_param, paramfield
+export getparam, @unpack_params, build_param, apply_param, paramfield, MultiDomainParams
 
 """
     abstract type DomainParams{T}
@@ -13,7 +13,8 @@ value such as a `Number` or a `StokesParams`, never a container. See [`paramtype
 A family is a *transformation* of a base value, not a value on its own: it says how a
 parameter departs from a reference as time and frequency change. Subtype `DomainParams` and
 define [`apply_param`](@ref), optionally splitting off the part that depends on the domain
-alone as [`paramfield`](@ref):
+alone as [`paramfield`](@ref), and [`restrict_params`](@ref) if the family is used in an
+image model:
 
 ```julia
 struct MyDomainParam{T} <: DomainParams{T}
@@ -21,15 +22,15 @@ struct MyDomainParam{T} <: DomainParams{T}
 end
 paramfield(param::MyDomainParam, p) = param.scale .* p.Fr
 apply_param(base, param::MyDomainParam, field, p) = base .* field
+restrict_params(param::MyDomainParam, ix, iy) = param
 ```
 
 where `p` is the point the family is evaluated at. Splitting out `paramfield` lets the chain
 evaluate it once per frequency rather than once per point of the result; a family with no
 domain-only part defines `apply_param` alone and ignores `field`.
 
-A family becomes an evaluable parameter only when it is paired with a base value, and
-several may be chained to compose in order — the modeling package supplies the container
-that does this (`MultiDomainParams` in VLBISkyModels). Evaluate the result with
+A family becomes an evaluable parameter only when it is paired with a base value by
+[`MultiDomainParams`](@ref), which also chains several families in order. Evaluate the result with
 [`build_param`](@ref) at a point `p`, or read it off a model with [`getparam`](@ref) or the
 [`@unpack_params`](@ref) macro. A bare family has no value: `build_param` on one is an
 error, because the base it transforms is missing.
@@ -68,10 +69,6 @@ If `m.s` is not a subtype of `DomainParams` then `m.s` is returned.
 !!! warn
     Developers should not typically overload this function and instead
     target [`apply_param`](@ref).
-
-!!! warn
-    This feature is experimental and is not considered part of the public stable API.
-
 """
 @inline function getparam(m, s::Symbol, p)
     ps = getproperty(m, s)
@@ -94,14 +91,6 @@ paired with a base, so evaluating a bare one is an error — see [`apply_param`]
     return param
 end
 
-function build_param(param::NTuple, p)
-    return map(x -> build_param(x, p), param)
-end
-
-function build_param(param::AbstractArray{<:DomainParams}, p)
-    return map(x -> build_param(x, p), param)
-end
-
 # Without this a family falls through to the pass-through above and silently returns itself.
 function build_param(param::DomainParams, p)
     throw(
@@ -115,18 +104,11 @@ end
 """
     paramfield(param::DomainParams, p)
 
-The part of `param` that depends on the domain alone, with no reference to a base — for a
-spectral model, the factor as a function of frequency. Returns `nothing` by default, for a
-family with no such part.
-
-A chain evaluates this once per model and hands the result to [`apply_param`](@ref), so work
-that depends on only some of the domain axes is done once per axis point rather than once
-per point of the full result. The whole frequency axis may arrive in `p` at once, and that
-difference is typically one or two orders of magnitude on a cube — splitting it out here is
-what makes it automatic rather than something each family has to remember.
-
-Returning a lazy `Base.Broadcasted` opts back out of the caching, which is worth doing only
-when the field is already as large as the result and would gain nothing from being reused.
+The part of `param` that depends on the domain alone, with no reference to a base (for a
+spectral model, the factor as a function of frequency), or `nothing` (the default) for a
+family with no such part. A chain computes it once per model and passes it to
+[`apply_param`](@ref), so it is evaluated once per frequency or time rather than once per
+point of the result.
 """
 paramfield(param::DomainParams, p) = nothing
 
@@ -164,12 +146,8 @@ a = getparam(m, :a, p)
 b = getparam(m, :b, p)
 ...
 ```
-For any model that may depend on a `DomainParams` type this macro should be used to 
-extract the parameters. 
-
-!!! warn
-    This feature is experimental and is not considered part of the public stable API.
-
+For any model that may depend on a `DomainParams` type this macro should be used to
+extract the parameters.
 """
 macro unpack_params(args)
     args.head != :(=) &&
@@ -193,3 +171,122 @@ macro unpack_params(args)
     end
     return esc(expr)
 end
+
+"""
+    restrict_params(param, ix, iy)
+
+Restricts `param` to the spatial sub-block `(ix, iy)` of an image grid, so an image model
+can evaluate it over part of the image. Single values pass through, fields of values over
+the grid are viewed (see [`paramtype`](@ref) for the rule separating the two), and a
+[`MultiDomainParams`](@ref) restricts its base and each family.
+
+Part of the [`DomainParams`](@ref) interface: a family used in an image model defines it,
+rebuilding itself from restricted components, or returning itself if it does not vary
+across the image. A family without a method throws.
+"""
+restrict_params(x, ix, iy) = x
+restrict_params(x::AbstractArray, ix, iy) = view(x, ix, iy)
+restrict_params(x::StaticArray, ix, iy) = x
+function restrict_params(param::DomainParams, ix, iy)
+    throw(
+        ArgumentError(
+            "$(nameof(typeof(param))) does not define `restrict_params(param, ix, iy)`; " *
+                "return `param` unchanged if it does not vary across the image, or rebuild it " *
+                "from restricted components if it does."
+        )
+    )
+end
+
+struct RestrictTo{I, J}
+    ix::I
+    iy::J
+end
+(r::RestrictTo)(x) = restrict_params(x, r.ix, r.iy)
+
+# A polarized operand makes the result polarized: `promote_type` has no rule pairing a
+# number with a `StokesParams`.
+_combineelt(::Type{T}, ::Type{S}) where {T, S} = promote_type(T, S)
+_combineelt(::Type{<:StokesParams{T}}, ::Type{S}) where {T, S} = StokesParams{promote_type(T, S)}
+_combineelt(::Type{T}, ::Type{<:StokesParams{S}}) where {T, S} = StokesParams{promote_type(T, S)}
+function _combineelt(::Type{<:StokesParams{T}}, ::Type{<:StokesParams{S}}) where {T, S}
+    return StokesParams{promote_type(T, S)}
+end
+
+"""
+    MultiDomainParams(base, models...)
+    MultiDomainParams(base, models::Tuple)
+
+Pairs a `base` parameter value with the [`DomainParams`](@ref) `models` describing how it
+varies across frequency and/or time. `base` is the value at the reference point: an image
+array for imaging, or a scalar for geometric modeling. The models are applied in order, each
+transforming the result of the previous one, so
+`build_param(MultiDomainParams(base, m1, m2), p) == apply_param(apply_param(base, m1, f1, p), m2, f2, p)`
+with `fi = paramfield(mi, p)`.
+
+A chain has exactly one base: chaining onto a chain extends its models, so
+`MultiDomainParams(MultiDomainParams(b, m1), m2) == MultiDomainParams(b, m1, m2)`, and a
+chain among the `models` throws.
+"""
+struct MultiDomainParams{E, P, M <: Tuple{Vararg{DomainParams}}} <: DomainParams{E}
+    base::P
+    models::M
+    function MultiDomainParams{E, P, M}(base, models) where {E, P, M}
+        return new{E, P, M}(base, models)
+    end
+end
+
+MultiDomainParams(base, models...) = MultiDomainParams(base, models)
+
+function MultiDomainParams(base, models::Tuple)
+    any(Base.Fix2(isa, MultiDomainParams), models) && throw(
+        ArgumentError(
+            "a `MultiDomainParams` cannot be a model in another chain; pass its models " *
+                "directly, e.g. `MultiDomainParams(base, m1, m2)`."
+        )
+    )
+    E = _combineelt(paramtype(typeof(base)), promote_type(map(paramtype ∘ typeof, models)...))
+    return MultiDomainParams{E}(base, models)
+end
+
+function MultiDomainParams(md::MultiDomainParams, models::Tuple)
+    return MultiDomainParams(md.base, (md.models..., models...))
+end
+
+function MultiDomainParams{E}(base, models::Tuple) where {E}
+    return MultiDomainParams{E, typeof(base), typeof(models)}(base, models)
+end
+MultiDomainParams{E}(base, models...) where {E} = MultiDomainParams{E}(base, models)
+
+# The links compose lazily, so an N-model chain materializes one result rather than N.
+function build_param(md::MultiDomainParams, p)
+    return Base.materialize(_applymodels(build_param(md.base, p), md.models, p))
+end
+
+_applymodels(base, ::Tuple{}, p) = base
+function _applymodels(base, models::Tuple, p)
+    m = first(models)
+    return _applymodels(apply_param(base, m, paramfield(m, p), p), Base.tail(models), p)
+end
+
+# A family used in a polarized chain defines `stokes` too, so that data it carries project.
+function stokes(md::MultiDomainParams, v)
+    return MultiDomainParams(stokes(md.base, v), map(Base.Fix2(stokes, v), md.models))
+end
+
+function restrict_params(md::MultiDomainParams, ix, iy)
+    return MultiDomainParams(restrict_params(md.base, ix, iy), map(RestrictTo(ix, iy), md.models))
+end
+
+function Base.show(io::IO, md::MultiDomainParams)
+    print(io, "MultiDomainParams(")
+    _showparam(io, md.base)
+    for m in md.models
+        print(io, ", ")
+        show(io, m)
+    end
+    return print(io, ")")
+end
+
+_showparam(io::IO, x) = show(io, x)
+_showparam(io::IO, x::AbstractArray) = print(io, summary(x))
+_showparam(io::IO, x::StaticArray) = show(io, x)
