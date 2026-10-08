@@ -13,8 +13,7 @@ value such as a `Number` or a `StokesParams`, never a container. See [`paramtype
 A family is a *transformation* of a base value, not a value on its own: it says how a
 parameter departs from a reference as time and frequency change. Subtype `DomainParams` and
 define [`apply_param`](@ref), optionally splitting off the part that depends on the domain
-alone as [`paramfield`](@ref), and [`restrict_params`](@ref) if the family is used in an
-image model:
+alone as [`paramfield`](@ref):
 
 ```julia
 struct MyDomainParam{T} <: DomainParams{T}
@@ -22,7 +21,6 @@ struct MyDomainParam{T} <: DomainParams{T}
 end
 paramfield(param::MyDomainParam, p) = param.scale .* p.Fr
 apply_param(base, param::MyDomainParam, field, p) = base .* field
-restrict_params(param::MyDomainParam, ix, iy) = param
 ```
 
 where `p` is the point the family is evaluated at. Splitting out `paramfield` lets the chain
@@ -129,6 +127,10 @@ a family with no domain-only part ignores `field`:
 apply_param(base, param::MyDrift, _, p) = base .+ param.v .* p.Ti
 ```
 
+It may instead return a lazy `Base.broadcasted(...)`. The chain then composes without
+materializing, and an image model evaluated at a single point computes only the pixels it
+reads rather than the whole image.
+
 There is no general relation between this and [`build_param`](@ref): the identity element of
 the transformation is family-specific, so a value cannot be derived from a transformation
 without one.
@@ -174,37 +176,6 @@ macro unpack_params(args)
     end
     return esc(expr)
 end
-
-"""
-    restrict_params(param, ix, iy)
-
-Restricts `param` to the spatial sub-block `(ix, iy)` of an image grid, so an image model
-can evaluate it over part of the image. Single values pass through, fields of values over
-the grid are viewed (see [`paramtype`](@ref) for the rule separating the two), and a
-[`MultiDomainParams`](@ref) restricts its base and each family.
-
-Part of the [`DomainParams`](@ref) interface: a family used in an image model defines it,
-rebuilding itself from restricted components, or returning itself if it does not vary
-across the image. A family without a method throws.
-"""
-restrict_params(x, ix, iy) = x
-restrict_params(x::AbstractArray, ix, iy) = view(x, ix, iy)
-restrict_params(x::StaticArray, ix, iy) = x
-function restrict_params(param::DomainParams, ix, iy)
-    throw(
-        ArgumentError(
-            "$(nameof(typeof(param))) does not define `restrict_params(param, ix, iy)`; " *
-                "return `param` unchanged if it does not vary across the image, or rebuild it " *
-                "from restricted components if it does."
-        )
-    )
-end
-
-struct RestrictTo{I, J}
-    ix::I
-    iy::J
-end
-(r::RestrictTo)(x) = restrict_params(x, r.ix, r.iy)
 
 # A polarized operand makes the result polarized: `promote_type` has no rule pairing a
 # number with a `StokesParams`.
@@ -274,10 +245,6 @@ end
 # A family used in a polarized chain defines `stokes` too, so that data it carries project.
 function stokes(md::MultiDomainParams, v)
     return MultiDomainParams(stokes(md.base, v), map(Base.Fix2(stokes, v), md.models))
-end
-
-function restrict_params(md::MultiDomainParams, ix, iy)
-    return MultiDomainParams(restrict_params(md.base, ix, iy), map(RestrictTo(ix, iy), md.models))
 end
 
 function Base.show(io::IO, md::MultiDomainParams)

@@ -44,7 +44,7 @@ include("images/images.jl")
             :create_map, :create_imgmap, :create_vismap,
             :allocate_map, :allocate_imgmap, :allocate_vismap,
             :basedim, :NoHeader, :MinimalHeader,
-            :DomainParams, :paramtype, :restrict_params,
+            :DomainParams, :paramtype,
             :rgetindex, :rsetindex!, :pointbroadcasted,
         )
     )

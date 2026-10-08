@@ -46,7 +46,6 @@ struct FrPower{T} <: DomainParams{T}
 end
 ComradeBase.paramfield(m::FrPower, p) = (p.Fr / m.ν0)^m.α
 ComradeBase.apply_param(base, ::FrPower, f, p) = Base.broadcasted(*, base, f)
-ComradeBase.restrict_params(m::FrPower, ix, iy) = m
 ComradeBase.stokes(m::FrPower, v) = m
 
 struct Offset{T, A} <: DomainParams{T}
@@ -54,12 +53,7 @@ struct Offset{T, A} <: DomainParams{T}
 end
 Offset(off) = Offset{ComradeBase.paramtype(typeof(off)), typeof(off)}(off)
 ComradeBase.apply_param(base, m::Offset, _, p) = Base.broadcasted(+, base, m.off)
-ComradeBase.restrict_params(m::Offset, ix, iy) = Offset(ComradeBase.restrict_params(m.off, ix, iy))
 ComradeBase.stokes(m::Offset, v) = Offset(stokes(m.off, v))
-
-struct Unrestricted{T, A} <: DomainParams{T}
-    off::A
-end
 
 @testset "MultiDomainParams" begin
     ν0 = 230.0e9
@@ -100,22 +94,4 @@ end
     @test ComradeBase.paramtype(typeof(MultiDomainParams(1.0, Offset(s)))) === StokesParams{Float64}
     mdq = stokes(MultiDomainParams(s, Offset(s)), :Q)
     @test build_param(mdq, p) ≈ 0.2
-end
-
-@testset "restrict_params" begin
-    ν0 = 230.0e9
-    p = (; Fr = 2ν0)
-    base = rand(8, 8)
-    off = rand(8, 8)
-    md = MultiDomainParams(base, FrPower(1.5, ν0), Offset(off))
-    ix, iy = 2:4, 3:5
-    sub = ComradeBase.restrict_params(md, ix, iy)
-    @test sub.base == view(base, ix, iy)
-    @test sub.models[2].off == view(off, ix, iy)
-    @test sub.models[1] === md.models[1]
-    @test build_param(sub, p) ≈ build_param(md, p)[ix, iy]
-    @test ComradeBase.restrict_params(2.0, ix, iy) === 2.0
-    @test_throws "Unrestricted does not define `restrict_params(param, ix, iy)`" ComradeBase.restrict_params(
-        MultiDomainParams(base, Unrestricted{Float64, Matrix{Float64}}(off)), ix, iy
-    )
 end
