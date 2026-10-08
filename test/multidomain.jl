@@ -84,6 +84,8 @@ end
     @test MultiDomainParams(MultiDomainParams(base, m1), m2) === MultiDomainParams(base, m1, m2)
     @test_throws "a `MultiDomainParams` cannot be a model in another chain" MultiDomainParams(base, MultiDomainParams(base, m1))
     @test_throws "transforms a base value and has none of its own" build_param(m1, p)
+    @test @inferred(build_param((MultiDomainParams(5.0, m2), 2.0), p)) === (15.0, 2.0)
+    @test getparam((; s = (MultiDomainParams(5.0, m2), 2.0)), :s, p) === (15.0, 2.0)
 
     @test startswith(sprint(show, md), "MultiDomainParams(2×2 Matrix{Float64}, ")
 end

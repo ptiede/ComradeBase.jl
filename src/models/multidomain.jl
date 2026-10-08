@@ -91,6 +91,9 @@ paired with a base, so evaluating a bare one is an error — see [`apply_param`]
     return param
 end
 
+# Tuple-valued model fields (e.g. one coefficient per harmonic) hold a value or chain each.
+build_param(param::Tuple, p) = map(Base.Fix2(build_param, p), param)
+
 # Without this a family falls through to the pass-through above and silently returns itself.
 function build_param(param::DomainParams, p)
     throw(
