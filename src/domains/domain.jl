@@ -208,6 +208,7 @@ include("lazygrid.jl")
 include("executors.jl")
 include("headers.jl")
 include("rectigrid.jl")
+include("frames.jl")
 include("structured.jl")
 
 

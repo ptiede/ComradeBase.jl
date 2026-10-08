@@ -1,4 +1,4 @@
-export RectiGrid, refinespatial
+export RectiGrid, refinespatial, gridproduct, ⊗
 
 """
     AbstractRectiGrid{D, E}
@@ -10,8 +10,8 @@ abstract type AbstractRectiGrid{D, E} <: AbstractSingleDomain{D, E} end
 
 function fieldofview(dims::AbstractRectiGrid)
     (; X, Y) = dims
-    dx = step(X)
-    dy = step(Y)
+    dx = step(DD.dims(dims, DD.X))
+    dy = step(DD.dims(dims, DD.Y))
     return (X = abs(last(X) - first(X)) + dx, Y = abs(last(Y) - first(Y)) + dy)
 end
 
@@ -24,9 +24,7 @@ end
 Returns a named tuple with the spatial pixel sizes of the image.
 """
 function pixelsizes(keys::AbstractRectiGrid)
-    x = keys.X
-    y = keys.Y
-    return (X = step(x), Y = step(y))
+    return (X = step(DD.dims(keys, DD.X)), Y = step(DD.dims(keys, DD.Y)))
 end
 
 
@@ -119,7 +117,7 @@ can be anything, for example:
 where `X/U,Y/V` are the RA and DEC spatial dimensions in image/visibility space respectively, 
 `Ti` is the time dimension and `Fr` is the frequency dimension.
 
-Note that the majority of the time users should just call [`imagepixels`](@ref) to create
+Note that the majority of the time users should just call [`spatialgrid`](@ref) to create
 a spatial grid.
 
 ## Optional Arguments
@@ -156,17 +154,49 @@ end
 
 function DD.rebuild(
         grid::RectiGrid, dims, executor = executor(grid),
-        header = metadata(grid), posang = posang(grid)
+        header = header(grid), posang = posang(grid)
     )
     return RectiGrid(dims; executor, header, posang)
 end
 
 function DD.rebuild(
         grid::RectiGrid; dims = dims(grid), executor = executor(grid),
-        header = metadata(grid), posang = posang(grid)
+        header = header(grid), posang = posang(grid)
     )
     return rebuild(grid, dims, executor, header, posang)
 end
+
+"""
+    gridproduct(g::AbstractRectiGrid, dims::DimensionalData.Dimension...)
+    g ⊗ dim
+
+Returns `g` with the non-spatial `dims` appended after its own, keeping its executor,
+header and position angle. The order of the factors is the memory layout of maps over the
+result, so `g ⊗ Ti(t) ⊗ Fr(ν)` has dims `(X, Y, Ti, Fr)`. A dim that `g` already has, a
+spatial dim, the point index `Pt`, or a grid on the right throws an `ArgumentError`.
+
+TensorCore (and packages re-exporting it, such as Images) also exports `⊗`; with both
+loaded, write `ComradeBase.:⊗` or `gridproduct`.
+"""
+function gridproduct(g::AbstractRectiGrid, ds::DD.Dimension...)
+    gds = dims(g)
+    for d in ds
+        d isa Union{DD.XDim, DD.YDim} &&
+            throw(ArgumentError("cannot append the spatial dim $(DD.name(d)) to a grid; build spatial dims with `spatialgrid`"))
+        d isa Pt &&
+            throw(ArgumentError("cannot append Pt to a grid; Pt is the point index of a StructuredDomain"))
+        DD.hasdim(gds, d) &&
+            throw(ArgumentError("the grid already has a $(DD.name(d)) dim; dims of the grid are $(DD.name(gds))"))
+    end
+    allunique(map(DD.basetypeof, ds)) ||
+        throw(ArgumentError("the appended dims repeat a dim: $(DD.name(ds))"))
+    return rebuild(g; dims = (gds..., ds...))
+end
+
+gridproduct(::AbstractRectiGrid, h::AbstractRectiGrid) =
+    throw(ArgumentError("the right factor of a grid product must be a non-spatial dim, got a $(nameof(typeof(h)))"))
+
+const ⊗ = gridproduct
 
 function refinespatial(g::RectiGrid, refac::NTuple{2})
     ns = size(g)[1:2]

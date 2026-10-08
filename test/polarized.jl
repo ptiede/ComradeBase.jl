@@ -15,7 +15,7 @@ stokesloss(P, g) = slabloss(stokesview(P, g))
 coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasis()), 1, 2))
 
 @testset "Polarized maps" begin
-    g = imagepixels(10.0, 12.0, 6, 5)
+    g = spatialgrid(10.0, 12.0, 6, 5)
     P = rand(6, 5, 4)
     sa = StructArray{StokesParams{Float64}}((rand(6, 5), rand(6, 5), rand(6, 5), rand(6, 5)))
     arr = collect(sa)
@@ -145,7 +145,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
         @test flux(IntensityMap(sa, g)) ≈ sum(sa)
         @test centroid(img) == centroid(stokes(img, :I))
         @test second_moment(img) == second_moment(stokes(img, :I))
-        g4 = imagepixels(10.0, 12.0, 6, 5; mdims = (Ti([0.0, 1.0]), Fr([230.0e9, 345.0e9, 690.0e9])))
+        g4 = spatialgrid(10.0, 12.0, 6, 5) ⊗ Ti([0.0, 1.0]) ⊗ Fr([230.0e9, 345.0e9, 690.0e9])
         P4 = rand(6, 5, 2, 3, 4)
         img4 = stokesview(P4, g4)
         f4 = flux(img4)
@@ -218,7 +218,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
         end
         ref = map(p -> ComradeBase.intensity_point(m, p), domainpoints(g)) .* prod(pixelsizes(g))
         for ex in (Serial(), ThreadsEx(), ThreadsEx(:static), DynamicScheduler(), StaticScheduler(), CPU())
-            gex = imagepixels(10.0, 12.0, 6, 5; executor = ex)
+            gex = spatialgrid(10.0, 12.0, 6, 5; executor = ex)
             img = intensitymap(m, gex)
             @test img isa StokesMap{Float64, 2}
             @test collect(baseimage(img)) ≈ ref
@@ -232,7 +232,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
 end
 
 @testset "Coherency maps" begin
-    g = imagepixels(10.0, 12.0, 6, 5)
+    g = spatialgrid(10.0, 12.0, 6, 5)
     img = stokesview(rand(6, 5, 4), g)
     dfr = StructuredDomain((Pt(5), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(5), v = 3.0e4 .* randn(5))
     vis = visibilitymap(PolTest(1.5), dfr)
@@ -368,7 +368,7 @@ end
 @testset "Polarized maps under Reactant" begin
     m = PolTest(1.5)
     mr = Reactant.to_rarray(m; track_numbers = Number)
-    g = imagepixels(10.0, 12.0, 8, 6)
+    g = spatialgrid(10.0, 12.0, 8, 6)
     gr = @jit identity(g)
 
     ip = @jit intensitymap(mr, gr)
@@ -396,7 +396,7 @@ end
     @test Array(dense(r)) ≈ 2 .* dense(img)
     @test Float64(@jit slabloss(rimg)) ≈ slabloss(img)
     @test Float64(@jit fluxQ(rimg)) ≈ flux(img).Q
-    g4 = imagepixels(10.0, 12.0, 8, 6; mdims = (Fr([230.0e9, 345.0e9]),))
+    g4 = spatialgrid(10.0, 12.0, 8, 6) ⊗ Fr([230.0e9, 345.0e9])
     img4 = stokesview(rand(8, 6, 2, 4), g4)
     @test vec(Array(@jit fluxQmap(Reactant.to_rarray(img4)))) ≈ vec(baseimage(flux(img4)).Q)
     test_clean_hlo(repr(@code_hlo times2(rimg)))
@@ -446,7 +446,7 @@ end
 
         @testset "along X" begin
             nx = 2ndev
-            g = imagepixels(10.0, 10.0, nx, 4)
+            g = spatialgrid(10.0, 10.0, nx, 4)
             P = rand(nx, 4, 4)
             img = stokesview(P, g)
             simg = shard(img, ShardLayout(mesh; X = :d))
@@ -469,7 +469,7 @@ end
 
         @testset "along Fr of a 4-d map" begin
             nf = 2ndev
-            g = imagepixels(10.0, 10.0, 6, 5; mdims = (Ti([0.0, 1.0]), Fr(range(86.0e9, 345.0e9; length = nf))))
+            g = spatialgrid(10.0, 10.0, 6, 5) ⊗ Ti([0.0, 1.0]) ⊗ Fr(range(86.0e9, 345.0e9; length = nf))
             P = rand(6, 5, 2, nf, 4)
             img = stokesview(P, g)
             simg = shard(img, ShardLayout(mesh; Fr = :d))

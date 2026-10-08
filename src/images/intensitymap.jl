@@ -35,7 +35,7 @@ a few changes to support the Comrade API.
 
 The most common way to create a `IntensityMap` is to use the function definitions
 ```julia-repl
-julia> g = imagepixels(10.0, 10.0, 128, 128; header=NoHeader())
+julia> g = spatialgrid(10.0, 10.0, 128, 128; header=NoHeader())
 julia> X = g.X; Y = g.Y
 julia> data = rand(128, 128)
 julia> img1 = IntensityMap(data, g)
@@ -208,7 +208,7 @@ function IntensityMap(
         data::AbstractArray{T}, fovx::Number, fovy::Number, x0::Number = 0,
         y0::Number = 0; header = NoHeader()
     ) where {T}
-    grid = imagepixels(fovx, fovy, size(data)..., T(x0), T(y0); header)
+    grid = spatialgrid(fovx, fovy, size(data)..., T(x0), T(y0); header)
     return IntensityMap(data, grid)
 end
 

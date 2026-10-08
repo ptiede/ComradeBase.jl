@@ -1,6 +1,6 @@
 export IntensityMap, SpatialIntensityMap,
     DataArr, SpatialDataArr,
-    named_axisdims, imagepixels, pixelsizes, domainpoints,
+    named_axisdims, spatialgrid, pixelsizes, domainpoints,
     phasecenter, baseimage, stokes
 
 include("intensitymap.jl")
@@ -8,7 +8,7 @@ include("coherency.jl")
 
 
 export flux, centroid, second_moment, named_axisdims, axisdims,
-    imagepixels, pixelsizes, domainpoints, phasecenter
+    spatialgrid, pixelsizes, domainpoints, phasecenter
 include("methods.jl")
 
 """

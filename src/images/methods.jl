@@ -34,69 +34,53 @@ phasecenter(img::RectiMap) = phasecenter(axisdims(img))
 # ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 """
-    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; mdims=(), posang=0.0, executor=Serial(), header=NoHeader())
+    spatialgrid(fovx, fovy, nx, ny, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
 
-Construct a spatial grid of pixels with a field of view `fovx` and `fovy` and `nx` and `ny` pixels.
-The points are the pixel centers and the field of view goes from the edge of the first pixel
-to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin over by
-(`x0`, `y0`) in the image plane. 
+Constructs the `(X, Y)` grid of `nx × ny` pixels spanning a field of view `fovx × fovy`.
+The points are the pixel centers, and the field of view runs from the outer edge of the
+first pixel to the outer edge of the last. The image origin is shifted by (`x0`, `y0`).
+Non-spatial dims (frequency, time) are appended with [`gridproduct`](@ref), e.g.
+`spatialgrid(fov, fov, 64, 64) ⊗ Fr([230e9, 345e9])`.
 
-Additional dimensions (time and/or frequency) are added via `mdims`: a tuple of domain lists. 
-- A frequency list is created with `Fr([...])`
-- A time list is created with `Ti([...])`
-These dimensions are appended to the spatial grid after X and Y.
-The dimension ordering in `mdims` determines the ordering of the additional dimensions in the multidomain cube.
-X and Y are always the first two dimensions, respectively.
+## Arguments
+ - `fovx`, `fovy`: the field of view along `X` and `Y`
+ - `nx`, `ny`: the number of pixels along `X` and `Y`
+ - `x0`, `y0`: the offset of the image origin
 
-## Arguments:
- - `fovx::Number`: The field of view in the x-direction
- - `fovy::Number`: The field of view in the y-direction
- - `nx::Integer`: The number of pixels in the x-direction
- - `ny::Integer`: The number of pixels in the y-direction
-
-## Keyword Arguments:
- - `x0::Number=0`: The x-offset of the image
- - `y0::Number=0`: The y-offset of the image
- - `mdims::Union{NamedTuple, Tuple}=()` : The non-spatial dimensions of the image (frequency and/or time)
- - `posang::Number=0`: The position angle of the grid, relative to RA=0 axis.
- - `executor=Serial()`: The executor to use for the grid, default is serial execution
- - `header=NoHeader()`: The header to use for the grid
+## Keyword Arguments
+ - `posang=0`: the position angle of the grid, relative to the RA = 0 axis
+ - `executor=Serial()`: the executor of the grid
+ - `header=NoHeader()`: the header of the grid
 
 ```julia
-# create a square 64x64 grid with a FOV of 250μas
-julia> grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64)
+julia> g = spatialgrid(μas2rad(250), μas2rad(250), 64, 64)
 
-# create a square 64x64 multidomain grid with a FOV of 250μas
-julia> Frlist = Fr([230e9, 345e9])
-julia> Tilist = Ti([1, 2, 3])
+julia> gfr = g ⊗ Fr([230e9, 345e9])                          # dims (X, Y, Fr)
 
-# multifrequency grid
-julia> fr_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Frlist, ))
-
-# set index ordering as (X,Y,Fr,Ti)
-julia> fr_ti_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Frlist, Tilist))
-
-# set index ordering as (X,Y,Ti,Fr)
-julia> ti_fr_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Tilist, Frlist))
+julia> gtifr = g ⊗ Ti([1.0, 2.0, 3.0]) ⊗ Fr([230e9, 345e9])   # dims (X, Y, Ti, Fr)
 ```
 """
-function imagepixels(
+function spatialgrid(
         fovx::Real, fovy::Real, nx::Integer, ny::Integer,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
-        mdims::Union{NamedTuple, Tuple} = (),
         posang::Number = zero(fovx),
         executor = Serial(), header = NoHeader()
     )
-    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
+    (nx > 0 && ny > 0) || throw(ArgumentError("the number of pixels must be positive, got nx = $nx, ny = $ny"))
 
     psizex = fovx / nx
     psizey = fovy / ny
 
-    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
-    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
-    grid = RectiGrid((xitr, yitr, mdims...); executor, header, posang)
-    return grid
+    xs = LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx)
+    ys = LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny)
+    return RectiGrid((X(_pixellookup(xs, psizex)), Y(_pixellookup(ys, psizey))); executor, header, posang)
 end
+
+# A fully specified lookup: `DD.format` cannot infer the traits of a bare range.
+_pixellookup(r::AbstractRange, psize) = DD.Lookups.Sampled(
+    r; order = DD.Lookups.ForwardOrdered(), span = DD.Lookups.Regular(psize),
+    sampling = DD.Lookups.Points()
+)
 
 """
     fieldofview(img::IntensityMap)

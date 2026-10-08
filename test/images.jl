@@ -56,31 +56,74 @@ end
     @test header(g) === head
 end
 
-@testset "multidomain imagepixels" begin
+@testset "grid products" begin
     fr = Fr([230.0e9, 345.0e9])
     ti = Ti([1.0, 2.0, 3.0])
-    g_fr = imagepixels(10.0, 20.0, 4, 5, mdims = (fr,))
+    g = spatialgrid(10.0, 20.0, 4, 5; posang = 0.2, executor = ThreadsEx(), header = ComradeBase.MinimalHeader("s", 1.0, 2.0, 3.0, 4.0))
+    @test DD.name(dims(g)) == (:X, :Y)
+    @test size(g) == (4, 5)
+    @test values(pixelsizes(spatialgrid(10.0, 20.0, 1, 4))) == (10.0, 5.0)
+    @test values(fieldofview(spatialgrid(10.0, 20.0, 1, 4))) == (10.0, 20.0)
 
-    @test length(g_fr.X) == 4
-    @test length(g_fr.Y) == 5
-    @test length(g_fr.Fr) == 2
-    @test collect(g_fr.Fr) == [230.0e9, 345.0e9]
+    g_fr_ti = g ⊗ fr ⊗ ti
+    g_ti_fr = gridproduct(g, ti, fr)
+    @test DD.name(dims(g_fr_ti)) == (:X, :Y, :Fr, :Ti)
+    @test DD.name(dims(g_ti_fr)) == (:X, :Y, :Ti, :Fr)
+    @test size(g_fr_ti) == (4, 5, 2, 3)
+    @test collect(g_fr_ti.Fr) == [230.0e9, 345.0e9]
+    @test posang(g_fr_ti) == 0.2
+    @test executor(g_fr_ti) === executor(g)
+    @test header(g_fr_ti) === header(g)
+    @test dims(gridproduct(g)) == dims(g)
 
-    g_fr_ti = imagepixels(10.0, 20.0, 4, 5, mdims = (fr, ti))
-    g_ti_fr = imagepixels(10.0, 20.0, 4, 5, mdims = (ti, fr))
+    ifr = intervals(Fr, [226.0e9, 228.0e9, 230.0e9])
+    gs = spatialgrid(10.0, 20.0, 4, 5)
+    @inferred spatialgrid(10.0, 20.0, 4, 5)
+    @inferred spatialgrid(10.0f0, 20.0f0, 4, 5)
+    @inferred gridproduct(gs, ifr)
+    @inferred gs ⊗ ifr
 
-    @test length(g_fr_ti.Fr) == 2
-    @test length(g_fr_ti.Ti) == 3
-    @test length(g_ti_fr.Ti) == 3
-    @test length(g_ti_fr.Fr) == 2
+    @test_throws "the grid already has a Fr dim" g ⊗ fr ⊗ Fr([1.0])
+    @test_throws "the appended dims repeat a dim: (:Ti, :Ti)" gridproduct(g, ti, Ti([4.0]))
+    @test_throws "cannot append the spatial dim X" g ⊗ X(1:3)
+    @test_throws "cannot append the spatial dim V" g ⊗ V(1:3)
+    @test_throws "cannot append Pt to a grid" g ⊗ Pt(1:3)
+    @test_throws "the right factor of a grid product must be a non-spatial dim" g ⊗ gs
+    @test_throws "the number of pixels must be positive, got nx = 0, ny = 5" spatialgrid(10.0, 20.0, 0, 5)
+    @test_throws "the number of pixels must be positive, got nx = 4, ny = 0" spatialgrid(10.0, 20.0, 4, 0)
+end
 
-    @test dims(g_fr_ti)[3] != dims(g_ti_fr)[3]
-    @test dims(g_fr_ti)[4] != dims(g_ti_fr)[4]
+@testset "intervals and frameindex" begin
+    ti = @inferred intervals(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
+    @test ti isa Ti
+    @test DD.sampling(ti) isa DD.Intervals
+    @test collect(ti) == [0.5, 2.25, 4.5]
+    @test DD.intervalbounds(ti) == [(0.0, 1.0), (1.5, 3.0), (4.0, 5.0)]
+    fr = @inferred intervals(Fr, [1.0, 2.0, 3.0])
+    @test DD.intervalbounds(fr) == [(1.0, 2.0), (2.0, 3.0)]
 
-    fr = Fr([230.0e9, 345.0e9])
+    @test frameindex(ti, [0.0, 1.0, 1.5, 3.0, 4.5, 5.0]) == [1, 1, 2, 2, 3, 3]
+    @test frameindex(fr, Float32[1, 2, 2.5, 3]) == [1, 2, 2, 2]
+    @test frameindex(DD.lookup(fr), [2.0]) == [2]
+    @test frameindex(Ti([0.0, 1.0, 2.0]), [2.0, 0.0, 1.0f0]) == [3, 1, 2]
+    @test frameindex(Ti([-0.0, 1.0]), [0.0, -0.0]) == [1, 1]
+    @test frameindex(Ti([:a, :b]), [:b]) == [2]
+    @test frameindex(Ti(3.0:-1.0:0.0; sampling = DD.Intervals(DD.Start())), [0.0, 0.99, 3.5, 4.0]) == [4, 4, 1, 1]
 
-    @test_throws AssertionError imagepixels(10.0, 20.0, 0, 5, mdims = (fr,))
-    @test_throws AssertionError imagepixels(10.0, 20.0, 4, 0, mdims = (fr,))
+    oc = OffsetArray([4.5, 0.2, 2.0], -1:1)
+    oi = frameindex(ti, oc)
+    @test axes(oi) == axes(oc)
+    @test parent(oi) == [3, 1, 2]
+    vc = view([9.0, 0.5, 4.2, 9.0], 2:3)
+    @test frameindex(ti, vc) == [1, 3]
+    @test frameindex(ti, [0.5 2.0; 4.5 1.0]) == [1 2; 3 1]
+
+    @test_throws "2 of 3 coordinates match no plane of the lookup; the first is 1.2" frameindex(ti, [0.5, 1.2, 3.5])
+    @test_throws "1 of 1 coordinates match no plane of the lookup; the first is 0.5" frameindex(Ti([0.0, 1.0]), [0.5])
+    @test_throws "the lookup repeats the value 1.0" frameindex(Ti([1.0, 1.0]), [1.0])
+    @test_throws "intervals must be sorted and must not overlap, got [0.0, 2.0] before [1.0, 3.0]" intervals(Ti, [0.0, 1.0], [2.0, 3.0])
+    @test_throws "intervals must be sorted and must not overlap, got [2.0, 3.0] before [0.0, 1.0]" intervals(Ti, [2.0, 0.0], [3.0, 1.0])
+    @test_throws "each interval needs start < stop, got [1.0, 1.0]" intervals(Ti, [1.0], [1.0])
 end
 
 @testset "IntensityMap" begin
@@ -181,7 +224,7 @@ end
 # @testset "ProjectTo" begin
 
 #     data = rand(32, 32)
-#     g = imagepixels(10.0, 10.0, 32, 32)
+#     g = spatialgrid(10.0, 10.0, 32, 32)
 #     img = IntensityMap(data, g)
 
 #     # test_rrule(centroid, img)
@@ -198,13 +241,13 @@ end
 
 # @testset "rrule IntensityMap" begin
 #     data = rand(32, 32)
-#     g = imagepixels(10.0, 10.0, 32, 32)
+#     g = spatialgrid(10.0, 10.0, 32, 32)
 #     # test_rrule(IntensityMap, data, g⊢NoTangent())
 # end
 
 # @testset "rrule baseimage" begin
 #     data = rand(32, 24)
-#     g = imagepixels(5.0, 10.0, 32, 24)
+#     g = spatialgrid(5.0, 10.0, 32, 24)
 #     img = IntensityMap(data, g)
 
 #     test_rrule(ComradeBase.baseimage, img)
@@ -320,7 +363,7 @@ end
 end
 
 @testset "IntensityMap keywords and domain checks" begin
-    g = imagepixels(10.0, 10.0, 4, 3)
+    g = spatialgrid(10.0, 10.0, 4, 3)
     rd = (Ti(1.0),)
     img = IntensityMap(rand(4, 3), g; refdims = rd, name = :flux)
     @test DD.refdims(img) == rd
@@ -330,7 +373,7 @@ end
     @test DD.refdims(vis) == rd
     @test DD.name(vis) == :vis
     @test IntensityMap(img, g) === img
-    @test_throws "the domain of the IntensityMap is not the RectiGrid given" IntensityMap(img, imagepixels(10.0, 10.0, 4, 3; posang = 0.1))
+    @test_throws "the domain of the IntensityMap is not the RectiGrid given" IntensityMap(img, spatialgrid(10.0, 10.0, 4, 3; posang = 0.1))
     @test_throws "the domain of the IntensityMap is not the StructuredDomain given" IntensityMap(vis, UnstructuredDomain((; U = randn(5), V = randn(5))))
 end
 

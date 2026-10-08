@@ -28,7 +28,7 @@ end
     @jit(ComradeBase.setindex!(r, ones(10, 10), 1:10, 1:10))
     @test ComradeBase.rgetindex(r, 1:10, 1:10) ≈ ones(10, 10)
 
-    g = imagepixels(10.0, 10.0, 8, 8)
+    g = spatialgrid(10.0, 10.0, 8, 8)
     go = @jit(identity(g))
     @test executor(go) isa ComradeBase.ReactantEx
 
@@ -43,10 +43,10 @@ end
     test_clean_hlo(repr(@code_hlo intensitymap(m2, go)))
     test_clean_hlo(repr(@code_hlo visibilitymap(m2, guvr)))
 
-    for (mdims, posang) in (((Fr([230.0e9, 345.0e9]),), 0.0), ((), 0.3), ((Fr([230.0e9, 345.0e9]),), 0.3))
-        gf = imagepixels(10.0, 10.0, 8, 6; mdims, posang)
+    for (extra, posang) in (((Fr([230.0e9, 345.0e9]),), 0.0), ((), 0.3), ((Fr([230.0e9, 345.0e9]),), 0.3))
+        gf = gridproduct(spatialgrid(10.0, 10.0, 8, 6; posang), extra...)
         @test Array(baseimage(@jit(intensitymap(m2, @jit(identity(gf)))))) ≈ baseimage(intensitymap(m1, gf))
-        guvf = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), mdims...); posang)
+        guvf = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), extra...); posang)
         @test Array(baseimage(@jit(visibilitymap(m2, @jit(identity(guvf)))))) ≈ baseimage(visibilitymap(m1, guvf))
         test_clean_hlo(repr(@code_hlo intensitymap(m2, @jit(identity(gf)))))
         test_clean_hlo(repr(@code_hlo visibilitymap(m2, @jit(identity(guvf)))))
@@ -176,14 +176,14 @@ end
         dvis = UnstructuredDomain((; U = randn(4), V = randn(4)))
         @test executor(dvis) isa Serial
         @test executor(Reactant.to_rarray(dvis)) === ReactantEx()
-        @test executor(@jit(identity(imagepixels(10.0, 10.0, 8, 8)))) === ReactantEx()
+        @test executor(@jit(identity(spatialgrid(10.0, 10.0, 8, 8)))) === ReactantEx()
     end
 
     @info "Reactant runtime: $(Reactant.XLA.REACTANT_XLA_RUNTIME)"
     @test Reactant.XLA.REACTANT_XLA_RUNTIME == "IFRT"
 
     ndev = length(Reactant.devices())
-    img0 = IntensityMap(rand(2ndev, 4), imagepixels(10.0, 10.0, 2ndev, 4))
+    img0 = IntensityMap(rand(2ndev, 4), spatialgrid(10.0, 10.0, 2ndev, 4))
     mesh1 = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:1], 1), (:d,))
     @test_throws "single-device meshes are not supported by Reactant" shard(img0, ShardLayout(mesh1; X = :d))
     @test_throws "single-device meshes are not supported by Reactant" shard(img0, Reactant.Sharding.DimsSharding(mesh1, (1,), (:d,)))
@@ -212,7 +212,7 @@ end
 
         @testset "IntensityMap along X" begin
             nx = 2ndev
-            img = IntensityMap(rand(nx, 6), imagepixels(10.0, 10.0, nx, 6))
+            img = IntensityMap(rand(nx, 6), spatialgrid(10.0, 10.0, nx, 6))
             simg = shard(img, ShardLayout(mesh; X = :d))
             @test axisdims(simg) === axisdims(img)
             f(a) = baseimage(a) .* 2 .+ sum(baseimage(a))
@@ -226,7 +226,7 @@ end
 
         @testset "Non-divisible dimension is padded" begin
             nx = ndev + 1
-            img = IntensityMap(rand(nx, 4), imagepixels(10.0, 10.0, nx, 4))
+            img = IntensityMap(rand(nx, 4), spatialgrid(10.0, 10.0, nx, 4))
             simg = shard(img, ShardLayout(mesh; X = :d))
             @test stored_blocks(baseimage(simg), 1) == split_blocks(nx, ndev)
             @test last(last(stored_blocks(baseimage(simg), 1))) > nx
@@ -251,7 +251,7 @@ end
 
         @testset "Polarized IntensityMap along X" begin
             nx = 2ndev
-            img = IntensityMap(FieldDimArray{StokesParams}(rand(nx, 4, 4)), imagepixels(10.0, 10.0, nx, 4))
+            img = IntensityMap(FieldDimArray{StokesParams}(rand(nx, 4, 4)), spatialgrid(10.0, 10.0, nx, 4))
             simg = shard(img, ShardLayout(mesh; X = :d))
             f(a) = sum(abs2, baseimage(stokes(a, :Q))) + sum(baseimage(stokes(a, :V)))
             @test Float64(@jit(f(simg))) ≈ f(img)

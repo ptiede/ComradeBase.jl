@@ -128,7 +128,7 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     @test vmappol isa ComradeBase.IntensityMap
     @test vmappol isa StokesMap
 
-    gim = imagepixels(10.0, 10.0, 64, 64)
+    gim = spatialgrid(10.0, 10.0, 64, 64)
     imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
     @test imgpol isa ComradeBase.IntensityMap
     @test imgpol isa StokesMap{Float64, 2}
@@ -160,7 +160,7 @@ end
 end
 
 @testset "Methods" begin
-    gim = imagepixels(10.0, 10.0, 64, 64)
+    gim = spatialgrid(10.0, 10.0, 64, 64)
     m = GaussTest()
     img = intensitymap(m, gim)
     @test all(x -> isapprox(x[1], x[2]), zip(centroid(img), centroid(m, gim)))

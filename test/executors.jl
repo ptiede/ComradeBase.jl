@@ -144,13 +144,13 @@ end
 
 @testset "executors on (X, Y, Fr) and rotated grids" begin
     m = GaussTest()
-    mdims = (Fr([230.0e9, 345.0e9, 690.0e9]),)
-    for (mdims, posang) in (((), 0.3), (mdims, 0.0), (mdims, 0.3))
-        g = imagepixels(10.0, 12.0, 8, 6; mdims, posang)
+    frs = (Fr([230.0e9, 345.0e9, 690.0e9]),)
+    for (extra, posang) in (((), 0.3), (frs, 0.0), (frs, 0.3))
+        g = gridproduct(spatialgrid(10.0, 12.0, 8, 6; posang), extra...)
         img = intensitymap(m, g)
         @test size(img) == size(g)
         @test baseimage(img) ≈ map(p -> ComradeBase.intensity_point(m, p), domainpoints(g)) .* prod(pixelsizes(g))
-        guv = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), mdims...); posang)
+        guv = RectiGrid((U(range(-0.2, 0.2; length = 8)), V(range(-0.2, 0.2; length = 6)), extra...); posang)
         vis = visibilitymap(m, guv)
         for ex in loopexecutors
             testeximg(img, m, ex)
@@ -206,13 +206,13 @@ end
 
 @testset "unknown executor" begin
     m = GaussTest()
-    @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" intensitymap(m, imagepixels(10.0, 10.0, 4, 4; executor = ThreadsEx(:nope)))
+    @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" intensitymap(m, spatialgrid(10.0, 10.0, 4, 4; executor = ThreadsEx(:nope)))
     @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" visibilitymap(m, UnstructuredDomain((; U = randn(4), V = randn(4)); executor = ThreadsEx(:nope)))
 end
 
 @testset "image executor allocation" begin
     m = GaussTest()
-    for g in (imagepixels(10.0, 10.0, 8, 6), imagepixels(10.0, 10.0, 8, 6; mdims = (Fr([230.0e9, 345.0e9]),), posang = 0.3))
+    for g in (spatialgrid(10.0, 10.0, 8, 6), spatialgrid(10.0, 10.0, 8, 6; posang = 0.3) ⊗ Fr([230.0e9, 345.0e9]))
         img = intensitymap(m, g)
         intensitymap!(img, m)
         @test (@allocated intensitymap!(img, m)) == 0
@@ -228,7 +228,7 @@ end
         vis = visibilitymap(m, d)
         visibilitymap!(vis, m)
         @test (@allocated visibilitymap!(vis, m)) <= ncomp * shaped
-        img = intensitymap(m, imagepixels(10.0, 10.0, 8, 6; executor = CPU()))
+        img = intensitymap(m, spatialgrid(10.0, 10.0, 8, 6; executor = CPU()))
         intensitymap!(img, m)
         @test (@allocated intensitymap!(img, m)) == 0
     end

@@ -70,10 +70,7 @@ sd = shard(d, ShardLayout(mesh; Fr = :f))
 
 nx = 16
 fov = 1.0e-9
-g = RectiGrid((
-    X(range(-fov / 2, fov / 2; length = nx)), Y(range(-fov / 2, fov / 2; length = nx)),
-    Ti([0.0, 1.0, 2.0, 3.0]), frs,
-))
+g = spatialgrid(fov, fov, nx, nx) ⊗ Ti([0.0, 1.0, 2.0, 3.0]) ⊗ frs
 img = IntensityMap(rand(nx, nx, 4, 2), g)
 simg = shard(img, layout)
 ```

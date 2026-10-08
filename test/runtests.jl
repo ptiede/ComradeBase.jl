@@ -6,6 +6,7 @@ using OhMyThreads
 using Enzyme
 using KernelAbstractions
 using Polyester
+using OffsetArrays
 
 using FiniteDifferences
 # using ChainRulesCore

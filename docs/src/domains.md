@@ -46,20 +46,20 @@ nothing # hide
 
 ## Image grids
 
+[`spatialgrid`](@ref) builds the `(X, Y)` grid of pixel centers from a field of view and
+a pixel count:
+
 ```@example domains
-g = RectiGrid((X(range(-10.0, 10.0; length = 64)), Y(range(-10.0, 10.0; length = 64))))
+g = spatialgrid(20.0, 20.0, 64, 64)
 img = intensitymap(Gaussian(2.0), g)
 size(img)
 ```
 
-A grid can carry `Ti` and `Fr` dims after `X` and `Y`; the map then has one image plane
-per time and frequency.
+Non-spatial dims are appended with [`gridproduct`](@ref), or its alias `⊗`; the map then has one
+image plane per time and frequency. The order of the factors is the memory layout:
 
 ```@example domains
-gm = RectiGrid((
-    X(range(-10.0, 10.0; length = 32)), Y(range(-10.0, 10.0; length = 32)),
-    Ti([0.0, 0.5, 1.0]), Fr([230.0e9, 345.0e9]),
-))
+gm = spatialgrid(20.0, 20.0, 32, 32) ⊗ Ti([0.0, 0.5, 1.0]) ⊗ Fr([230.0e9, 345.0e9])
 size(intensitymap(Gaussian(2.0), gm))
 ```
 
@@ -126,6 +126,16 @@ domain, and the `Ti` coordinate records each point's observation time. The image
 of a movie is a grid with a `Ti` dim; the step that computes visibilities from the image
 planes looks up each point's frame from its `Ti` coordinate. A `(Pt, Ti, Fr)` domain can
 be constructed, but nothing requires one.
+
+[`frameindex`](@ref) does that lookup. For a dim with `Intervals` sampling, such as one
+built by [`intervals`](@ref), a point belongs to the interval that contains it; otherwise
+its coordinate must equal a plane's value. A point that matches no plane is an error.
+
+```@example domains
+scans = intervals(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
+gmovie = spatialgrid(20.0, 20.0, 32, 32) ⊗ scans
+frameindex(scans, [0.2, 2.0, 4.9])
+```
 
 ### Several datasets
 

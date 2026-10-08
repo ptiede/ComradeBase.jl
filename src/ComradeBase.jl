@@ -17,7 +17,7 @@ export visibility,
     intensitymap, intensitymap!,
     visibilitymap, visibilitymap!,
     StokesParams, CoherencyMatrix, CirBasis, LinBasis,
-    flux, fieldofview, imagepixels, pixelsizes, IntensityMap,
+    flux, fieldofview, spatialgrid, pixelsizes, IntensityMap,
     named_dims
 
 
@@ -76,7 +76,7 @@ end
     nx = 10
     ny = 10
     @compile_workload begin
-        p = imagepixels(fovx, fovy, nx, ny)
+        p = spatialgrid(fovx, fovy, nx, ny)
         g = RectiGrid(p)
         gs = domainpoints(p)
         imgI = IntensityMap(rand(10, 10), g)
