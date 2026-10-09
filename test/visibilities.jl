@@ -111,18 +111,28 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     g = UnstructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
-    closure_phasemap(m, g, g, g)
-    logclosure_amplitudemap(m, g, g, g, g)
+    cp = closure_phasemap(m, g, g, g)
+    @test cp isa IntensityMap
+    @test axisdims(cp).p2 == domainpoints(g)
+    lca = logclosure_amplitudemap(m, g, g, g, g)
+    @test lca isa IntensityMap
+    @test baseimage(lca) ≈ zeros(length(g)) atol = 1.0e-12
     @test angle.(bispectrummap(m, g, g, g)) ≈ closure_phasemap(m, g, g, g)
 
-    vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
-    @test vmappol isa ComradeBase.UnstructuredMap
-    @test eltype(vmappol) <: StokesParams
+    g2 = ComradeBase.StructuredDomain((ComradeBase.Pt(4), Fr([230.0e9, 345.0e9])); u = 1.0e4 .* randn(4), v = 1.0e4 .* randn(4))
+    cp2 = closure_phasemap(m, g2, g2, g2)
+    @test size(cp2) == size(g2)
+    @test dims(cp2) == dims(g2)
 
-    gim = imagepixels(10.0, 10.0, 64, 64)
+    vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
+    @test vmappol isa ComradeBase.IntensityMap
+    @test vmappol isa StokesMap
+
+    gim = spatialgrid(10.0, 10.0, 64, 64)
     imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
     @test imgpol isa ComradeBase.IntensityMap
-    @test eltype(imgpol) <: StokesParams
+    @test imgpol isa StokesMap{Float64, 2}
+    @test baseimage(imgpol) isa FieldDimArray{StokesParams{Float64}, 2, Array{Float64, 3}}
 
     img = intensitymap(m, gim)
     vis = visibilitymap(m, g)
@@ -150,7 +160,7 @@ end
 end
 
 @testset "Methods" begin
-    gim = imagepixels(10.0, 10.0, 64, 64)
+    gim = spatialgrid(10.0, 10.0, 64, 64)
     m = GaussTest()
     img = intensitymap(m, gim)
     @test all(x -> isapprox(x[1], x[2]), zip(centroid(img), centroid(m, gim)))
@@ -180,12 +190,21 @@ ComradeBase.build_param(param::ExpParams, p) = exp(param.scale) * p.Fr
     @unpack_params scale = pp((; Fr = 2.0))
     @test scale ≈ exp(0.1) * 2.0
 
-    pt = (ExpParams(0.1), ExpParams(0.2))
-    @test reduce(*, ComradeBase.build_param(pt, (; Fr = 2.0)) .≈ (exp(0.1) * 2.0, exp(0.2) * 2.0))
-    pa = [ExpParams(0.1), ExpParams(0.2)]
-    @test ComradeBase.build_param(pa, (; Fr = 2.0)) ≈ [exp(0.1) * 2.0, exp(0.2) * 2.0]
-
     @test p((; Fr = 3.0)) ≈ ComradeBase.build_param(p, (; Fr = 3.0))
 
     @test ComradeBase.build_param(4.0, (; Fr = 3.0)) ≈ 4.0
+end
+
+@testset "paramtype separates fields from values" begin
+    # A field of values over the grid unwraps to its element type; a single value does not.
+    # `StokesParams` is a `FieldVector`, so it is a value despite being an `AbstractVector`.
+    @test ComradeBase.paramtype(Matrix{Float64}) === Float64
+    @test ComradeBase.paramtype(StokesParams{Float64}) === StokesParams{Float64}
+    @test ComradeBase.paramtype(Matrix{StokesParams{Float64}}) === StokesParams{Float64}
+    @test ComradeBase.paramtype(typeof(view(rand(8, 8), 2:4, 2:4))) === Float64
+
+    # An array-valued `DomainParams` still reports the element type, so it promotes with
+    # the numbers it is combined with.
+    @test ComradeBase.paramtype(ExpParams{Matrix{Float64}}) === Float64
+    @test promote_type(ComradeBase.paramtype(ExpParams{Matrix{Float64}}), Float64) === Float64
 end

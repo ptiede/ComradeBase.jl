@@ -8,6 +8,11 @@ This is useful for broadcasting a model across an abritrary grid.
 domainpoints(img::IntensityMap) = domainpoints(axisdims(img))
 
 
+"""
+    basedim(x)
+
+Returns the plain values underneath a dim or lookup, and `x` itself for anything else.
+"""
 @inline basedim(x::DD.Dimension) = basedim(parent(x))
 @inline basedim(x::DD.Lookups.LookupArray) = basedim(parent(x))
 @inline basedim(x) = x
@@ -24,74 +29,58 @@ function phasecenter(dims::AbstractRectiGrid)
     y0 = -(last(Y) + first(Y)) / 2
     return (X = x0, Y = y0)
 end
-phasecenter(img::IntensityMap) = phasecenter(axisdims(img))
+phasecenter(img::RectiMap) = phasecenter(axisdims(img))
 
 # ChainRulesCore.@non_differentiable pixelsizes(img::IntensityMap)
 
 """
-    imagepixels(fovx, fovy, nx, ny, x0=0, y0=0; mdims=(), posang=0.0, executor=Serial(), header=NoHeader())
+    spatialgrid(fovx, fovy, nx, ny, x0=0, y0=0; posang=0, executor=Serial(), header=NoHeader())
 
-Construct a spatial grid of pixels with a field of view `fovx` and `fovy` and `nx` and `ny` pixels.
-The points are the pixel centers and the field of view goes from the edge of the first pixel
-to the edge of the last pixel. The `x0`, `y0` offsets shift the image origin over by
-(`x0`, `y0`) in the image plane. 
+Constructs the `(X, Y)` grid of `nx × ny` pixels spanning a field of view `fovx × fovy`.
+The points are the pixel centers, and the field of view runs from the outer edge of the
+first pixel to the outer edge of the last. The image origin is shifted by (`x0`, `y0`).
+Non-spatial dims (frequency, time) are appended with [`gridproduct`](@ref), e.g.
+`spatialgrid(fov, fov, 64, 64) ⊗ Fr([230e9, 345e9])`.
 
-Additional dimensions (time and/or frequency) are added via `mdims`: a tuple of domain lists. 
-- A frequency list is created with `Fr([...])`
-- A time list is created with `Ti([...])`
-These dimensions are appended to the spatial grid after X and Y.
-The dimension ordering in `mdims` determines the ordering of the additional dimensions in the multidomain cube.
-X and Y are always the first two dimensions, respectively.
+## Arguments
+ - `fovx`, `fovy`: the field of view along `X` and `Y`
+ - `nx`, `ny`: the number of pixels along `X` and `Y`
+ - `x0`, `y0`: the offset of the image origin
 
-## Arguments:
- - `fovx::Number`: The field of view in the x-direction
- - `fovy::Number`: The field of view in the y-direction
- - `nx::Integer`: The number of pixels in the x-direction
- - `ny::Integer`: The number of pixels in the y-direction
-
-## Keyword Arguments:
- - `x0::Number=0`: The x-offset of the image
- - `y0::Number=0`: The y-offset of the image
- - `mdims::Union{NamedTuple, Tuple}=()` : The non-spatial dimensions of the image (frequency and/or time)
- - `posang::Number=0`: The position angle of the grid, relative to RA=0 axis.
- - `executor=Serial()`: The executor to use for the grid, default is serial execution
- - `header=NoHeader()`: The header to use for the grid
+## Keyword Arguments
+ - `posang=0`: the position angle of the grid, relative to the RA = 0 axis
+ - `executor=Serial()`: the executor of the grid
+ - `header=NoHeader()`: the header of the grid
 
 ```julia
-# create a square 64x64 grid with a FOV of 250μas
-julia> grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64)
+julia> g = spatialgrid(μas2rad(250), μas2rad(250), 64, 64)
 
-# create a square 64x64 multidomain grid with a FOV of 250μas
-julia> Frlist = Fr([230e9, 345e9])
-julia> Tilist = Ti([1, 2, 3])
+julia> gfr = g ⊗ Fr([230e9, 345e9])                          # dims (X, Y, Fr)
 
-# multifrequency grid
-julia> fr_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Frlist, ))
-
-# set index ordering as (X,Y,Fr,Ti)
-julia> fr_ti_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Frlist, Tilist))
-
-# set index ordering as (X,Y,Ti,Fr)
-julia> ti_fr_grid = imagepixels(μas2rad(250), μas2rad(250), 64, 64; mdims=(Tilist, Frlist))
+julia> gtifr = g ⊗ Ti([1.0, 2.0, 3.0]) ⊗ Fr([230e9, 345e9])   # dims (X, Y, Ti, Fr)
 ```
 """
-function imagepixels(
+function spatialgrid(
         fovx::Real, fovy::Real, nx::Integer, ny::Integer,
         x0::Number = zero(fovx), y0::Number = zero(fovy);
-        mdims::Union{NamedTuple, Tuple} = (),
         posang::Number = zero(fovx),
         executor = Serial(), header = NoHeader()
     )
-    @assert (nx > 0) && (ny > 0) "Number of pixels must be positive"
+    (nx > 0 && ny > 0) || throw(ArgumentError("the number of pixels must be positive, got nx = $nx, ny = $ny"))
 
     psizex = fovx / nx
     psizey = fovy / ny
 
-    xitr = X(LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx))
-    yitr = Y(LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny))
-    grid = RectiGrid((xitr, yitr, mdims...); executor, header, posang)
-    return grid
+    xs = LinRange(-fovx / 2 + psizex / 2 - x0, fovx / 2 - psizex / 2 - x0, nx)
+    ys = LinRange(-fovy / 2 + psizey / 2 - y0, fovy / 2 - psizey / 2 - y0, ny)
+    return RectiGrid((X(_pixellookup(xs, psizex)), Y(_pixellookup(ys, psizey))); executor, header, posang)
 end
+
+# A fully specified lookup: `DD.format` cannot infer the traits of a bare range.
+_pixellookup(r::AbstractRange, psize) = DD.Lookups.Sampled(
+    r; order = DD.Lookups.ForwardOrdered(), span = DD.Lookups.Regular(psize),
+    sampling = DD.Lookups.Points()
+)
 
 """
     fieldofview(img::IntensityMap)
@@ -99,22 +88,30 @@ end
 
 Returns a named tuple with the field of view of the image.
 """
-function fieldofview(img::IntensityMap)
+function fieldofview(img::RectiMap)
     return fieldofview(axisdims(img))
 end
 
-pixelsizes(img::IntensityMap) = pixelsizes(axisdims(img))
+pixelsizes(img::RectiMap) = pixelsizes(axisdims(img))
 
 """
     flux(im::IntensityMap)
 
-Computes the flux of a intensity map
+Computes the flux of a intensity map: the sum over `X` and `Y`, a map over the other dims if
+there are any. For a [`StokesMap`](@ref) the flux of each Stokes component is summed separately
+and the result has `StokesParams` elements.
 """
-function flux(im::IntensityMap{T, N}) where {T, N}
-    return sum(im; dims = (:X, :Y))
-end
+flux(im::RectiMap) = sum(im; dims = (:X, :Y))
 
-flux(im::SpatialIntensityMap) = sum(parent(im))
+flux(im::SpatialIntensityMap{<:Number}) = sum(parent(im))
+
+flux(im::RectiMap{<:StokesParams}) = _stokesflux(map(K -> flux(stokes(im, K)), (:I, :Q, :U, :V)))
+
+_stokesflux(f::NTuple{4, Number}) = StokesParams(f...)
+function _stokesflux(f::NTuple{4, IntensityMap})
+    data = StructArray{StokesParams{eltype(first(f))}}(map(baseimage, f))
+    return IntensityMap(data, axisdims(first(f)), refdims(first(f)), DD.name(first(f)))
+end
 
 """
     centroid(im::AbstractIntensityMap)
@@ -123,13 +120,13 @@ Computes the image centroid aka the center of light of the image.
 
 For polarized maps we return the centroid for Stokes I only.
 """
-function centroid(im::IntensityMap{<:Real})
+function centroid(im::RectiMap{<:Real})
     (; X, Y) = named_dims(im)
     return mapslices(x -> centroid(IntensityMap(x, RectiGrid((; X, Y)))), im; dims = (:X, :Y))
 end
-centroid(im::IntensityMap{<:StokesParams}) = centroid(stokes(im, :I))
+centroid(im::StokesMap) = centroid(stokes(im, :I))
 
-function centroid(im::IntensityMap{T, 2})::Tuple{T, T} where {T <: Real}
+function centroid(im::RectiMap{T, 2})::Tuple{T, T} where {T <: Real}
     f = flux(im)
     d = domainpoints(im)
     # Grab the parent otherwise things don't work on the GPU (DD missing multiargument mapreduce)
@@ -150,18 +147,14 @@ second moment, which is specified by the `center` argument.
 
 For polarized maps we return the second moment for Stokes I only.
 """
-function second_moment(im::IntensityMap{T, N}; center = true) where {T <: Number, N}
+function second_moment(im::RectiMap{T, N}; center = true) where {T <: Number, N}
     (; X, Y) = named_dims(im)
     return mapslices(
         x -> second_moment(IntensityMap(x, RectiGrid((; X, Y))); center), im;
         dims = (:X, :Y)
     )
 end
-
-# Only return the second moment for Stokes I
-function second_moment(im::IntensityMap{<:StokesParams}; center = true)
-    return second_moment(stokes(im, :I); center)
-end
+second_moment(im::StokesMap; center = true) = second_moment(stokes(im, :I); center)
 
 """
     second_moment(im::IntensityMap; center=true)
@@ -170,7 +163,7 @@ Computes the image second moment tensor of the image.
 By default we really return the second **cumulant** or centered
 second moment, which is specified by the `center` argument.
 """
-function second_moment(im::IntensityMap{T, 2}; center = true) where {T <: Number}
+function second_moment(im::RectiMap{T, 2}; center = true) where {T <: Number}
     xx = zero(T)
     xy = zero(T)
     yy = zero(T)

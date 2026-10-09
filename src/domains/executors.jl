@@ -1,4 +1,4 @@
-export Serial, ThreadsEx
+export Serial, ThreadsEx, ReactantEx, ShardLayout, shard
 
 """
     Serial()
@@ -20,44 +20,213 @@ ThreadsEx() = ThreadsEx(:dynamic)
 ThreadsEx(s) = ThreadsEx{s}()
 
 """
-    ReactantEx
-Uses Reactant.jl for execution when computing the intensitymap or visibilitymap. Note that specifying
-this should be unnecessary as ComradeBase will automatically switch to this backend when
-it detects that it is inside a Reactant tracing context.
+    ReactantEx()
+
+Uses Reactant.jl for execution when computing the intensitymap or visibilitymap. Specifying
+this is usually unnecessary, since ComradeBase switches to this backend automatically
+when it detects that it is inside a Reactant tracing context.
 """
 struct ReactantEx end
 
+"""
+    ShardLayout(mesh; axes...)
 
-#TODO can this be made nicer?
+Describes how to place an object on a device `mesh`. Each keyword maps a dimension name of
+the object (`X`, `Y`, `Ti`, `Fr`, ...) to the name of a mesh axis, or to a tuple of mesh-axis
+names, along which that dimension is split. Dimensions that are not named are replicated.
+The `mesh` is not inspected here; [`shard`](@ref) requires it to be a
+`Reactant.Sharding.Mesh`.
+
+```julia
+layout = ShardLayout(mesh; Ti = :t, Fr = :f)
+```
+"""
+struct ShardLayout{M, A <: NamedTuple}
+    mesh::M
+    axes::A
+    function ShardLayout{M, A}(mesh, axes) where {M, A <: NamedTuple}
+        isempty(axes) && throw(ArgumentError("ShardLayout requires at least one dimension => mesh-axis assignment, e.g. `ShardLayout(mesh; X = :x)`"))
+        for (k, v) in pairs(axes)
+            _ismeshaxes(v) || throw(ArgumentError("ShardLayout: the value for dimension `$k` must be a `Symbol` or a tuple of `Symbol`s naming mesh axes, got $(repr(v))"))
+        end
+        return new{M, A}(mesh, axes)
+    end
+end
+ShardLayout(mesh, axes::NamedTuple) = ShardLayout{typeof(mesh), typeof(axes)}(mesh, axes)
+ShardLayout(mesh; axes...) = ShardLayout(mesh, NamedTuple(axes))
+
+_ismeshaxes(::Symbol) = true
+_ismeshaxes(v::Tuple) = !isempty(v) && all(x -> x isa Symbol, v)
+_ismeshaxes(_) = false
+
+"""
+    shard(x, layout::ShardLayout)
+    shard(x, sharding::Reactant.Sharding.AbstractSharding)
+
+Return a copy of `x` whose arrays are placed on the device mesh, split along the dimensions
+named in `layout` and replicated along the rest. Dim lookups stay on the host.
+
+With a `ShardLayout`, `x` is an `IntensityMap`, a `RectiGrid`, a `StructuredDomain`, an
+`AbstractDualDomain`, or a `Tuple` or `NamedTuple` of these, which is sharded element by
+element. Every dimension named in `layout` must be a dimension of `x` (of either domain, for
+a dual domain); for a collection, of every element.
+
+- `IntensityMap`: its values, and the coordinates of a `StructuredDomain` it is defined on.
+- `StructuredDomain`: each coordinate along the dims it spans; the executor becomes
+  `ReactantEx()`.
+- `RectiGrid`: returned unchanged.
+- `AbstractDualDomain`: both domains, rebuilt with `Accessors.@set` on the fields
+  `imgdomain` and `visdomain`. Dual domains that hold more device data add a method.
+
+The second form passes `sharding` directly to `Reactant.to_rarray`. A dimension whose
+length is not a multiple of the number of devices along its mesh axes is padded.
+
+Requires Reactant to be loaded with its IFRT runtime (the Reactant preference
+`xla_runtime = "IFRT"`) and a mesh of at least two devices.
+"""
+function shard end
+
+
 @static if VERSION ≥ v"1.11"
-    const schedulers = (:(:dynamic), :(:static), :(:greedy))
+    const schedulers = (:dynamic, :static, :greedy)
 else
-    const schedulers = (:(:dynamic), :(:static))
+    const schedulers = (:dynamic, :static)
 end
 
 """
     @threaded executor expr
 
-Threads the for-loop expression `expr` using the specified `executor`. The executor must be one of
-`ThreadsEx` or `Serial`. Note that if the `Threads.nthreads() == 1` we automatically default to 
-a regular for-loop to prevent overhead.
+Threads the for-loop expression `expr` using the specified `executor`, which must be `Serial()`
+or a `ThreadsEx` with one of Julia's `Threads.@threads` schedulers; any other executor throws an
+`ArgumentError`. When `Threads.nthreads() == 1` the loop runs as a regular for-loop.
 """
 macro threaded(executor, expr)
+    ex = gensym(:executor)
+    threaded = nothing
+    for s in schedulers
+        threaded = :(
+            if $ex === $(ThreadsEx){$(QuoteNode(s))}()
+                Base.Threads.@threads $(QuoteNode(s)) $expr
+            else
+                $threaded
+            end
+        )
+    end
     return esc(
         quote
-            if Threads.nthreads() > 1 && $(executor) != Serial()
-                if $(executor) == ThreadsEx{:static}()
-                    Threads.@threads :static $(expr)
-                elseif $(executor) == ThreadsEx{:dynamic}()
-                    Threads.@threads :dynamic $(expr)
-                end
+            $ex = $(_check_threaded)($executor)
+            if $ex === $(Serial)() || Base.Threads.nthreads() == 1
+                $expr
             else
-                $(expr)
+                $threaded
             end
         end
     )
 end
 
 macro threaded(expr)
-    return :(@threaded(ThreadsEx(), $(expr)))
+    return esc(:($(@__MODULE__).@threaded $(ThreadsEx)() $expr))
+end
+
+_check_threaded(ex::Serial) = ex
+_check_threaded(ex::ThreadsEx{S}) where {S} = S in schedulers ? ex : _throw_threaded(ex)
+_check_threaded(ex) = _throw_threaded(ex)
+
+@noinline function _throw_threaded(ex)
+    throw(
+        ArgumentError(
+            "@threaded does not handle the executor $ex; use `Serial()` or `ThreadsEx(s)` with `s` one of $schedulers"
+        )
+    )
+end
+
+"""
+    _pointmap!(img::IntensityMap, f, d::AbstractSingleDomain, executor)
+
+Writes `f(domainpoints(d)[I])` into the map `img` at every index `I` of `d`, using `executor`.
+Executor extensions add methods for their executor type; an executor without one throws an
+`ArgumentError`.
+"""
+function _pointmap!(img, f, d, ::Serial)
+    dest = baseimage(img)
+    g = domainpoints(d)
+    for I in _pointindices(dest, g)
+        dest[I] = f(g[I])
+    end
+    return nothing
+end
+
+"""
+    _pointindices(dest, g)
+
+Returns `CartesianIndices(g)` after checking that the map data `dest` has the axes of the
+points `g`.
+"""
+function _pointindices(dest, g)
+    axes(dest) == axes(g) || throw(
+        DimensionMismatch("map data with axes $(axes(dest)) does not have the axes $(axes(g)) of the domain")
+    )
+    return CartesianIndices(g)
+end
+
+function _pointmap!(img, f, d, ::ThreadsEx{S}) where {S}
+    return _threads_pointmap!(baseimage(img), f, domainpoints(d), Val(S))
+end
+
+_pointmap!(img, f, d, executor) = _throw_executor(executor)
+
+"""
+    _threads_pointmap!(dest, f, points, ::Val{S})
+
+The loop of [`_pointmap!`](@ref) for `ThreadsEx{S}`. `S` is one of Julia's `Threads.@threads`
+schedulers or `:Enzyme`, `:Polyester` when that package is loaded.
+"""
+_threads_pointmap!(dest, f, g, ::Val{S}) where {S} = _throw_executor(ThreadsEx(S))
+
+@noinline function _throw_executor(executor)
+    throw(
+        ArgumentError(
+            "the executor $executor cannot run a loop; use `Serial()`, `ThreadsEx(s)` with `s` one of $schedulers, `ThreadsEx(:Enzyme)` or `ThreadsEx(:Polyester)` with Enzyme or Polyester loaded, or an OhMyThreads scheduler with OhMyThreads loaded"
+        )
+    )
+end
+
+for s in schedulers
+    @eval function _threads_pointmap!(dest, f, g, ::Val{$(QuoteNode(s))})
+        Threads.@threads $(QuoteNode(s)) for I in _pointindices(dest, g)
+            dest[I] = f(g[I])
+        end
+        return nothing
+    end
+end
+
+"""
+    NamedPointFn{K}(f)
+
+Holds a point function `f`; `_applynamed(p, xs...)` applies `f` to `NamedTuple{K}(xs)` for the
+positional values `xs`, so that `f` can be broadcast over coordinate arrays.
+"""
+struct NamedPointFn{K, F}
+    f::F
+end
+NamedPointFn{K}(f) where {K} = NamedPointFn{K, typeof(f)}(f)
+@inline _applynamed(p::NamedPointFn{K}, xs...) where {K} = p.f(NamedTuple{K}(xs))
+
+"""
+    pointbroadcasted(f, d::AbstractSingleDomain)
+
+Returns the lazy broadcast of `f` over the points of `d`, with the axes of `d`. Use it to
+map a point function over a domain on any executor, including inside Reactant.
+"""
+pointbroadcasted(f::F, d::AbstractSingleDomain) where {F} = Broadcast.broadcasted(f, domainpoints(d))
+
+"""
+    _broadcast_pointmap!(img::IntensityMap, f, d::AbstractSingleDomain)
+
+The broadcasting form of [`_pointmap!`](@ref), for executors that compile array expressions
+(KernelAbstractions, Reactant).
+"""
+function _broadcast_pointmap!(img, f::F, d) where {F}
+    img .= pointbroadcasted(f, d)
+    return nothing
 end

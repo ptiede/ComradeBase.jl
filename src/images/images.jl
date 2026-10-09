@@ -1,15 +1,15 @@
 export IntensityMap, SpatialIntensityMap,
-    DataArr, SpatialDataArr, DataNames,
-    named_axisdims, imagepixels, pixelsizes, domainpoints,
+    DataArr, SpatialDataArr,
+    named_axisdims, spatialgrid, pixelsizes, domainpoints,
     phasecenter, baseimage, stokes
 
 include("intensitymap.jl")
+include("coherency.jl")
 
 
 export flux, centroid, second_moment, named_axisdims, axisdims,
-    imagepixels, pixelsizes, domainpoints, phasecenter
+    spatialgrid, pixelsizes, domainpoints, phasecenter
 include("methods.jl")
-include("map.jl")
 
 """
     intensitymap(model::AbstractModel, dims::AbstractDomain)
@@ -70,6 +70,8 @@ end
 function stokes(m::StructArray{<:StokesParams}, p::Symbol)
     return getproperty(m, p)
 end
+
+stokes(m::FieldDimArray{<:StokesParams}, p::Symbol) = fieldview(m, p)
 
 function stokes(m::StokesParams, p::Symbol)
     return getfield(m, p)

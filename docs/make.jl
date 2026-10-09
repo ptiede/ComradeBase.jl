@@ -13,7 +13,13 @@ makedocs(;
         canonical = "https://ptiede.github.io/ComradeBase.jl",
         assets = String[],
     ),
-    pages = ["Home" => "index.md"],
+    pages = [
+        "Home" => "index.md",
+        "Domains and maps" => "domains.md",
+        "Polarized maps" => "polarization.md",
+        "Sharding with Reactant" => "sharding.md",
+        "API" => "api.md",
+    ],
 )
 
 deploydocs(;
