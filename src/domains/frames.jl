@@ -1,8 +1,8 @@
-export intervals, frameindex
+export frames, frameindex
 
 """
-    intervals(D, starts, stops)
-    intervals(D, edges)
+    frames(D, starts, stops)
+    frames(D, edges)
 
 Returns a dim of type `D` (e.g. `Ti` or `Fr`) whose planes are the intervals
 `[starts[i], stops[i]]`, with an `Intervals(Center())` lookup at the interval centers and
@@ -11,12 +11,12 @@ Returns a dim of type `D` (e.g. `Ti` or `Fr`) whose planes are the intervals
 allowed). With `edges`, the intervals are the contiguous `[edges[i], edges[i+1]]`.
 
 ```julia
-julia> scans = intervals(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
+julia> scans = frames(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
 
-julia> bands = intervals(Fr, [226e9, 228e9, 230e9])
+julia> bands = frames(Fr, [226e9, 228e9, 230e9])
 ```
 """
-function intervals(::Type{D}, starts::AbstractVector, stops::AbstractVector) where {D <: DD.Dimension}
+function frames(::Type{D}, starts::AbstractVector, stops::AbstractVector) where {D <: DD.Dimension}
     for (a, b) in zip(starts, stops)
         a < b || throw(ArgumentError("each interval needs start < stop, got [$a, $b]"))
     end
@@ -36,8 +36,8 @@ function intervals(::Type{D}, starts::AbstractVector, stops::AbstractVector) whe
     )
 end
 
-function intervals(::Type{D}, edges::AbstractVector) where {D <: DD.Dimension}
-    return intervals(D, edges[begin:(end - 1)], edges[(begin + 1):end])
+function frames(::Type{D}, edges::AbstractVector) where {D <: DD.Dimension}
+    return frames(D, edges[begin:(end - 1)], edges[(begin + 1):end])
 end
 
 """
@@ -54,7 +54,7 @@ A coordinate that matches no plane throws an `ArgumentError` giving the number o
 coordinates and the first one. Comparisons happen in the coordinates' precision, so a
 `Float32` time at a `Float64` interval end can fall outside it. Equality matching is meant
 for planes built from the data's own values, e.g. a grid `g ⊗ dims(visdomain, Fr)`; use
-[`intervals`](@ref) for times.
+[`frames`](@ref) for times.
 """
 frameindex(d::DD.Dimension, coords::AbstractArray) = frameindex(DD.lookup(DD.format(d)), coords)
 frameindex(l::DD.Lookups.Lookup, coords::AbstractArray) = _frameindex(DD.Lookups.sampling(l), l, coords)

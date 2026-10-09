@@ -128,11 +128,11 @@ planes looks up each point's frame from its `Ti` coordinate. A `(Pt, Ti, Fr)` do
 be constructed, but nothing requires one.
 
 [`frameindex`](@ref) does that lookup. For a dim with `Intervals` sampling, such as one
-built by [`intervals`](@ref), a point belongs to the interval that contains it; otherwise
+built by [`frames`](@ref), a point belongs to the interval that contains it; otherwise
 its coordinate must equal a plane's value. A point that matches no plane is an error.
 
 ```@example domains
-scans = intervals(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
+scans = frames(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
 gmovie = spatialgrid(20.0, 20.0, 32, 32) ⊗ scans
 frameindex(scans, [0.2, 2.0, 4.9])
 ```

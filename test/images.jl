@@ -76,7 +76,7 @@ end
     @test header(g_fr_ti) === header(g)
     @test dims(gridproduct(g)) == dims(g)
 
-    ifr = intervals(Fr, [226.0e9, 228.0e9, 230.0e9])
+    ifr = frames(Fr, [226.0e9, 228.0e9, 230.0e9])
     gs = spatialgrid(10.0, 20.0, 4, 5)
     @inferred spatialgrid(10.0, 20.0, 4, 5)
     @inferred spatialgrid(10.0f0, 20.0f0, 4, 5)
@@ -93,13 +93,13 @@ end
     @test_throws "the number of pixels must be positive, got nx = 4, ny = 0" spatialgrid(10.0, 20.0, 4, 0)
 end
 
-@testset "intervals and frameindex" begin
-    ti = @inferred intervals(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
+@testset "frames and frameindex" begin
+    ti = @inferred frames(Ti, [0.0, 1.5, 4.0], [1.0, 3.0, 5.0])
     @test ti isa Ti
     @test DD.sampling(ti) isa DD.Intervals
     @test collect(ti) == [0.5, 2.25, 4.5]
     @test DD.intervalbounds(ti) == [(0.0, 1.0), (1.5, 3.0), (4.0, 5.0)]
-    fr = @inferred intervals(Fr, [1.0, 2.0, 3.0])
+    fr = @inferred frames(Fr, [1.0, 2.0, 3.0])
     @test DD.intervalbounds(fr) == [(1.0, 2.0), (2.0, 3.0)]
 
     @test frameindex(ti, [0.0, 1.0, 1.5, 3.0, 4.5, 5.0]) == [1, 1, 2, 2, 3, 3]
@@ -121,9 +121,9 @@ end
     @test_throws "2 of 3 coordinates match no plane of the lookup; the first is 1.2" frameindex(ti, [0.5, 1.2, 3.5])
     @test_throws "1 of 1 coordinates match no plane of the lookup; the first is 0.5" frameindex(Ti([0.0, 1.0]), [0.5])
     @test_throws "the lookup repeats the value 1.0" frameindex(Ti([1.0, 1.0]), [1.0])
-    @test_throws "intervals must be sorted and must not overlap, got [0.0, 2.0] before [1.0, 3.0]" intervals(Ti, [0.0, 1.0], [2.0, 3.0])
-    @test_throws "intervals must be sorted and must not overlap, got [2.0, 3.0] before [0.0, 1.0]" intervals(Ti, [2.0, 0.0], [3.0, 1.0])
-    @test_throws "each interval needs start < stop, got [1.0, 1.0]" intervals(Ti, [1.0], [1.0])
+    @test_throws "intervals must be sorted and must not overlap, got [0.0, 2.0] before [1.0, 3.0]" frames(Ti, [0.0, 1.0], [2.0, 3.0])
+    @test_throws "intervals must be sorted and must not overlap, got [2.0, 3.0] before [0.0, 1.0]" frames(Ti, [2.0, 0.0], [3.0, 1.0])
+    @test_throws "each interval needs start < stop, got [1.0, 1.0]" frames(Ti, [1.0], [1.0])
 end
 
 @testset "IntensityMap" begin
