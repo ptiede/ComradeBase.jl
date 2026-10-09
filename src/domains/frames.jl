@@ -41,23 +41,53 @@ function frames(::Type{D}, edges::AbstractVector) where {D <: DD.Dimension}
 end
 
 """
-    frameindex(lookup, coords)
+    frameindex(lookup, coords::AbstractArray)
+    frameindex(lookup, c::Number)
 
 Returns, for each coordinate in `coords`, the index of the plane of `lookup` (a
-DimensionalData lookup or dim) that it belongs to, with the axes of `coords`.
+DimensionalData lookup or dim) that it belongs to, with the axes of `coords`. For a single
+coordinate `c`, returns its plane index; this form allocates nothing, for evaluation one
+point at a time.
 
   - `Intervals` sampling: the plane whose interval `[start, stop]` contains the coordinate.
     A coordinate on the boundary shared by two touching intervals belongs to the later one.
   - any other lookup: the plane whose value equals the coordinate. Repeated values throw.
 
 A coordinate that matches no plane throws an `ArgumentError` giving the number of such
-coordinates and the first one. Comparisons happen in the coordinates' precision, so a
+coordinates and the first one (for a single coordinate, the coordinate). Comparisons happen in the coordinates' precision, so a
 `Float32` time at a `Float64` interval end can fall outside it. Equality matching is meant
 for planes built from the data's own values, e.g. a grid `g ⊗ dims(visdomain, Fr)`; use
 [`frames`](@ref) for times.
 """
 frameindex(d::DD.Dimension, coords::AbstractArray) = frameindex(DD.lookup(DD.format(d)), coords)
 frameindex(l::DD.Lookups.Lookup, coords::AbstractArray) = _frameindex(DD.Lookups.sampling(l), l, coords)
+frameindex(d::DD.Dimension, c::Number) = frameindex(DD.lookup(DD.format(d)), c)
+frameindex(l::DD.Lookups.Lookup, c::Number) = _frameindex1(DD.Lookups.sampling(l), l, c)
+
+# Of the intervals containing `c`, the one starting last: the later of two touching intervals.
+function _frameindex1(::DD.Lookups.Intervals, l, c)
+    found = 0
+    start = c
+    for (i, (lo, hi)) in zip(eachindex(l), DD.Lookups.intervalbounds(l))
+        if lo <= c <= hi && (found == 0 || lo > start)
+            found = i
+            start = lo
+        end
+    end
+    found == 0 && throw(ArgumentError("the coordinate $c matches no plane of the lookup"))
+    return found
+end
+
+function _frameindex1(::Any, l, c)
+    found = 0
+    for (i, v) in pairs(l)
+        _eqkey(v) == _eqkey(c) || continue
+        found == 0 || throw(ArgumentError("the lookup repeats the value $v, so a coordinate equal to it has no unique plane"))
+        found = i
+    end
+    found == 0 && throw(ArgumentError("the coordinate $c matches no plane of the lookup"))
+    return found
+end
 
 function _frameindex(::DD.Lookups.Intervals, l, coords)
     planes = collect(eachindex(l))

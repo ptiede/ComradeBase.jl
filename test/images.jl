@@ -121,6 +121,27 @@ end
     @test_throws "2 of 3 coordinates match no plane of the lookup; the first is 1.2" frameindex(ti, [0.5, 1.2, 3.5])
     @test_throws "1 of 1 coordinates match no plane of the lookup; the first is 0.5" frameindex(Ti([0.0, 1.0]), [0.5])
     @test_throws "the lookup repeats the value 1.0" frameindex(Ti([1.0, 1.0]), [1.0])
+
+    @testset "one coordinate" begin
+        cases = (
+            (ti, [0.0, 1.0, 1.5, 3.0, 4.5, 5.0]),
+            (fr, Float32[1, 2, 2.5, 3]),
+            (Ti([0.0, 1.0, 2.0]), [2.0, 0.0, 1.0f0]),
+            (Ti([-0.0, 1.0]), [0.0, -0.0]),
+            (Ti(3.0:-1.0:0.0; sampling = DD.Intervals(DD.Start())), [0.0, 0.99, 3.5, 4.0]),
+        )
+        for (d, cs) in cases
+            @test map(c -> frameindex(d, c), cs) == frameindex(d, cs)
+        end
+        lti = DD.lookup(ti)
+        frameindex(lti, 2.0)
+        @test @allocated(frameindex(lti, 2.0)) == 0
+        @test @inferred(frameindex(lti, 2.0)) == 2
+        @test_throws "the coordinate 1.2 matches no plane of the lookup" frameindex(ti, 1.2)
+        @test_throws "the coordinate 0.5 matches no plane of the lookup" frameindex(Ti([0.0, 1.0]), 0.5)
+        @test_throws "the lookup repeats the value 1.0" frameindex(Ti([1.0, 1.0]), 1.0)
+    end
+
     @test_throws "intervals must be sorted and must not overlap, got [0.0, 2.0] before [1.0, 3.0]" frames(Ti, [0.0, 1.0], [2.0, 3.0])
     @test_throws "intervals must be sorted and must not overlap, got [2.0, 3.0] before [0.0, 1.0]" frames(Ti, [2.0, 0.0], [3.0, 1.0])
     @test_throws "each interval needs start < stop, got [1.0, 1.0]" frames(Ti, [1.0], [1.0])
