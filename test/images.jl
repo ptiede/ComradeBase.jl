@@ -46,7 +46,7 @@ end
     @test keys(grect) == propertynames(grect)
     test_grid_interface(gustr)
     @test gustr isa ComradeBase.StructuredDomain
-    @test keys(gustr) == (:Pt,)
+    @test keys(gustr) == (:Node,)
     @test propertynames(gustr) == (:X, :Y, :Fr, :Ti)
 
     @test fieldofview(grect) == (X = 20.0 + step(prect.X), Y = 20.0 + step(prect.Y))
@@ -87,7 +87,7 @@ end
     @test_throws "the appended dims repeat a dim: (:Ti, :Ti)" gridproduct(g, ti, Ti([4.0]))
     @test_throws "cannot append the spatial dim X" g ⊗ X(1:3)
     @test_throws "cannot append the spatial dim V" g ⊗ V(1:3)
-    @test_throws "cannot append Pt to a grid" g ⊗ Pt(1:3)
+    @test_throws "cannot append Node to a grid" g ⊗ Node(1:3)
     @test_throws "the right factor of a grid product must be a non-spatial dim" g ⊗ gs
     @test_throws "the number of pixels must be positive, got nx = 0, ny = 5" spatialgrid(10.0, 20.0, 0, 5)
     @test_throws "the number of pixels must be positive, got nx = 4, ny = 0" spatialgrid(10.0, 20.0, 4, 0)
@@ -274,7 +274,7 @@ end
 #     test_rrule(ComradeBase.baseimage, img)
 # end
 
-@testset "IntensityMap over a (Pt,) domain" begin
+@testset "IntensityMap over a (Node,) domain" begin
     pustr = (;
         X = range(-10.0, 10.0; length = 128),
         Y = range(-10.0, 10.0; length = 128),

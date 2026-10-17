@@ -1,4 +1,4 @@
-using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_imgmap,
+using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate_imgmap,
     IsPolarized, NotPolarized
 
 @testset "IntensityMap over StructuredDomain" begin
@@ -6,7 +6,7 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
     ti = [0.0, 1.0, 2.0]
     fr = [230.0e9, 345.0e9]
 
-    @testset "(Pt,)" begin
+    @testset "(Node,)" begin
         d = StructuredDomain((U = randn(npt), V = randn(npt)); header = ComradeBase.NoHeader())
         data = randn(npt)
         img = IntensityMap(data, d)
@@ -43,31 +43,31 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
         @test c isa IntensityMap && c == img && baseimage(c) !== data
 
         @test img[3] == data[3]
-        @test img[Pt(3)] == data[3]
+        @test img[Node(3)] == data[3]
         sub = img[2:4]
         @test sub isa IntensityMap
         @test baseimage(sub) == data[2:4]
         @test axisdims(sub).U == d.U[2:4]
-        @test parent(dims(sub, Pt)) == 2:4
+        @test parent(dims(sub, Node)) == 2:4
         v = view(img, [1, 5])
         @test v isa IntensityMap
         @test parent(v) isa SubArray
         @test baseimage(v) == data[[1, 5]]
         @test axisdims(v).V == d.V[[1, 5]]
-        sel = img[Pt = DD.At([2, 6])]
+        sel = img[Node = DD.At([2, 6])]
         @test baseimage(sel) == data[[2, 6]]
         @test axisdims(sel).U == d.U[[2, 6]]
     end
 
-    @testset "(Pt, Ti, Fr)" begin
+    @testset "(Node, Ti, Fr)" begin
         u = 1.0e6 .* randn(npt, nti)
         v = 1.0e6 .* randn(npt, nti)
         t = rand(npt, nti)
-        d = StructuredDomain((Pt(npt), Ti(ti), Fr(fr)); u, v, Ti = t => (:Pt, :Ti))
+        d = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); u, v, Ti = t => (:Node, :Ti))
         data = randn(npt, nti, nfr)
         img = IntensityMap(data, d)
         @test img isa IntensityMap{Float64, 3}
-        @test keys(named_dims(img)) == (:Pt, :Ti, :Fr)
+        @test keys(named_dims(img)) == (:Node, :Ti, :Fr)
         @test_throws "IntensityMap data has size (7, 3), but the StructuredDomain has size (7, 3, 2)" IntensityMap(randn(npt, nti), d)
 
         b = img .^ 2
@@ -79,9 +79,9 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
 
         x = img[Fr = DD.At(345.0e9)]
         @test x isa IntensityMap{Float64, 2}
-        @test keys(axisdims(x)) == (:Pt, :Ti)
+        @test keys(axisdims(x)) == (:Node, :Ti)
         @test baseimage(x) == data[:, :, 2]
-        @test coordspans(axisdims(x)) == (U = (:Pt, :Ti), V = (:Pt, :Ti), Ti = (:Pt, :Ti))
+        @test coordspans(axisdims(x)) == (U = (:Node, :Ti), V = (:Node, :Ti), Ti = (:Node, :Ti))
         @test axisdims(x).U ≈ d.U[:, :, 2]
         @test axisdims(x).V ≈ d.V[:, :, 2]
         @test only(DD.refdims(x)) == Fr([345.0e9])
@@ -95,11 +95,11 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
 
         z = img[Ti = DD.At(1.0)]
         @test size(z) == (npt, nfr)
-        @test coordspans(axisdims(z)) == (u = (:Pt,), v = (:Pt,), Ti = (:Pt,))
+        @test coordspans(axisdims(z)) == (u = (:Node,), v = (:Node,), Ti = (:Node,))
         @test axisdims(z).U ≈ d.U[:, 2, :]
         @test domainpoints(z)[3, 2].Ti == t[3, 2]
 
-        p = img[Pt = 2:3, Fr = 1:1]
+        p = img[Node = 2:3, Fr = 1:1]
         @test size(p) == (2, nti, 1)
         @test axisdims(p).U ≈ d.U[2:3, :, 1:1]
 
@@ -109,13 +109,13 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
         vw .= 0
         @test all(iszero, data[:, 3, :])
 
-        q = img[Pt(2)]
+        q = img[Node(2)]
         @test q isa DD.DimArray
         @test !(q isa IntensityMap)
         @test dims(q) == (dims(img, Ti), dims(img, Fr))
         @test parent(q) == data[2, :, :]
 
-        @test_throws "cannot take dims (:Pt, :Ti, :Fr) with size (7, 1, 2)" sum(img; dims = :Ti)
+        @test_throws "cannot take dims (:Node, :Ti, :Fr) with size (7, 1, 2)" sum(img; dims = :Ti)
         @test sum(DD.DimArray(img); dims = :Ti) isa DD.DimArray
     end
 
@@ -134,9 +134,9 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
         @test eltype(d32) === Float32
         dmix = StructuredDomain((U = randn(Float32, npt), V = randn(npt)))
         @test eltype(dmix) === Float64
-        dm = StructuredDomain((Pt(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))
+        dm = StructuredDomain((Node(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))
         @test eltype(dm) === Float64
-        dn = StructuredDomain((Pt(npt),); W = randn(npt))
+        dn = StructuredDomain((Node(npt),); W = randn(npt))
         @test_throws "neither `U` nor `u`" eltype(dn)
         dxy = StructuredDomain((X = randn(Float32, npt), Y = randn(Float32, npt)))
         @test eltype(dxy) === Float32
@@ -144,7 +144,7 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
     end
 
     @testset "create_map and allocate" begin
-        d = StructuredDomain((Pt(npt), Ti(ti), Fr(fr)); U = randn(npt, nti, nfr), V = randn(npt, nti, nfr))
+        d = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); U = randn(npt, nti, nfr), V = randn(npt, nti, nfr))
         data = randn(npt, nti, nfr)
         @test ComradeBase.create_map(data, d) == IntensityMap(data, d)
         @test ComradeBase.create_vismap(data, d) isa IntensityMap
@@ -167,7 +167,7 @@ using ComradeBase: StructuredDomain, Pt, coordspans, allocate_vismap, allocate_i
             ip = allocate_imgmap(IsPolarized(), m, d)
             @test ip isa StokesMap{Float64, 3}
         end
-        dm = StructuredDomain((Pt(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))
+        dm = StructuredDomain((Node(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))
         @test allocate_vismap(BlobTest(2.0), dm) isa IntensityMap{ComplexF64, 2}
         d32 = StructuredDomain((U = randn(Float32, npt), V = randn(Float32, npt)))
         @test allocate_vismap(GaussTest(), d32) isa IntensityMap{ComplexF32, 1}

@@ -55,15 +55,15 @@ padded by the IFRT runtime.
 ## Movies across devices
 
 A multi-frequency movie is an image stack `(X, Y, Ti, Fr)`. It is sharded along `Ti` and
-`Fr`. The data stay in their natural layout: one `(Pt, Fr)` domain whose points carry an
-observation time in a `Ti` coordinate. The points are replicated along `Pt`, and the
+`Fr`. The data stay in their natural layout: one `(Node, Fr)` domain whose points carry an
+observation time in a `Ti` coordinate. The points are replicated along `Node`, and the
 domain's `Fr` dim is sharded on the same mesh axis as the image's `Fr` dim:
 
 ```julia
 npt = 200
 frs = Fr([86.0e9, 230.0e9])
 d = StructuredDomain(
-    (Pt(npt), frs);
+    (Node(npt), frs);
     u = 4.0e6 .* randn(npt), v = 4.0e6 .* randn(npt), Ti = 4 .* rand(npt),
 )
 sd = shard(d, ShardLayout(mesh; Fr = :f))

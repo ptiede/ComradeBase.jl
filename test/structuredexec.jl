@@ -1,4 +1,4 @@
-using ComradeBase: StructuredDomain, Pt
+using ComradeBase: StructuredDomain, Node
 using Adapt
 
 struct PolTest{T} <: ComradeBase.AbstractModel
@@ -59,21 +59,21 @@ end
     U3 = 0.1 .* randn(npt, 3, 2)
     V3 = 0.1 .* randn(npt, 3, 2)
     d1 = StructuredDomain((; U, V))
-    d2 = StructuredDomain((Pt(npt), Fr(fr)); u, v)
-    d3 = StructuredDomain((Pt(npt), Ti(ti), Fr(fr)); U = U3, V = V3)
+    d2 = StructuredDomain((Node(npt), Fr(fr)); u, v)
+    d3 = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); U = U3, V = V3)
     dxy = StructuredDomain((X = randn(npt), Y = randn(npt)))
 
     @testset "visibilitymap $(nameof(typeof(m))) on $(keys(d))" for m in (GaussTest(), BlobTest(2.0)), d in (d1, d2, d3)
         test_pointmaps(visibilitymap, visibilitymap!, ComradeBase.visibility_point, m, d)
     end
 
-    @testset "(Pt, Fr) converts meters to wavelengths" begin
+    @testset "(Node, Fr) converts meters to wavelengths" begin
         vis = visibilitymap(BlobTest(2.0), d2)
         c = ComradeBase.speed_of_light
         @test vis[2, 2] ≈ ComradeBase.visibility_point(BlobTest(2.0), (U = u[2] * fr[2] / c, V = v[2] * fr[2] / c))
     end
 
-    @testset "intensitymap $(nameof(typeof(m))) on (Pt,)" for m in (GaussTest(), BlobTest(2.0), PolTest(1.5))
+    @testset "intensitymap $(nameof(typeof(m))) on (Node,)" for m in (GaussTest(), BlobTest(2.0), PolTest(1.5))
         test_pointmaps(intensitymap, intensitymap!, ComradeBase.intensity_point, m, dxy)
     end
 
@@ -90,8 +90,8 @@ end
         uv3 = 3.0e4 .* randn(2npt, 4)
         dv1 = StructuredDomain((U = view(Ub, 1:2:(2npt)), V = view(Vb, 2:2:(2npt))))
         dc1 = StructuredDomain((U = Ub[1:2:(2npt)], V = Vb[2:2:(2npt)]))
-        dv2 = StructuredDomain((Pt(npt), Fr(fr)); u = view(uv3, 1:npt, 2), v = view(uv3, (npt + 1):(2npt), 3))
-        dc2 = StructuredDomain((Pt(npt), Fr(fr)); u = uv3[1:npt, 2], v = uv3[(npt + 1):(2npt), 3])
+        dv2 = StructuredDomain((Node(npt), Fr(fr)); u = view(uv3, 1:npt, 2), v = view(uv3, (npt + 1):(2npt), 3))
+        dc2 = StructuredDomain((Node(npt), Fr(fr)); u = uv3[1:npt, 2], v = uv3[(npt + 1):(2npt), 3])
         for (dv, dc) in ((dv1, dc1), (dv2, dc2)), ex in structured_executors()
             m = BlobTest(2.0)
             @test baseimage(visibilitymap(m, DD.rebuild(dv; executor = ex))) == baseimage(visibilitymap(m, dc))

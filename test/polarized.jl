@@ -1,4 +1,4 @@
-using ComradeBase: StokesMap, CoherencyMap, IsPolarized, Pt, StructuredDomain
+using ComradeBase: StokesMap, CoherencyMap, IsPolarized, Node, StructuredDomain
 
 pointmap_into(dest, f, d, ex) = (ComradeBase._pointmap!(dest, f, d, ex); dest)
 readpoint(img, i, j) = img[i, j]
@@ -101,15 +101,15 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
         @test only(r) ≈ StokesParams(vec(sum(Pc; dims = (1, 2)))...)
         @test sum(img) ≈ only(r)
 
-        dfr = StructuredDomain((Pt(5), Fr([230.0e9, 345.0e9])); u = randn(5), v = randn(5))
+        dfr = StructuredDomain((Node(5), Fr([230.0e9, 345.0e9])); u = randn(5), v = randn(5))
         Ps = rand(5, 2, 4)
         simg = stokesview(Ps, dfr)
-        sp = simg[Pt(2:4)]
+        sp = simg[Node(2:4)]
         @test sp isa StokesMap{Float64, 2}
         @test dense(sp) == Ps[2:4, :, :]
         @test ComradeBase.coords(axisdims(sp)).u == ComradeBase.coords(dfr).u[2:4]
         @test simg[Fr(1)] isa StokesMap{Float64, 1}
-        @test simg[Pt(2)] isa DD.DimArray
+        @test simg[Node(2)] isa DD.DimArray
     end
 
     @testset "similar, copy and broadcasting" begin
@@ -169,7 +169,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
 
     @testset "allocation" begin
         dpt = UnstructuredDomain((; U = 0.1 .* randn(7), V = 0.1 .* randn(7)))
-        dfr = StructuredDomain((Pt(7), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(7), v = 3.0e4 .* randn(7))
+        dfr = StructuredDomain((Node(7), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(7), v = 3.0e4 .* randn(7))
         m = PolTest(1.5)
         vr = @inferred ComradeBase.allocate_vismap(m, g)
         @test vr isa StokesMap{ComplexF64, 2}
@@ -198,7 +198,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
         JET.@test_opt target_modules = (ComradeBase,) pointmap_into(dest, f, dpt, Serial())
         JET.@test_opt target_modules = (ComradeBase,) visibilitymap(m, dpt)
         dptf = StructuredDomain(
-            (Pt(7), Ti([0.0, 1.0]), Fr([230.0e9, 345.0e9, 690.0e9]));
+            (Node(7), Ti([0.0, 1.0]), Fr([230.0e9, 345.0e9, 690.0e9]));
             u = 3.0e4 .* randn(7, 2), v = 3.0e4 .* randn(7, 2)
         )
         for mv in (m, GaussTest())
@@ -212,7 +212,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
     @testset "analytic polarized maps on every executor" begin
         m = PolTest(1.5)
         dpt = UnstructuredDomain((; U = 0.1 .* randn(9), V = 0.1 .* randn(9)))
-        dfr = StructuredDomain((Pt(9), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(9), v = 3.0e4 .* randn(9))
+        dfr = StructuredDomain((Node(9), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(9), v = 3.0e4 .* randn(9))
         for d in (dpt, dfr)
             test_pointmaps(visibilitymap, visibilitymap!, ComradeBase.visibility_point, m, d)
         end
@@ -234,7 +234,7 @@ end
 @testset "Coherency maps" begin
     g = spatialgrid(10.0, 12.0, 6, 5)
     img = stokesview(rand(6, 5, 4), g)
-    dfr = StructuredDomain((Pt(5), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(5), v = 3.0e4 .* randn(5))
+    dfr = StructuredDomain((Node(5), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(5), v = 3.0e4 .* randn(5))
     vis = visibilitymap(PolTest(1.5), dfr)
     bases = (CirBasis(), LinBasis())
 
@@ -321,11 +321,11 @@ end
         @test c[X = 2, Y = 3] isa SMatrix{2, 2, ComplexF64}
 
         cs = coherencymap(vis, LinBasis())
-        sp = cs[Pt(2:4)]
+        sp = cs[Node(2:4)]
         @test sp isa CoherencyMap{ComplexF64, 2}
         @test ComradeBase.coords(axisdims(sp)).u == ComradeBase.coords(dfr).u[2:4]
         @test cs[Fr(1)] isa CoherencyMap{ComplexF64, 1}
-        @test cs[Pt(2)] isa DD.DimArray
+        @test cs[Node(2)] isa DD.DimArray
     end
 
     @testset "similar, copy and broadcasting" begin
@@ -380,7 +380,7 @@ end
     @test Array(dense(@jit visibilitymap(mr, Reactant.to_rarray(guv)))) ≈ dense(visibilitymap(m, guv))
     test_clean_hlo(repr(@code_hlo visibilitymap(mr, Reactant.to_rarray(guv))))
 
-    dfr = StructuredDomain((Pt(6), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(6), v = 3.0e4 .* randn(6))
+    dfr = StructuredDomain((Node(6), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(6), v = 3.0e4 .* randn(6))
     dfrr = Reactant.to_rarray(dfr)
     vp = @jit visibilitymap(mr, dfrr)
     @test vp isa StokesMap
@@ -485,10 +485,10 @@ end
             @test gun ≈ expected_gradient(P)
         end
 
-        @testset "coherency of a (Pt, Fr) map along Fr" begin
+        @testset "coherency of a (Node, Fr) map along Fr" begin
             nf = 2ndev
             d = StructuredDomain(
-                (Pt(6), Fr(range(86.0e9, 345.0e9; length = nf)));
+                (Node(6), Fr(range(86.0e9, 345.0e9; length = nf)));
                 u = 3.0e4 .* randn(6), v = 3.0e4 .* randn(6)
             )
             vis = visibilitymap(PolTest(1.5), d)
@@ -508,13 +508,13 @@ end
             @test stored_blocks(dense(sc), 3) == [1:2]
             # The returned domain coordinates are replicated arrays that come back without a
             # sharding; passing them through a second `@jit` next to sharded arrays throws
-            # Reactant's `TODO(#2234)` error.
+            # Reactant's `TODO(#2234)` error (Reactant.jl#3399).
             @test_broken (@jit(stokesmap(sc, CirBasis())); true)
             shc = shard(c, ShardLayout(mesh; Fr = :d))
             @test shc isa CoherencyMap
             @test stored_blocks(dense(shc), 2) == split_blocks(nf, ndev)
             @test stored_blocks(dense(shc), 3) == [1:2]
-            @test_throws "available dimensions are (:Pt, :Fr)" shard(c, ShardLayout(mesh; Fa = :d))
+            @test_throws "available dimensions are (:Node, :Fr)" shard(c, ShardLayout(mesh; Fa = :d))
         end
     end
 end

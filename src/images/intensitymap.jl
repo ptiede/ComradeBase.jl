@@ -47,7 +47,7 @@ julia> img3 = IntensityMap(data, 10.0, 10.0; header=NoHeader())
 
 Broadcasting, map, and reductions should all just obey the `DimensionalData` interface.
 For a map over a `StructuredDomain`, indexing slices the coordinates along with the values;
-indexing that drops the `Pt` dim returns a `DimArray`, and any other operation that changes
+indexing that drops the `Node` dim returns a `DimArray`, and any other operation that changes
 the dim names or sizes (e.g. a reduction over `dims`) throws an `ArgumentError`, so apply it
 to `DimArray(img)` instead.
 """
@@ -293,7 +293,7 @@ _slicemap(f, img::RectiMap, data, I, name) = rebuild(img, data, DD.slicedims(f, 
 
 function _slicemap(f, img::StructuredMap, data, I, name)
     newdims, newrefdims = DD.slicedims(f, img, I)
-    if !DD.hasdim(newdims, Pt)
+    if !DD.hasdim(newdims, Node)
         return DD.DimArray(data, newdims; refdims = newrefdims, name, metadata = metadata(img))
     end
     return IntensityMap(data, _slice_domain(f, axisdims(img), I, newdims), newrefdims, name)

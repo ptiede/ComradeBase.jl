@@ -80,7 +80,7 @@ end
         fr = [230.0e9, 345.0e9]
         U = randn(Float32, npt, 3, 2)
         V = randn(Float32, npt, 3, 2)
-        d = ComradeBase.StructuredDomain((ComradeBase.Pt(npt), Ti(ti), Fr(fr)); U, V)
+        d = ComradeBase.StructuredDomain((ComradeBase.Node(npt), Ti(ti), Fr(fr)); U, V)
         dr = Reactant.to_rarray(d)
         @test ComradeBase.coords(dr).U isa Reactant.ConcreteRArray{Float32, 3}
         @test dims(dr) === dims(d)
@@ -95,7 +95,7 @@ end
         @test Array(ComradeBase.coords(dout).V) ≈ V
 
         dm = ComradeBase.StructuredDomain(
-            (ComradeBase.Pt(npt), Fr(fr)); u = 1.0e6 .* randn(npt), v = 1.0e6 .* randn(npt)
+            (ComradeBase.Node(npt), Fr(fr)); u = 1.0e6 .* randn(npt), v = 1.0e6 .* randn(npt)
         )
         sumU(d) = sum(d.U)
         @test @jit(sumU(Reactant.to_rarray(dm))) ≈ sum(dm.U)
@@ -123,10 +123,10 @@ end
             mp = PolTest(1.5)
             mpr = @jit PolTest(ConcreteRNumber(mp.size))
             d2 = ComradeBase.StructuredDomain(
-                (ComradeBase.Pt(npt), Fr(fr)); u = 3.0e4 .* randn(npt), v = 3.0e4 .* randn(npt)
+                (ComradeBase.Node(npt), Fr(fr)); u = 3.0e4 .* randn(npt), v = 3.0e4 .* randn(npt)
             )
             d3 = ComradeBase.StructuredDomain(
-                (ComradeBase.Pt(npt), Ti(ti), Fr(fr)); U = 0.1 .* randn(npt, 3, 2), V = 0.1 .* randn(npt, 3, 2)
+                (ComradeBase.Node(npt), Ti(ti), Fr(fr)); U = 0.1 .* randn(npt, 3, 2), V = 0.1 .* randn(npt, 3, 2)
             )
             for d in (d2, d3)
                 dr = Reactant.to_rarray(d)
@@ -259,7 +259,7 @@ end
             @test stored_blocks(parent(baseimage(simg)), 3) == [1:4]
         end
 
-        @testset "Raw sharding of a (Pt,) StructuredDomain" begin
+        @testset "Raw sharding of a (Node,) StructuredDomain" begin
             nvis = 16ndev
             U = 0.2 .* randn(nvis)
             V = 0.2 .* randn(nvis)
@@ -285,7 +285,7 @@ end
         npt = 10
         nf = 2ndev
         frs = Fr(range(200.0e9, 300.0e9; length = nf))
-        dvf = StructuredDomain((Pt(npt), frs); u = 1.0e5 .* randn(npt, nf), v = 1.0e5 .* randn(npt, nf), Ti = rand(npt))
+        dvf = StructuredDomain((Node(npt), frs); u = 1.0e5 .* randn(npt, nf), v = 1.0e5 .* randn(npt, nf), Ti = rand(npt))
 
         @testset "StructuredDomain along Fr" begin
             sd = shard(dvf, ShardLayout(mesh; Fr = :d))
@@ -300,12 +300,12 @@ end
             vis = @jit(visibilitymap(m, sd))
             @test Array(baseimage(vis)) ≈ baseimage(visibilitymap(m, dvf))
             @test stored_blocks(baseimage(vis), 2) == split_blocks(nf, ndev)
-            @test_throws "dimension `Ti` is not a dimension of the StructuredDomain; available dimensions are (:Pt, :Fr)" shard(dvf, ShardLayout(mesh; Ti = :d))
+            @test_throws "dimension `Ti` is not a dimension of the StructuredDomain; available dimensions are (:Node, :Fr)" shard(dvf, ShardLayout(mesh; Ti = :d))
         end
 
-        @testset "StructuredDomain along Pt" begin
+        @testset "StructuredDomain along Node" begin
             dpt = UnstructuredDomain((; U = 0.2 .* randn(4ndev), V = 0.2 .* randn(4ndev)))
-            sd = shard(dpt, ShardLayout(mesh; Pt = :d))
+            sd = shard(dpt, ShardLayout(mesh; Node = :d))
             @test stored_blocks(ComradeBase.coords(sd).U, 1) == split_blocks(4ndev, ndev)
             m = BlobTest(4.0)
             @test Array(baseimage(@jit(visibilitymap(m, sd)))) ≈ baseimage(visibilitymap(m, dpt))
@@ -345,7 +345,7 @@ end
         end
 
         @testset "Collections and dual domains" begin
-            dvf2 = StructuredDomain((Pt(npt + 3), frs); U = randn(npt + 3, nf), V = randn(npt + 3, nf))
+            dvf2 = StructuredDomain((Node(npt + 3), frs); U = randn(npt + 3, nf), V = randn(npt + 3, nf))
             layout = ShardLayout(mesh; Fr = :d)
             st = shard((dvf, dvf2), layout)
             @test st isa Tuple{<:StructuredDomain, <:StructuredDomain}

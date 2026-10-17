@@ -8,7 +8,7 @@ ComradeBase defines the interface shared by the [Comrade](https://github.com/pti
 ecosystem: abstract model types and their traits, the domains models are evaluated on,
 and the `IntensityMap` array type that holds images and visibilities.
 
-- [Domains and maps](domains.md): image grids, point domains with `Pt`, `Ti` and `Fr`
+- [Domains and maps](domains.md): image grids, point domains with `Node`, `Ti` and `Fr`
   dims, and executors.
 - [Polarized maps](polarization.md): maps of `StokesParams` and of coherency matrices, and
   conversion between them.

@@ -9,7 +9,7 @@ A domain says where a model is evaluated. ComradeBase has two kinds:
 - [`RectiGrid`](@ref): a rectilinear image grid with spatial dims `X`, `Y` and optional
   `Ti` (time) and `Fr` (frequency) dims.
 - [`StructuredDomain`](@ref): a set of points, such as the baselines of a VLBI observation,
-  with an index dim `Pt` and optional plane dims.
+  with an index dim `Node` and optional plane dims.
 
 [`intensitymap`](@ref) and [`visibilitymap`](@ref) evaluate a model on a domain and
 return an [`IntensityMap`](@ref), a `DimensionalData.AbstractDimArray` whose dims are those
@@ -66,33 +66,33 @@ size(intensitymap(Gaussian(2.0), gm))
 ## Point domains
 
 A `StructuredDomain` is built from a tuple of dims and keyword coordinate arrays. The first
-dim is always `Pt`, the point index; `Pt(n)` is shorthand for `Pt(Base.OneTo(n))`. A
-domain with only `Pt` is a list of points:
+dim is always `Node`, the point index; `Node(n)` is shorthand for `Node(Base.OneTo(n))`. A
+domain with only `Node` is a list of points:
 
 ```@example domains
 U = 0.1 .* randn(100)
 V = 0.1 .* randn(100)
-d = StructuredDomain((Pt(100),); U, V)
+d = StructuredDomain((Node(100),); U, V)
 vis = visibilitymap(Gaussian(2.0), d)
 size(vis)
 ```
 
-`UnstructuredDomain((; U, V))` and `StructuredDomain((; U, V))` build the same `(Pt,)`
+`UnstructuredDomain((; U, V))` and `StructuredDomain((; U, V))` build the same `(Node,)`
 domain from a `NamedTuple`.
 
-Plane dims such as `Fr` follow `Pt`. Each coordinate array spans a subset of the dims,
+Plane dims such as `Fr` follow `Node`. Each coordinate array spans a subset of the dims,
 in the order they appear in the domain, and its axes must match those dims. The span is
 inferred from the array's size when only one ordered subset of the dims matches it;
-otherwise it is given as `array => (:Pt, :Fr)`.
+otherwise it is given as `array => (:Node, :Fr)`.
 
 Here each row has a measurement at every frequency. Baselines are given in meters as `u`,
-`v`, so they vary with `Pt` only and are converted to wavelengths with the `Fr` lookup
-(in Hz). A per-point observation time `Ti` spans `Pt`:
+`v`, so they vary with `Node` only and are converted to wavelengths with the `Fr` lookup
+(in Hz). A per-point observation time `Ti` spans `Node`:
 
 ```@example domains
 npt = 50
 dfr = StructuredDomain(
-    (Pt(npt), Fr([230.0e9, 345.0e9]));
+    (Node(npt), Fr([230.0e9, 345.0e9]));
     u = 4.0e6 .* randn(npt), v = 4.0e6 .* randn(npt), Ti = sort(rand(npt)),
 )
 ComradeBase.coordspans(dfr)
@@ -110,21 +110,21 @@ rotation angles, is passed through to the point `NamedTuple` unchanged.
 first(domainpoints(dfr))
 ```
 
-A map over a `StructuredDomain` is indexed by dim name. Slicing along `Pt` or `Fr` slices the
+A map over a `StructuredDomain` is indexed by dim name. Slicing along `Node` or `Fr` slices the
 coordinates with the values:
 
 ```@example domains
 visfr = visibilitymap(Gaussian(2.0), dfr)
-sub = visfr[Pt(1:10), Fr(2)]
+sub = visfr[Node(1:10), Fr(2)]
 size(sub), size(axisdims(sub).U)
 ```
 
 ### Movies and frame assignment
 
-Points are not grouped by frame. A movie's points stay in one `(Pt,)` or `(Pt, Fr)`
+Points are not grouped by frame. A movie's points stay in one `(Node,)` or `(Node, Fr)`
 domain, and the `Ti` coordinate records each point's observation time. The image side
 of a movie is a grid with a `Ti` dim; the step that computes visibilities from the image
-planes looks up each point's frame from its `Ti` coordinate. A `(Pt, Ti, Fr)` domain can
+planes looks up each point's frame from its `Ti` coordinate. A `(Node, Ti, Fr)` domain can
 be constructed, but nothing requires one.
 
 [`frameindex`](@ref) does that lookup. For a dim with `Intervals` sampling, such as one
@@ -150,7 +150,7 @@ for Julia threads, a KernelAbstractions backend through the extension, or `React
 under Reactant. The executor is a keyword of the domain constructor:
 
 ```@example domains
-dthreads = StructuredDomain((Pt(100),); U, V, executor = ThreadsEx())
+dthreads = StructuredDomain((Node(100),); U, V, executor = ThreadsEx())
 visibilitymap(Gaussian(2.0), dthreads) ≈ vis
 ```
 

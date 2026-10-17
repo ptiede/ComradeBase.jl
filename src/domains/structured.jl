@@ -1,6 +1,6 @@
-export StructuredDomain, UnstructuredDomain, Pt
+export StructuredDomain, UnstructuredDomain, Node
 
-DD.@dim Pt "point"
+DD.@dim Node "node"
 
 """
     speed_of_light
@@ -18,13 +18,13 @@ const speed_of_light = 299_792_458.0
 A visibility domain made of DimensionalData dims and coordinate arrays that each span a
 subset of those dims.
 
-`dims` starts with the point index dim `Pt`, followed by optional plane dims such as `Ti`
-and `Fr` whose lookups give the plane labels. `Pt(n)` with an integer `n` is the index dim
-`Pt(Base.OneTo(n))`.
+`dims` starts with the point index dim `Node`, followed by optional plane dims such as `Ti`
+and `Fr` whose lookups give the plane labels. `Node(n)` with an integer `n` is the index dim
+`Node(Base.OneTo(n))`.
 
 Each keyword in `coords` is a coordinate array. Its span (the dims it varies along) is
 either inferred from its size, when exactly one ordered subset of `dims` matches it, or
-given explicitly as `array => (:Pt, :Ti)`, listing dim names in the order they appear in
+given explicitly as `array => (:Node, :Ti)`, listing dim names in the order they appear in
 `dims`. A coordinate's `axes` must equal the axes of the dims it spans, in that order.
 
 The coordinates `U`, `V` (baselines in wavelengths), `Ti`, `Fr`, `valid` (a `Bool` mask)
@@ -32,8 +32,8 @@ have a fixed meaning; `u`, `v` are baselines in meters, which need an `Fr` dim (
 give `U = u * Fr / c` and `V = v * Fr / c`. Any other coordinate is passed through to
 [`domainpoints`](@ref) unchanged.
 
-The `NamedTuple` form builds the domain `(Pt(n),)` with every coordinate a length-`n`
-vector spanning `Pt`.
+The `NamedTuple` form builds the domain `(Node(n),)` with every coordinate a length-`n`
+vector spanning `Node`.
 
 Properties: `d.U`, `d.V` (derived from `u`, `v` when needed, spanning the coordinate's dims
 and `Fr`), every coordinate by name, and `d.Ti`, `d.Fr` as the dim lookups when no
@@ -42,9 +42,9 @@ coordinate of that name is given.
 # Examples
 
 ```julia
-d = StructuredDomain((Pt(100),); U = randn(100), V = randn(100))
+d = StructuredDomain((Node(100),); U = randn(100), V = randn(100))
 d = StructuredDomain(
-    (Pt(100), Ti([0.0, 1.0, 2.0]), Fr([230e9, 345e9]));
+    (Node(100), Ti([0.0, 1.0, 2.0]), Fr([230e9, 345e9]));
     u = randn(100, 3), v = randn(100, 3), Ti = rand(100, 3)
 )
 ```
@@ -83,14 +83,14 @@ end
 function StructuredDomain(nt::NamedTuple; executor = Serial(), header = NoHeader())
     isempty(nt) && throw(ArgumentError("StructuredDomain needs at least one coordinate"))
     n = length(first(values(nt)))
-    return StructuredDomain((Pt(n),); executor, header, map(a -> a => (:Pt,), nt)...)
+    return StructuredDomain((Node(n),); executor, header, map(a -> a => (:Node,), nt)...)
 end
 
 """
     UnstructuredDomain(nt::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader())
 
-Returns the [`StructuredDomain`](@ref) with the single dim `Pt(n)`, where every coordinate
-in `nt` is a length-`n` vector spanning `Pt`. Equivalent to `StructuredDomain(nt; executor, header)`.
+Returns the [`StructuredDomain`](@ref) with the single dim `Node(n)`, where every coordinate
+in `nt` is a length-`n` vector spanning `Node`. Equivalent to `StructuredDomain(nt; executor, header)`.
 
 ```julia
 d = UnstructuredDomain((U = randn(100), V = randn(100)))
@@ -103,11 +103,11 @@ end
 EnzymeRules.inactive_type(::Type{<:StructuredDomain}) = true
 
 function _format_structured_dims(::Tuple{})
-    throw(ArgumentError("StructuredDomain needs dims starting with `Pt`"))
+    throw(ArgumentError("StructuredDomain needs dims starting with `Node`"))
 end
 _format_structured_dims(dims::Tuple) = DD.format(map(_index_lookup, dims))
 
-_index_lookup(d::Pt{<:Integer}) = Pt(Base.OneTo(parent(d)))
+_index_lookup(d::Node{<:Integer}) = Node(Base.OneTo(parent(d)))
 _index_lookup(d::DD.Dimension{<:AbstractVector}) = d
 function _index_lookup(d::DD.Dimension)
     throw(
@@ -142,7 +142,7 @@ _explicit_span(k, s::Tuple{Vararg{Symbol}}) = s
 function _explicit_span(k, s)
     throw(
         ArgumentError(
-            "the span of coordinate `$k` must be a dim name or a tuple of dim names, e.g. `(:Pt, :Ti)`, got $(repr(s))"
+            "the span of coordinate `$k` must be a dim name or a tuple of dim names, e.g. `(:Node, :Ti)`, got $(repr(s))"
         )
     )
 end
@@ -184,9 +184,9 @@ end
 function _check_structured(d::StructuredDomain)
     ds = dims(d)
     names = keys(d)
-    isempty(ds) && throw(ArgumentError("StructuredDomain needs dims starting with `Pt`"))
-    first(ds) isa Pt || throw(
-        ArgumentError("the first dim of a StructuredDomain must be `Pt`, got `$(first(names))`")
+    isempty(ds) && throw(ArgumentError("StructuredDomain needs dims starting with `Node`"))
+    first(ds) isa Node || throw(
+        ArgumentError("the first dim of a StructuredDomain must be `Node`, got `$(first(names))`")
     )
     allunique(names) || throw(ArgumentError("StructuredDomain dim names must be distinct, got $names"))
     coords = getfield(d, :coords)

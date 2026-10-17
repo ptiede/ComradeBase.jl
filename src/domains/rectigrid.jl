@@ -173,7 +173,7 @@ end
 Returns `g` with the non-spatial `dims` appended after its own, keeping its executor,
 header and position angle. The order of the factors is the memory layout of maps over the
 result, so `g ⊗ Ti(t) ⊗ Fr(ν)` has dims `(X, Y, Ti, Fr)`. A dim that `g` already has, a
-spatial dim, the point index `Pt`, or a grid on the right throws an `ArgumentError`.
+spatial dim, the point index `Node`, or a grid on the right throws an `ArgumentError`.
 
 TensorCore (and packages re-exporting it, such as Images) also exports `⊗`; with both
 loaded, write `ComradeBase.:⊗` or `gridproduct`.
@@ -183,8 +183,8 @@ function gridproduct(g::AbstractRectiGrid, ds::DD.Dimension...)
     for d in ds
         d isa Union{DD.XDim, DD.YDim} &&
             throw(ArgumentError("cannot append the spatial dim $(DD.name(d)) to a grid; build spatial dims with `spatialgrid`"))
-        d isa Pt &&
-            throw(ArgumentError("cannot append Pt to a grid; Pt is the point index of a StructuredDomain"))
+        d isa Node &&
+            throw(ArgumentError("cannot append Node to a grid; Node is the point index of a StructuredDomain"))
         DD.hasdim(gds, d) &&
             throw(ArgumentError("the grid already has a $(DD.name(d)) dim; dims of the grid are $(DD.name(gds))"))
     end

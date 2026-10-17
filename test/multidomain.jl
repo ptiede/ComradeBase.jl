@@ -14,11 +14,11 @@ function plane_coords(N, planes)
     return U, V
 end
 
-# Selecting a plane by its Ti and Fr values gives the (Pt,) domain of that plane.
+# Selecting a plane by its Ti and Fr values gives the (Node,) domain of that plane.
 function planes_match(N, planes)
     U, V = plane_coords(N, planes)
     npt = size(U, 1)
-    d = ComradeBase.StructuredDomain((ComradeBase.Pt(npt), planes...); U, V)
+    d = ComradeBase.StructuredDomain((ComradeBase.Node(npt), planes...); U, V)
     img = IntensityMap(zeros(size(d)), d)
     C = true
     for I in CartesianIndices(map(length, planes))
