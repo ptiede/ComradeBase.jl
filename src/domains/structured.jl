@@ -307,12 +307,12 @@ image coordinates `X` and `Y` returns their promoted element type.
 function Base.eltype(d::StructuredDomain)
     cs = coords(d)
     if any(k -> haskey(cs, k), (:U, :u, :V, :v)) || !(haskey(cs, :X) || haskey(cs, :Y))
-        return promote_type(_baseline_eltype(d, Val(:U), Val(:u)), _baseline_eltype(d, Val(:V), Val(:v)))
+        return promote_type(_baseline_eltype(d, :U, :u), _baseline_eltype(d, :V, :v))
     end
-    return promote_type(_image_eltype(cs, Val(:X)), _image_eltype(cs, Val(:Y)))
+    return promote_type(_image_eltype(cs, :X), _image_eltype(cs, :Y))
 end
 
-function _baseline_eltype(d::StructuredDomain, ::Val{W}, ::Val{M}) where {W, M}
+function _baseline_eltype(d::StructuredDomain, W::Symbol, M::Symbol)
     cs = coords(d)
     haskey(cs, W) && return eltype(cs[W])
     haskey(cs, M) && return _wavelength_eltype(eltype(cs[M]), eltype(first(_frequencies(d))))
@@ -323,7 +323,7 @@ function _baseline_eltype(d::StructuredDomain, ::Val{W}, ::Val{M}) where {W, M}
     )
 end
 
-function _image_eltype(cs::NamedTuple, ::Val{K}) where {K}
+function _image_eltype(cs::NamedTuple, K::Symbol)
     haskey(cs, K) && return eltype(cs[K])
     throw(
         ArgumentError(

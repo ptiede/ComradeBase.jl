@@ -145,15 +145,17 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
 
     @testset "eltype" begin
         d32 = StructuredDomain((U = randn(Float32, npt), V = randn(Float32, npt)))
-        @test eltype(d32) === Float32
+        @test @inferred(eltype(d32)) === Float32
         dmix = StructuredDomain((U = randn(Float32, npt), V = randn(npt)))
-        @test eltype(dmix) === Float64
+        @test @inferred(eltype(dmix)) === Float64
         dm = StructuredDomain((Node(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))
-        @test eltype(dm) === Float64
+        @test @inferred(eltype(dm)) === Float64
+        dfc = StructuredDomain((; u = randn(Float32, npt), v = randn(Float32, npt), Fr = rand(fr, npt)))
+        @test @inferred(eltype(dfc)) === Float64
         dn = StructuredDomain((Node(npt),); W = randn(npt))
         @test_throws "neither `U` nor `u`" eltype(dn)
         dxy = StructuredDomain((X = randn(Float32, npt), Y = randn(Float32, npt)))
-        @test eltype(dxy) === Float32
+        @test @inferred(eltype(dxy)) === Float32
         @test_throws "needs both `X` and `Y`, but `Y` is missing" eltype(StructuredDomain((X = randn(npt),)))
     end
 
