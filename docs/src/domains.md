@@ -137,6 +137,71 @@ gmovie = spatialgrid(20.0, 20.0, 32, 32) ⊗ scans
 frameindex(scans, [0.2, 2.0, 4.9])
 ```
 
+### Choosing a layout
+
+A dim of the domain after `Node` is worth having only when the same points repeat along it.
+Anything that varies from point to point, such as the baselines present in a scan, goes
+into `Node` with a per-point coordinate.
+
+**Scans with different baselines.** VLBI coverage changes from scan to scan, so all scans
+share one `Node` dim and `Ti` records each point's scan time. Each scan can have any number
+of baselines. Every baseline here is measured in both bands, so `Fr` is a dim:
+
+```@example domains
+nbl = [10, 3, 6]                       # baselines in each scan
+t = reduce(vcat, fill.([0.1, 1.7, 4.2], nbl))
+n = length(t)
+dscans = StructuredDomain(
+    (Node(n), Fr([227.1e9, 229.1e9]));
+    u = 4.0e6 .* randn(n), v = 4.0e6 .* randn(n), Ti = t,
+)
+frameindex(scans, dscans.Ti)
+```
+
+Keep the points sorted by time. Nothing requires it for evaluation, but each frame's points
+are then contiguous.
+
+**Epochs months apart.** For a time lapse in which every track is one frame, give each track
+its own interval. The gaps between tracks need no frames, and a point outside every track is
+an error:
+
+```@example domains
+tracks = frames(Ti, [59000.0, 59030.0, 59095.0], [59000.5, 59030.5, 59095.5])  # MJD
+frameindex(tracks, [59000.2, 59030.4, 59095.1])
+```
+
+Labeling the points with an epoch number instead matches them by equality, with no interval
+bounds to choose:
+
+```@example domains
+frameindex(Ti([1, 2, 3]), [1, 1, 3, 2])
+```
+
+**Missing channels.** An `Fr` dim says that every point is measured at every frequency. When
+some baselines lack some channels, give each point its own `Fr` coordinate; image planes
+are then matched to it like times:
+
+```@example domains
+dch = UnstructuredDomain((; U = 0.1 .* randn(4), V = 0.1 .* randn(4), Fr = [230.0e9, 230.0e9, 345.0e9, 230.0e9]))
+frameindex(Fr([230.0e9, 345.0e9]), dch.Fr)
+```
+
+**A time dim on the data.** A `(Node, Ti)` domain needs the same number of points in every
+frame. With uneven scans, `Node` has the length of the largest scan and the `valid`
+coordinate marks the padding. Evaluation does not read `valid`: padded entries are evaluated
+like any other, so give them finite coordinates, and leave them out when comparing to data.
+This wastes the padded points and is rarely needed:
+
+```@example domains
+nmax = maximum(nbl)
+mask = [i <= nbl[k] for i in 1:nmax, k in eachindex(nbl)]
+dpad = StructuredDomain(
+    (Node(nmax), Ti([0.1, 1.7, 4.2]));
+    U = 0.1 .* randn(nmax, 3) .* mask, V = 0.1 .* randn(nmax, 3) .* mask, valid = mask,
+)
+ComradeBase.coordspans(dpad)
+```
+
 ### Several datasets
 
 Several arrays, bands or sources are a `Tuple` or `NamedTuple` of domains. Each is dense
