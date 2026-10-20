@@ -119,6 +119,20 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
         @test sum(DD.DimArray(img); dims = :Ti) isa DD.DimArray
     end
 
+    @testset "slicing u, v, w in meters" begin
+        u = 1.0e6 .* randn(npt)
+        fobs = fr' .+ 1.0e6 .* (1:npt)
+        d = StructuredDomain((Node(npt), Fr(1:nfr)); u, v = u, Fr = fobs)
+        x = IntensityMap(randn(npt, nfr), d)[Fr = 2]
+        @test coordspans(axisdims(x)) == (u = (:Node,), v = (:Node,), Fr = (:Node,))
+        @test axisdims(x).U ≈ d.U[:, 2]
+
+        dw = StructuredDomain((Node(npt), Fr(fr)); u, v = u, w = u)
+        xw = IntensityMap(randn(npt, nfr), dw)[Fr = 1]
+        @test coordspans(axisdims(xw)) == (U = (:Node,), V = (:Node,), W = (:Node,))
+        @test axisdims(xw).W ≈ dw.W[:, 1]
+    end
+
     @testset "rectilinear-only methods" begin
         img = IntensityMap(rand(npt), StructuredDomain((U = randn(npt), V = randn(npt))))
         @test_throws MethodError pixelsizes(img)

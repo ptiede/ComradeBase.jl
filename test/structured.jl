@@ -78,6 +78,26 @@ end
         @test sprint(show, MIME"text/plain"(), d) isa String
     end
 
+    @testset "u, v, w in meters with an Fr coordinate" begin
+        u = 1.0e6 .* randn(npt)
+        v = 1.0e6 .* randn(npt)
+        w = 1.0e5 .* randn(npt)
+        fobs = fr' .+ 1.0e6 .* (1:npt)
+        d = StructuredDomain((Node(npt), Fr(1:nfr)); u, v, w, Fr = fobs)
+        @test d.U ≈ u .* fobs ./ speed_of_light
+        @test d.W ≈ w .* fobs ./ speed_of_light
+        @test eltype(d) === Float64
+        c = speed_of_light
+        dl = StructuredDomain((Node(npt), Fr(1:nfr)); U = u .* fobs ./ c, V = v .* fobs ./ c, W = w .* fobs ./ c, Fr = fobs)
+        @test points_approx(collect(domainpoints(d)), collect(domainpoints(dl)))
+        @test points_approx(broadcast_points(shapedcoords(d)), collect(domainpoints(d)))
+
+        f1 = rand(fr, npt)
+        dp = StructuredDomain((; u, v, Fr = f1))
+        @test dp.U ≈ u .* f1 ./ speed_of_light
+        @test domainpoints(dp)[3].V ≈ v[3] * f1[3] / speed_of_light
+    end
+
     @testset "(Node, Ti, Fr)" begin
         u = 1.0e6 .* randn(npt, nti)
         v = 1.0e6 .* randn(npt, nti)
@@ -143,8 +163,10 @@ end
         @test_throws "must be an array or `array => (dim names...)`" StructuredDomain((Node(npt),); U = 1.0)
         @test_throws "give either `U` in wavelengths or `u` in meters" StructuredDomain((Node(npt), Fr(fr)); U = u, u = u)
         @test_throws "give either `V` in wavelengths or `v` in meters" StructuredDomain((Node(npt), Fr(fr)); V = u, v = u)
-        @test_throws "u and v in meters need a frequency axis" StructuredDomain((Node(npt),); u, v = u)
-        @test_throws "u and v in meters need a frequency axis" StructuredDomain((; u, v = u))
+        @test_throws "give either `W` in wavelengths or `w` in meters" StructuredDomain((Node(npt), Fr(fr)); W = u, w = u)
+        @test_throws "in meters need a frequency" StructuredDomain((Node(npt),); u, v = u)
+        @test_throws "in meters need a frequency" StructuredDomain((; u, v = u))
+        @test_throws "add an `Fr` dim or an `Fr` coordinate" StructuredDomain((; U = u, V = u, w = u))
         @test_throws "`valid` must have a Bool element type" StructuredDomain((Node(npt),); U = u, valid = ones(npt))
         @test_throws "needs at least one coordinate" StructuredDomain(NamedTuple())
         d = StructuredDomain((Node(npt), Ti(ti)); U = randn(npt, nti))

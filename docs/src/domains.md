@@ -102,8 +102,8 @@ ComradeBase.coordspans(dfr)
 size(dfr.U)
 ```
 
-The coordinates `U`, `V` (wavelengths), `u`, `v` (meters), `Ti`, `Fr` and `valid` (a `Bool`
-mask) have a fixed meaning. Any other coordinate, for example antenna indices or feed
+The coordinates `U`, `V`, `W` (wavelengths), `u`, `v`, `w` (meters), `Ti`, `Fr` and `valid`
+(a `Bool` mask) have a fixed meaning. Any other coordinate, for example antenna indices or feed
 rotation angles, is passed through to the point `NamedTuple` unchanged.
 
 ```@example domains
@@ -184,6 +184,16 @@ are then matched to it like times:
 ```@example domains
 dch = UnstructuredDomain((; U = 0.1 .* randn(4), V = 0.1 .* randn(4), Fr = [230.0e9, 230.0e9, 345.0e9, 230.0e9]))
 frameindex(Fr([230.0e9, 345.0e9]), dch.Fr)
+```
+
+Doppler-tracked channels have a different frequency on every row. Make `Fr` a channel index
+and give the frequencies as an `Fr` coordinate spanning `(:Node, :Fr)`; baselines in meters
+are converted with it. Match image planes to these frequencies with bins built by `frames`:
+
+```@example domains
+fobs = [230.0e9, 230.5e9]' .+ 1.0e6 .* (1:4)
+ddop = StructuredDomain((Node(4), Fr(1:2)); u = 4.0e6 .* randn(4), v = 4.0e6 .* randn(4), Fr = fobs)
+frameindex(frames(Fr, [229.9e9, 230.25e9, 230.75e9]), ddop.Fr)
 ```
 
 **A time dim on the data.** A `(Node, Ti)` domain needs the same number of points in every
