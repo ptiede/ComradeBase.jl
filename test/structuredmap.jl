@@ -189,3 +189,92 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
         @test allocate_vismap(GaussTest(), d32) isa IntensityMap{ComplexF32, 1}
     end
 end
+
+@testset "Blocked visibility domains" begin
+    ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [0.9, 1.9, 2.9, 3.9])
+    t = [0.1, 0.2, 0.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 3.5]
+    n = length(t)
+    fr = Fr([230.0e9, 345.0e9])
+    u = 1.0e6 .* randn(n)
+    vis = StructuredDomain((Node(n), fr); u, v = 1.0e6 .* randn(n), Ti = t, ant = collect(1:n))
+    lookupof(d) = parent(DD.lookup(first(dims(d))))
+
+    @testset "uneven blocks" begin
+        b = ComradeBase._blockdomain(vis, (ti,), (2,))
+        @test lookupof(b) == [1, 2, 3, 4, 0, 0, 5, 6, 7, 8, 9, 10]
+        @test b.valid == (lookupof(b) .!= 0)
+        @test coordspans(b).valid == (:Node,)
+        @test ComradeBase.coords(b).u == [u[1:4]; 0.0; 0.0; u[5:10]]
+        @test all(iszero, b.U[5:6, :])
+        @test b.Ti[5:6] == [0.45, 0.45]
+        @test frameindex(ti, b.Ti) == [1, 1, 1, 2, 1, 1, 3, 3, 3, 3, 3, 4]
+        @test b.ant == [1, 2, 3, 4, 4, 4, 5, 6, 7, 8, 9, 10]
+        @test dims(b)[2] == fr
+        @test b.U[lookupof(b) .!= 0, :] == vis.U
+    end
+
+    @testset "an empty block and an existing valid mask" begin
+        late = StructuredDomain((Node(n), fr); u, v = u, Ti = t .+ 2.0 .* (t .< 2), valid = (1:n) .!= 3)
+        b = ComradeBase._blockdomain(late, (frames(Ti, 0:6.0),), (3,))
+        @test lookupof(b) == [zeros(Int, 10); 1:10; zeros(Int, 10)]
+        @test b.valid == [falses(10); (1:n) .!= 3; falses(10)]
+        @test b.Ti[[1:10; 21:30]] == [fill(0.5, 10); fill(4.5, 10)]
+        perfr = StructuredDomain((Node(n), fr); u, v = u, Ti = t, valid = [true, false] => (:Fr,))
+        bf = ComradeBase._blockdomain(perfr, (ti,), (2,))
+        @test coordspans(bf).valid == (:Node, :Fr)
+        @test bf.valid == (lookupof(bf) .!= 0) .& [true false]
+    end
+
+    @testset "padding stays in its block's first plane" begin
+        tend = Ti(DD.Lookups.Sampled([1.0, 2.0]; span = DD.Lookups.Regular(1.0), sampling = DD.Lookups.Intervals(DD.Lookups.End()), order = DD.Lookups.ForwardOrdered()))
+        b = ComradeBase._blockdomain(StructuredDomain((; U = randn(3), V = randn(3), Ti = [0.2, 1.5, 1.7])), (tend,), (2,))
+        @test lookupof(b) == [1, 0, 2, 3]
+        @test b.Ti[2] == 0.5
+        @test frameindex(tend, b.Ti) == [1, 1, 2, 2]
+    end
+
+    @testset "two split plane dims" begin
+        f = [230.0e9, 345.0e9, 230.0e9, 230.0e9, 345.0e9, 345.0e9, 230.0e9, 345.0e9, 230.0e9, 345.0e9]
+        dfr = StructuredDomain((Node(n),); U = randn(n), V = randn(n), Ti = t, Fr = f)
+        @test_throws "sort the data by `Ti` and then `Fr`" ComradeBase._blockdomain(dfr, (ti, fr), (2, 2))
+        p = sortperm(collect(zip(cld.(frameindex(ti, t), 2), f)))
+        ds = StructuredDomain((Node(n),); U = randn(n), V = randn(n), Ti = t[p], Fr = f[p])
+        b = ComradeBase._blockdomain(ds, (ti, fr), (2, 2))
+        @test lookupof(b) == [1, 2, 3, 0, 4, 0, 0, 0, 5, 6, 0, 0, 7, 8, 9, 10]
+        @test b.Fr[[4, 6, 11]] == [230.0e9, 345.0e9, 230.0e9]
+        @test b.Ti[[4, 6, 11]] == [0.45, 0.45, 2.45]
+    end
+
+    @testset "errors" begin
+        @test_throws "sort the data by `Ti`" ComradeBase._blockdomain(axisdims(IntensityMap(zeros(n, 2), vis)[Node(n:-1:1)]), (ti,), (2,))
+        @test_throws "no `Ti` coordinate" ComradeBase._blockdomain(StructuredDomain((; U = u, V = u)), (ti,), (2,))
+        dnf = StructuredDomain((Node(n), fr); U = randn(n, 2), V = randn(n, 2), Ti = repeat(t, 1, 2))
+        @test_throws "coordinate must span only `Node`, got (:Node, :Fr)" ComradeBase._blockdomain(dnf, (ti,), (2,))
+        @test_throws "4 planes, which do not split evenly over its 3 shards" ComradeBase._blockdomain(vis, (ti,), (3,))
+        @test_throws "match no plane" ComradeBase._blockdomain(StructuredDomain((; U = u, V = u, Ti = t .+ 10)), (ti,), (2,))
+        @test_throws "`Node` lookup contains 0" ComradeBase._blockdomain(StructuredDomain((Node(0:(n - 1)),); U = u, V = u, Ti = t), (ti,), (2,))
+    end
+
+    @testset "carrying maps over and back" begin
+        b = ComradeBase._blockdomain(vis, (ti,), (2,))
+        x = IntensityMap(randn(ComplexF64, n, 2), vis)
+        y = IntensityMap(ComradeBase._blockvalues(x, b, 0.0im), b)
+        @test baseimage(y)[5:6, :] == zeros(2, 2)
+        back = y[Node(DD.Where(!=(0)))]
+        @test baseimage(back) == baseimage(x)
+        @test ComradeBase.coords(axisdims(back)).u == u
+        @test axisdims(back).Ti == t
+        @test all(axisdims(back).valid)
+
+        c = IntensityMap(FieldDimArray{SMatrix{2, 2}}(rand(ComplexF64, n, 2, 2, 2)), vis)
+        yc = IntensityMap(ComradeBase._blockvalues(c, b, zero(eltype(c))), b)
+        @test yc isa CoherencyMap
+        @test parent(baseimage(yc))[[1:4; 7:12], :, :, :] == parent(baseimage(c))
+        @test iszero(parent(baseimage(yc))[5:6, :, :, :])
+        @test parent(baseimage(yc[Node(DD.Where(!=(0)))])) == parent(baseimage(c))
+        @test y[Node(DD.At(5))] == x[Node(5)]
+
+        @test_throws "Node` lookup must equal" ComradeBase._blockvalues(x[Node(1:5)], b, 0.0im)
+        @test_throws DimensionMismatch ComradeBase._blockvalues(IntensityMap(randn(n), StructuredDomain((; U = u, V = u))), b, 0.0)
+    end
+end

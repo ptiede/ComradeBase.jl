@@ -21,12 +21,19 @@ ThreadsEx(s) = ThreadsEx{s}()
 
 """
     ReactantEx()
+    ReactantEx(layout::ShardLayout)
 
 Uses Reactant.jl for execution when computing the intensitymap or visibilitymap. Specifying
 this is usually unnecessary, since ComradeBase switches to this backend automatically
 when it detects that it is inside a Reactant tracing context.
+
+A domain placed on devices with [`shard`](@ref) has the second form, which records the
+layout it was placed with; `shard(map, domain)` places maps on the domain with it.
 """
-struct ReactantEx end
+struct ReactantEx{L}
+    layout::L
+end
+ReactantEx() = ReactantEx(nothing)
 
 """
     ShardLayout(mesh; axes...)
@@ -61,6 +68,7 @@ _ismeshaxes(_) = false
 
 """
     shard(x, layout::ShardLayout)
+    shard(x::IntensityMap, d::StructuredDomain; pad = zero(eltype(x)))
     shard(x, sharding::Reactant.Sharding.AbstractSharding)
 
 Return a copy of `x` whose arrays are placed on the device mesh, split along the dimensions
@@ -73,12 +81,28 @@ a dual domain); for a collection, of every element.
 
 - `IntensityMap`: its values, and the coordinates of a `StructuredDomain` it is defined on.
 - `StructuredDomain`: each coordinate along the dims it spans; the executor becomes
-  `ReactantEx()`.
+  `ReactantEx(layout)`.
 - `RectiGrid`: returned unchanged.
 - `AbstractDualDomain`: both domains, rebuilt with `Accessors.@set` on the fields
   `imgdomain` and `visdomain`. Dual domains that hold more device data add a method.
 
-The second form passes `sharding` directly to `Reactant.to_rarray`. A dimension whose
+When the layout splits an image plane dim, such as `Ti`, that the visibility domain matches
+through a per-point coordinate rather than a dim, the visibility domain is blocked: the
+points of each device's planes (see [`frameindex`](@ref)) become one contiguous range of
+`Node`, padded to the length of the largest range, and `Node` is split over the mesh axes
+of those plane dims, in the image's dim order; the visibility domain's executor records
+this layout. The points keep their order, so they must already be grouped by device, e.g.
+sorted by time; otherwise `shard` throws. The `Node` lookup holds each slot's original
+`Node` value and `0` for padding; padding slots have zero baselines, `valid = false`, and a
+plane coordinate inside the device's first plane.
+
+The second form places the map `x`, defined on the points of `d` before sharding, the way
+`d` is laid out: padding slots, filled with `pad`, are inserted where `d` has them, and the
+values are split by the layout of `d`'s executor. Data, weights and other per-point
+quantities follow a blocked domain this way. Since the `Node` lookup holds the original points, a map
+on the host returns to them with `x[Node(Where(!=(0)))]`.
+
+The third form passes `sharding` directly to `Reactant.to_rarray`. A dimension whose
 length is not a multiple of the number of devices along its mesh axes is padded.
 
 Requires Reactant to be loaded with its IFRT runtime (the Reactant preference

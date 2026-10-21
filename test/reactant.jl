@@ -172,7 +172,7 @@ end
     end
 
     @testset "ReactantEx" begin
-        @test Base.issingletontype(ReactantEx)
+        @test Base.issingletontype(typeof(ReactantEx()))
         dvis = UnstructuredDomain((; U = randn(4), V = randn(4)))
         @test executor(dvis) isa Serial
         @test executor(Reactant.to_rarray(dvis)) === ReactantEx()
@@ -290,7 +290,9 @@ end
         @testset "StructuredDomain along Fr" begin
             sd = shard(dvf, ShardLayout(mesh; Fr = :d))
             @test dims(sd) === dims(dvf)
-            @test executor(sd) === ReactantEx()
+            @test executor(sd) === ReactantEx(ShardLayout(mesh; Fr = :d))
+            sdata = shard(IntensityMap(randn(npt, nf), dvf), @jit(identity(sd)))
+            @test stored_blocks(baseimage(sdata), 2) == split_blocks(nf, ndev)
             cs = ComradeBase.coords(sd)
             @test Array(cs.u) == ComradeBase.coords(dvf).u
             @test stored_blocks(cs.u, 2) == split_blocks(nf, ndev)
@@ -357,11 +359,104 @@ end
 
             gim = RectiGrid((X(range(-10.0, 10.0; length = 6)), Y(range(-10.0, 10.0; length = 6)), Ti([0.0, 0.5, 0.8, 1.2]), frs))
             dd = DualDomain(gim, dvf)
-            sdd = shard(dd, ShardLayout(mesh; Ti = :d, Fr = :d))
+            sdd = shard(dd, ShardLayout(mesh; Fr = :d))
             @test sdd isa DualDomain
             @test imgdomain(sdd) === gim
+            @test dims(visdomain(sdd)) === dims(dvf)
             @test stored_blocks(ComradeBase.coords(visdomain(sdd)).u, 2) == split_blocks(nf, ndev)
+            @test !haskey(ComradeBase.coords(visdomain(sdd)), :valid)
+            sdata = shard(IntensityMap(randn(npt, nf), dvf), visdomain(sdd))
+            @test stored_blocks(baseimage(sdata), 2) == split_blocks(nf, ndev)
+            @test stored_blocks(baseimage(sdata), 1) == [1:npt]
             @test_throws "dimension `Pol` is not a dimension of the DualDomain" shard(dd, ShardLayout(mesh; Pol = :d))
+        end
+
+        @testset "Dual domain blocked along Ti" begin
+            nt = 2ndev
+            ti = frames(Ti, collect(0.0:(nt - 1)), collect(0.0:(nt - 1)) .+ 0.9)
+            occupancy = [k == 1 ? 3 : 1 for k in 1:nt]
+            t = reduce(vcat, [fill(k - 0.5, occupancy[k]) for k in 1:nt])
+            n = length(t)
+            vis = StructuredDomain((; U = 0.2 .* randn(n), V = 0.2 .* randn(n), Ti = t))
+            g = spatialgrid(10.0, 10.0, 6, 6) ⊗ ti
+            sdd = shard(DualDomain(g, vis), ShardLayout(mesh; Ti = :d))
+            sv = visdomain(sdd)
+            Mb = 4
+            slots = parent(DD.lookup(first(dims(sv))))
+            @test length(slots) == Mb * ndev
+            @test slots[1:Mb] == [1, 2, 3, 4]
+            @test filter(!=(0), slots) == 1:n
+            @test stored_blocks(ComradeBase.coords(sv).U, 1) == split_blocks(Mb * ndev, ndev)
+            @test stored_blocks(ComradeBase.coords(sv).valid, 1) == split_blocks(Mb * ndev, ndev)
+            @test Array(ComradeBase.coords(sv).valid) == (slots .!= 0)
+
+            data = IntensityMap(randn(ComplexF64, n), vis)
+            sdata = shard(data, sv)
+            @test axisdims(sdata) === sv
+            @test stored_blocks(baseimage(sdata), 1) == split_blocks(Mb * ndev, ndev)
+            real = findall(!=(0), slots)
+            @test Array(baseimage(sdata))[real] == baseimage(data)
+            w = shard(IntensityMap(ones(n), vis), sv; pad = 0.0)
+            @test Array(baseimage(w)) == (slots .!= 0)
+
+            m = BlobTest(4.0)
+            svis = @jit(visibilitymap(m, sv))
+            @test stored_blocks(baseimage(svis), 1) == split_blocks(Mb * ndev, ndev)
+            @test Array(baseimage(svis))[real] ≈ baseimage(visibilitymap(m, vis))
+            hlo = repr(@code_xla shardy_passes = :to_mhlo_shardings visibilitymap(m, sv))
+            for op in ("all-reduce", "all-gather", "collective-permute", "all-to-all")
+                @test !occursin(op, hlo)
+            end
+
+            @test_throws "sort the data by `Ti`" shard(DualDomain(g, StructuredDomain((; U = randn(n), V = randn(n), Ti = reverse(t)))), ShardLayout(mesh; Ti = :d))
+            @test_throws "cannot also split `Node`" shard(DualDomain(g, vis), ShardLayout(mesh2; Ti = :a, Node = :b))
+            @test_throws "the domain is not sharded" shard(data, vis)
+            @test_throws "the domain is not sharded" shard(data, Reactant.to_rarray(vis))
+
+            sdr = visdomain(shard(DualDomain(g, Reactant.to_rarray(vis)), ShardLayout(mesh; Ti = :d)))
+            @test parent(DD.lookup(first(dims(sdr)))) == slots
+            @test Array(ComradeBase.coords(sdr).U) == Array(ComradeBase.coords(sv).U)
+            @test_throws "`Node` lookup contains 0" shard(DualDomain(g, sv), ShardLayout(mesh; Ti = :d))
+            @test_throws "use a mesh axis twice" shard(IntensityMap(rand(8, 8), spatialgrid(10.0, 10.0, 8, 8)), ShardLayout(mesh; X = :d, Y = :d))
+        end
+
+        if ndev == 4
+            @testset "Dual domains on a 2×2 mesh" begin
+                mesh22 = Reactant.Sharding.Mesh(reshape(Reactant.devices(), 2, 2), (:t, :f))
+                ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [0.9, 1.9, 2.9, 3.9])
+                t = [0.1, 0.2, 0.3, 2.1, 2.2, 3.5]
+                n = length(t)
+                fr = Fr([86.0e9, 230.0e9])
+                devblocks(a) = a.sharding.device_to_array_slices
+
+                vis = StructuredDomain((Node(n), fr); u = 1.0e5 .* randn(n), v = 1.0e5 .* randn(n), Ti = t)
+                g = spatialgrid(10.0, 10.0, 6, 6) ⊗ ti ⊗ fr
+                layout = ShardLayout(mesh22; Ti = :t, Fr = :f)
+                sv = visdomain(shard(DualDomain(g, vis), layout))
+                @test size(sv) == (6, 2)
+                data = shard(IntensityMap(randn(n, 2), vis), sv)
+                img = shard(IntensityMap(rand(6, 6, 4, 2), g), layout)
+                for (ib, db) in zip(devblocks(baseimage(img)), devblocks(baseimage(data)))
+                    @test cld(last(ib[3]), 2) == cld(last(db[1]), 3)
+                    @test ib[4] == db[2]
+                end
+                m = BlobTest(4.0)
+                real = findall(!=(0), DD.lookup(dims(sv), Node))
+                @test Array(baseimage(@jit(visibilitymap(m, sv))))[real, :] ≈ baseimage(visibilitymap(m, vis))
+                @test_throws "use a mesh axis twice" shard(DualDomain(spatialgrid(10.0, 10.0, 6, 6) ⊗ ti, vis), ShardLayout(mesh22; Ti = :t, Fr = :t))
+                dfr = shard(IntensityMap(randn(n, 2), vis), shard(vis, ShardLayout(mesh22; Fr = :f)))
+                @test stored_blocks(baseimage(dfr), 2) == [1:1, 2:2]
+                @test stored_blocks(baseimage(dfr), 1) == [1:n]
+
+                f = [86.0e9, 230.0e9, 230.0e9, 86.0e9, 86.0e9, 230.0e9]
+                vf = StructuredDomain((; U = randn(n), V = randn(n), Ti = t, Fr = f))
+                svf = visdomain(shard(DualDomain(g, vf), layout))
+                @test parent(DD.lookup(first(dims(svf)))) == [1, 0, 2, 3, 4, 5, 6, 0]
+                dataf = shard(IntensityMap(randn(n), vf), svf)
+                for (ib, db) in zip(devblocks(baseimage(img)), devblocks(baseimage(dataf)))
+                    @test 2 * (cld(last(ib[3]), 2) - 1) + last(ib[4]) == cld(last(db[1]), 2)
+                end
+            end
         end
 
         @testset "Masked gather from a Ti-sharded stack" begin

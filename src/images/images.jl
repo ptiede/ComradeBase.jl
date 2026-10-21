@@ -10,6 +10,7 @@ include("coherency.jl")
 export flux, centroid, second_moment, named_axisdims, axisdims,
     spatialgrid, pixelsizes, domainpoints, phasecenter
 include("methods.jl")
+include("blocks.jl")
 
 """
     intensitymap(model::AbstractModel, dims::AbstractDomain)

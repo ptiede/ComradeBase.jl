@@ -212,12 +212,14 @@ function _check_structured(d::StructuredDomain)
         )
     end
     if haskey(coords, :valid)
-        eltype(coords.valid) <: Bool || throw(
+        _isbool(eltype(coords.valid)) || throw(
             ArgumentError("coordinate `valid` must have a Bool element type, got $(eltype(coords.valid))")
         )
     end
     return nothing
 end
+
+_isbool(::Type{T}) where {T} = T <: Bool
 
 function _check_coord(k, a, span, ds, names)
     a isa AbstractArray || throw(ArgumentError("coordinate `$k` must be an array, got a $(typeof(a))"))

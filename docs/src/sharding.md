@@ -44,9 +44,12 @@ What `shard` places for each object:
   polarized map are always replicated. A map over a `StructuredDomain` also has its domain
   coordinates placed.
 - `StructuredDomain`: each coordinate array, split along the layout dims it spans and
-  replicated along the rest. The executor becomes `ReactantEx()`.
+  replicated along the rest. The executor becomes `ReactantEx(layout)`, which records the
+  layout.
 - `RectiGrid`: returned unchanged. Dim lookups always stay on the host.
-- `AbstractDualDomain`: both domains; the layout may name a dim of either one.
+- `AbstractDualDomain`: both domains; the layout may name a dim of either one. The
+  visibility domain is blocked when the layout splits image planes that it matches per
+  point (see below).
 - `Tuple` or `NamedTuple`: each element, checked against the layout on its own.
 
 A dim whose length is not a multiple of the number of devices along its mesh axes is
@@ -75,8 +78,9 @@ img = IntensityMap(rand(nx, nx, 4, 2), g)
 simg = shard(img, layout)
 ```
 
-The domain gets its own layout because it has no `Ti` dim. An `AbstractDualDomain` that
-pairs `g` with `d` accepts the combined layout, since it has the dims of both.
+The domain gets its own layout because it has no `Ti` dim. Sharding a dual domain that pairs
+an image with `d` instead places each point on the device of its frame; see
+[Points on the devices of their frames](@ref).
 
 An analytic model `m` is evaluated on the sharded domain directly; the result is split along
 `Fr`:
@@ -119,6 +123,60 @@ v = @jit movievis(baseimage(simg), Ar, maskr)
 A gather from a gridded Fourier transform at each point's frame index partitions the same
 way: a local gather on each device, then one all-reduce. Every device still evaluates every
 point, so the per-device cost grows with the number of points.
+
+## Points on the devices of their frames
+
+Replicating the points along `Node` costs every device the work for every point. A dual
+domain avoids that: when the layout splits an image plane dim, such as `Ti`, that the
+visibility domain matches through a per-point coordinate, `shard` gives each device the
+points of its own frames. The points of each device become one contiguous range of `Node`,
+in their original order, padded to the length of the largest range, and `Node` is split over
+the mesh axes of `Ti`. Here `dual` pairs `g` with `vis`, for example VLBISkyModels'
+`FourierDualDomain(g, vis, NFFTAlg())`:
+
+```julia
+using DimensionalData: lookup, At, Where
+
+ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [0.9, 1.9, 2.9, 3.9])
+t = [0.1, 0.2, 0.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 3.5]
+vis = StructuredDomain((Node(10), frs); u = 4.0e6 .* randn(10), v = 4.0e6 .* randn(10), Ti = t)
+g = spatialgrid(fov, fov, nx, nx) ⊗ ti ⊗ frs
+sdual = shard(dual, ShardLayout(mesh; Ti = :t, Fr = :f))
+sv = visdomain(sdual)
+collect(lookup(dims(sv), Node))  # [1, 2, 3, 4, 0, 0, 5, 6, 7, 8, 9, 10]
+```
+
+The first device holds frames 1 and 2 with four points, the second frames 3 and 4 with six,
+so the first range is padded with two slots. The `Node` lookup holds each slot's original
+point index and `0` for padding. The blocked domain has a `valid` coordinate spanning `Node`
+(and any dims an existing `valid` spans). Padding slots have `valid = false`, zero baselines, and a time inside the device's
+first frame, so evaluating them is harmless; leave them out when comparing to data. With two split plane dims, for example `Ti` and an `Fr` matched per point,
+the devices are numbered row-major over the plane dims in the image's order.
+
+The points must already be grouped by device, which time-sorted data are. `shard` does not
+reorder them; it throws if they are not grouped.
+
+Data, weights and other per-point quantities are maps on the original visibility domain.
+`shard(map, sv)` lays them out like `sv`, filling the padding with `pad` (zero by default,
+so store weights rather than noise):
+
+```julia
+data = shard(IntensityMap(vdata, vis), sv)
+w = shard(IntensityMap(1 ./ σ, vis), sv)
+chi2(m, dual, data, w) = sum(abs2, (baseimage(visibilitymap(m, dual)) .- baseimage(data)) .* baseimage(w))
+@jit chi2(m, sdual, data, w)
+```
+
+Since the `Node` lookup holds each slot's original point, DimensionalData selectors find the
+original points: on a map whose arrays are on the host, `x[Node(Where(!=(0)))]` drops the
+padding and leaves the points in their original order, and `x[Node(At(j))]` is point `j`.
+Values computed on the devices go back to the original visibility domain by their slots:
+
+```julia
+vmodel = Array(baseimage(@jit visibilitymap(m, sdual)))
+real = findall(!=(0), lookup(dims(sv), Node))
+IntensityMap(vmodel[real, :], vis)
+```
 
 ## Gradients
 

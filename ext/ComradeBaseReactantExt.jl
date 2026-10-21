@@ -78,6 +78,9 @@ end
 function _sharding(dnames, layout::ShardLayout)
     ks = filter(in(dnames), keys(layout.axes))
     isempty(ks) && return Reactant.Sharding.Replicated(layout.mesh)
+    allunique(mapreduce(k -> _meshaxes(layout.axes[k]), (a, b) -> (a..., b...), ks)) || throw(
+        ArgumentError("an array with dims $ks would be split over the mesh axes $(NamedTuple{ks}(map(k -> layout.axes[k], ks))), which use a mesh axis twice; each dim of one array needs its own mesh axes")
+    )
     positions = map(k -> findfirst(==(k), dnames), ks)
     return Reactant.Sharding.DimsSharding(layout.mesh, positions, map(k -> layout.axes[k], ks))
 end
@@ -93,13 +96,58 @@ function _place(d::StructuredDomain, layout::ShardLayout)
     cs = map(ComradeBase.coords(d), ComradeBase.coordspans(d)) do c, span
         Reactant.to_rarray(c; sharding = _sharding(span, layout))
     end
-    return ComradeBase.rebuild(d; coords = cs, executor = ReactantEx())
+    return ComradeBase.rebuild(d; coords = cs, executor = ReactantEx(layout))
 end
 
 function _place(d::AbstractDualDomain, layout::ShardLayout)
+    vis, vislayout = _blockvisibilities(imgdomain(d), visdomain(d), layout)
     d = @set d.imgdomain = _place(imgdomain(d), layout)
-    return @set d.visdomain = _place(visdomain(d), layout)
+    return @set d.visdomain = _place(vis, vislayout)
 end
+
+# Image plane dims split over devices that the visibility domain matches through a per-point
+# coordinate block its points, and `Node` is split over the mesh axes of those dims.
+function _blockvisibilities(img, vis::StructuredDomain, layout::ShardLayout)
+    pdims = filter(DD.otherdims(dims(img), (DD.X, DD.Y))) do pd
+        return _nshards(layout, DD.name(pd)) > 1 && !(DD.name(pd) in keys(vis))
+    end
+    isempty(pdims) && return vis, layout
+    haskey(layout.axes, :Node) && throw(
+        ArgumentError("the layout splits the image's $(map(DD.name, pdims)) planes, which places the visibility points on the devices of their planes; it cannot also split `Node`")
+    )
+    nodeaxes = mapreduce(pd -> _meshaxes(layout.axes[DD.name(pd)]), (a, b) -> (a..., b...), pdims)
+    vislayout = ShardLayout(layout.mesh, merge(layout.axes, (; Node = nodeaxes)))
+    # Maps on the domain span all of its dims.
+    _sharding(keys(vis), vislayout)
+    nblocks = map(pd -> _nshards(layout, DD.name(pd)), pdims)
+    return ComradeBase._blockdomain(_onhost(vis), pdims, nblocks), vislayout
+end
+_blockvisibilities(img, vis, layout) = vis, layout
+
+# Blocking reads and rearranges the coordinates on the host.
+function _onhost(d::StructuredDomain)
+    cs = map(c -> c isa Reactant.ConcreteRArray ? Array(c) : c, ComradeBase.coords(d))
+    return ComradeBase.rebuild(d; coords = cs)
+end
+
+# The number of devices the dim `name` is split over.
+function _nshards(layout::ShardLayout, name)
+    haskey(layout.axes, name) || return 1
+    mesh = layout.mesh
+    return prod(a -> mesh.axis_sizes[findfirst(==(a), mesh.axis_names)], _meshaxes(layout.axes[name]))
+end
+
+function ComradeBase.shard(x::ComradeBase.StructuredMap, d::StructuredDomain; pad = zero(eltype(x)))
+    _check_runtime()
+    ex = ComradeBase.executor(d)
+    ex isa ReactantEx && ex.layout isa ShardLayout || throw(
+        ArgumentError("the domain is not sharded; place it with `shard(domain, layout)` first")
+    )
+    vals = Reactant.to_rarray(ComradeBase._blockvalues(x, d, pad); sharding = _sharding(keys(d), ex.layout))
+    return IntensityMap(vals, d, DD.refdims(x), DD.name(x))
+end
+
+ComradeBase._isbool(::Type{<:Reactant.TracedRNumber{Bool}}) = true
 
 # Tracing paths into an `IntensityMap` address struct fields, not array elements.
 Reactant.traced_getfield(@nospecialize(obj::IntensityMap), field) = getfield(obj, field)
@@ -186,9 +234,31 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         @nospecialize(ndevices),
         @nospecialize(runtime)
     )
-    return ReactantEx
+    return ReactantEx{Nothing}
 end
 
+
+# The executor's layout is host data, so a traced domain keeps the executor as it is.
+Base.@nospecializeinfer function Reactant.make_tracer(
+        seen, @nospecialize(prev::ReactantEx), @nospecialize(path), mode; kwargs...
+    )
+    if mode == Reactant.TracedToTypes
+        push!(path, prev)
+        return nothing
+    end
+    return prev
+end
+
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+        @nospecialize(T::Type{<:ReactantEx}),
+        seen,
+        mode::Reactant.TraceMode,
+        @nospecialize(track_numbers::Type),
+        @nospecialize(ndevices),
+        @nospecialize(runtime)
+    )
+    return T
+end
 
 function Base.eltype(d::ComradeBase.AbstractRectiGrid{D, E}) where {D, E <: ReactantEx}
     return Reactant.allowscalar() do
@@ -271,7 +341,7 @@ end
 # `f` is passed in a `Ref` broadcast argument: broadcasting a callable that holds traced
 # values (a model with traced parameters) fails with
 # `AssertionError: input shapes are Tuple{Vararg{Int64}}[(), (8, 6), (8, 6)]`.
-function ComradeBase.pointbroadcasted(f::F, d::RectiGrid{<:Any, ReactantEx}) where {F}
+function ComradeBase.pointbroadcasted(f::F, d::RectiGrid{<:Any, <:ReactantEx}) where {F}
     dms = map(Reactant.materialize_traced_array ∘ basedim, named_dims(d))
     itp = ApplyIT{keys(dms)}(f, rotmat(d))
     return Broadcast.broadcasted(giterate, Ref(itp), ComradeBase.shapedims(values(dms))...)
