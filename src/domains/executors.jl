@@ -91,16 +91,15 @@ through a per-point coordinate rather than a dim, the visibility domain is block
 points of each device's planes (see [`frameindex`](@ref)) become one contiguous range of
 `Node`, padded to the length of the largest range, and `Node` is split over the mesh axes
 of those plane dims, in the image's dim order; the visibility domain's executor records
-this layout. The points keep their order, so they must already be grouped by device, e.g.
-sorted by time; otherwise `shard` throws. The `Node` lookup holds each slot's original
-`Node` value and `0` for padding; padding slots have zero baselines, `valid = false`, and a
-plane coordinate inside the device's first plane.
+this layout. Each device's points keep their relative order. The `Node` lookup holds each
+slot's original `Node` value and `0` for padding; padding slots have zero baselines,
+`valid = false`, and a plane coordinate inside the device's first plane.
 
 The second form places the map `x`, defined on the points of `d` before sharding, the way
 `d` is laid out: padding slots, filled with `pad`, are inserted where `d` has them, and the
-values are split by the layout of `d`'s executor. Data, weights and other per-point
-quantities follow a blocked domain this way. Since the `Node` lookup holds the original points, a map
-on the host returns to them with `x[Node(Where(!=(0)))]`.
+values are split by the layout of `d`'s executor. Values are matched to slots by `Node`.
+A map on the host returns to the original points with `x[Node(At(nodes))]`, where `nodes`
+is the original `Node` lookup.
 
 The third form passes `sharding` directly to `Reactant.to_rarray`. A dimension whose
 length is not a multiple of the number of devices along its mesh axes is padded.

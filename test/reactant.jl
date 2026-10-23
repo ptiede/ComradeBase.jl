@@ -408,7 +408,11 @@ end
                 @test !occursin(op, hlo)
             end
 
-            @test_throws "sort the data by `Ti`" shard(DualDomain(g, StructuredDomain((; U = randn(n), V = randn(n), Ti = reverse(t)))), ShardLayout(mesh; Ti = :d))
+            rv = StructuredDomain((; U = randn(n), V = randn(n), Ti = reverse(t)))
+            srv = visdomain(shard(DualDomain(g, rv), ShardLayout(mesh; Ti = :d)))
+            rslots = parent(DD.lookup(first(dims(srv))))
+            @test Array(ComradeBase.coords(srv).Ti)[rslots .!= 0] == reverse(t)[filter(!=(0), rslots)]
+            @test Array(baseimage(shard(IntensityMap(reverse(t), rv), srv)))[rslots .!= 0] == reverse(t)[filter(!=(0), rslots)]
             @test_throws "cannot also split `Node`" shard(DualDomain(g, vis), ShardLayout(mesh2; Ti = :a, Node = :b))
             @test_throws "the domain is not sharded" shard(data, vis)
             @test_throws "the domain is not sharded" shard(data, Reactant.to_rarray(vis))

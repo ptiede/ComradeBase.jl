@@ -4,8 +4,8 @@
 Returns `vis` laid out for image planes split into blocks: plane dim `pdims[k]` into
 `nblocks[k]` blocks of consecutive planes. Each point belongs to the block of the planes its
 coordinate named like `pdims[k]` falls in. Blocks are numbered row-major over `pdims`, and
-the points of block `b` fill the `b`-th of `prod(nblocks)` equal ranges of `Node`, keeping
-their order, with padding slots at the end of each range. The `Node` lookup holds each
+the points of block `b` fill the `b`-th of `prod(nblocks)` equal ranges of `Node`, in their
+order in `vis`, with padding slots at the end of each range. The `Node` lookup holds each
 slot's original `Node` value, `0` for padding. The `valid` coordinate spans `Node` and is
 `false` in padding slots, which also have zero baselines and a block coordinate inside the
 block's first plane.
@@ -36,9 +36,7 @@ function _blockdomain(vis::StructuredDomain, pdims::Tuple, nblocks::Tuple)
     planeblocks = map((pd, q) -> cld.(frameindex(pd, cs[DD.name(pd)]), q), pdims, perblock)
     L = LinearIndices(reverse(nblocks))
     block = map(j -> L[reverse(map(b -> b[j], planeblocks))...], eachindex(first(planeblocks)))
-    issorted(block) || throw(
-        ArgumentError("splitting the image's $(join(map(n -> "`$n`", names), ", ")) planes over devices needs the visibility points grouped by the device that holds their planes; sort the data by $(join(map(n -> "`$n`", names), " and then "))")
-    )
+    order = sortperm(block)
 
     counts = zeros(Int, length(L))
     for b in block
@@ -46,13 +44,14 @@ function _blockdomain(vis::StructuredDomain, pdims::Tuple, nblocks::Tuple)
     end
     Mb = maximum(counts)
     slots = zeros(Int, Mb * length(L))
-    j = firstindex(block) - 1
+    k = firstindex(order)
     for b in eachindex(counts), i in 1:counts[b]
-        slots[(b - 1) * Mb + i] = j += 1
+        slots[(b - 1) * Mb + i] = order[k]
+        k += 1
     end
     pads = findall(==(0), slots)
     src = copy(slots)
-    prev = firstindex(block)
+    prev = first(order)
     for s in eachindex(src)
         src[s] == 0 ? (src[s] = prev) : (prev = src[s])
     end
@@ -109,13 +108,15 @@ function _blockvalues(x::StructuredMap, d::StructuredDomain, pad)
     )
     slots = parent(DD.lookup(first(dims(d))))
     real = findall(!=(0), slots)
-    collect(parent(DD.lookup(first(dims(xd))))) == slots[real] || throw(
-        ArgumentError("the map is not defined on the points of the domain: its `Node` lookup must equal the domain's `Node` lookup without the padding slots (0)")
+    nodes = parent(DD.lookup(first(dims(xd))))
+    at = Dict(v => i for (i, v) in pairs(nodes))
+    length(at) == length(nodes) == length(real) && all(s -> haskey(at, slots[s]), real) || throw(
+        ArgumentError("the map is not defined on the points of the domain: its `Node` lookup must hold each of the domain's `Node` values other than 0 (padding) once")
     )
     v = baseimage(x)
     Base.require_one_based_indexing(v)
     y = similar(v, (length(slots), Base.tail(size(v))...))
-    copyto!(selectdim(y, 1, real), v)
+    copyto!(selectdim(y, 1, real), selectdim(v, 1, map(s -> at[slots[s]], real)))
     fill!(selectdim(y, 1, findall(==(0), slots)), pad)
     return y
 end

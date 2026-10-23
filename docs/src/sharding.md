@@ -130,12 +130,12 @@ Replicating the points along `Node` costs every device the work for every point.
 domain avoids that: when the layout splits an image plane dim, such as `Ti`, that the
 visibility domain matches through a per-point coordinate, `shard` gives each device the
 points of its own frames. The points of each device become one contiguous range of `Node`,
-in their original order, padded to the length of the largest range, and `Node` is split over
+in their relative order, padded to the length of the largest range, and `Node` is split over
 the mesh axes of `Ti`. Here `dual` pairs `g` with `vis`, for example VLBISkyModels'
 `FourierDualDomain(g, vis, NFFTAlg())`:
 
 ```julia
-using DimensionalData: lookup, At, Where
+using DimensionalData: lookup
 
 ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [0.9, 1.9, 2.9, 3.9])
 t = [0.1, 0.2, 0.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 3.5]
@@ -151,10 +151,8 @@ so the first range is padded with two slots. The `Node` lookup holds each slot's
 point index and `0` for padding. The blocked domain has a `valid` coordinate spanning `Node`
 (and any dims an existing `valid` spans). Padding slots have `valid = false`, zero baselines, and a time inside the device's
 first frame, so evaluating them is harmless; leave them out when comparing to data. With two split plane dims, for example `Ti` and an `Fr` matched per point,
-the devices are numbered row-major over the plane dims in the image's order.
-
-The points must already be grouped by device, which time-sorted data are. `shard` does not
-reorder them; it throws if they are not grouped.
+the devices are numbered row-major over the plane dims in the image's order. The points
+may come in any order; `shard` groups them by device.
 
 Data, weights and other per-point quantities are maps on the original visibility domain.
 `shard(map, sv)` lays them out like `sv`, filling the padding with `pad` (zero by default,
@@ -168,14 +166,14 @@ chi2(m, dual, data, w) = sum(abs2, (baseimage(visibilitymap(m, dual)) .- baseima
 ```
 
 Since the `Node` lookup holds each slot's original point, DimensionalData selectors find the
-original points: on a map whose arrays are on the host, `x[Node(Where(!=(0)))]` drops the
-padding and leaves the points in their original order, and `x[Node(At(j))]` is point `j`.
-Values computed on the devices go back to the original visibility domain by their slots:
+original points: on a map whose arrays are on the host, `x[Node(At(j))]` is point `j`, and
+`x[Node(At(nodes))]` with the original `Node` lookup `nodes` restores the original order.
+Values computed on the devices go back the same way:
 
 ```julia
 vmodel = Array(baseimage(@jit visibilitymap(m, sdual)))
-real = findall(!=(0), lookup(dims(sv), Node))
-IntensityMap(vmodel[real, :], vis)
+nodes = lookup(dims(vis), Node)
+IntensityMap(vmodel[indexin(nodes, lookup(dims(sv), Node)), :], vis)
 ```
 
 ## Gradients

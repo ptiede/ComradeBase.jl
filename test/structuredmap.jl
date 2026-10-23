@@ -225,6 +225,16 @@ end
         @test bf.valid == (lookupof(bf) .!= 0) .& [true false]
     end
 
+    @testset "points in any order" begin
+        rev = axisdims(IntensityMap(zeros(n, 2), vis)[Node(n:-1:1)])
+        b = ComradeBase._blockdomain(rev, (ti,), (2,))
+        @test lookupof(b) == [4, 3, 2, 1, 0, 0, 10, 9, 8, 7, 6, 5]
+        @test b.Ti[lookupof(b) .!= 0] == t[[4, 3, 2, 1, 10, 9, 8, 7, 6, 5]]
+        x = IntensityMap(randn(n, 2), vis)
+        @test ComradeBase._blockvalues(x[Node(n:-1:1)], b, 0.0) == ComradeBase._blockvalues(x, b, 0.0)
+        @test ComradeBase._blockvalues(x, b, 0.0)[1, :] == baseimage(x)[4, :]
+    end
+
     @testset "padding stays in its block's first plane" begin
         tend = Ti(DD.Lookups.Sampled([1.0, 2.0]; span = DD.Lookups.Regular(1.0), sampling = DD.Lookups.Intervals(DD.Lookups.End()), order = DD.Lookups.ForwardOrdered()))
         b = ComradeBase._blockdomain(StructuredDomain((; U = randn(3), V = randn(3), Ti = [0.2, 1.5, 1.7])), (tend,), (2,))
@@ -236,17 +246,21 @@ end
     @testset "two split plane dims" begin
         f = [230.0e9, 345.0e9, 230.0e9, 230.0e9, 345.0e9, 345.0e9, 230.0e9, 345.0e9, 230.0e9, 345.0e9]
         dfr = StructuredDomain((Node(n),); U = randn(n), V = randn(n), Ti = t, Fr = f)
-        @test_throws "sort the data by `Ti` and then `Fr`" ComradeBase._blockdomain(dfr, (ti, fr), (2, 2))
         p = sortperm(collect(zip(cld.(frameindex(ti, t), 2), f)))
         ds = StructuredDomain((Node(n),); U = randn(n), V = randn(n), Ti = t[p], Fr = f[p])
         b = ComradeBase._blockdomain(ds, (ti, fr), (2, 2))
         @test lookupof(b) == [1, 2, 3, 0, 4, 0, 0, 0, 5, 6, 0, 0, 7, 8, 9, 10]
         @test b.Fr[[4, 6, 11]] == [230.0e9, 345.0e9, 230.0e9]
         @test b.Ti[[4, 6, 11]] == [0.45, 0.45, 2.45]
+        bu = ComradeBase._blockdomain(dfr, (ti, fr), (2, 2))
+        @test lookupof(bu) == map(s -> s == 0 ? 0 : p[s], lookupof(b))
+        real = lookupof(bu) .!= 0
+        @test bu.Ti[real] == t[lookupof(bu)[real]]
+        @test bu.Fr[real] == f[lookupof(bu)[real]]
+        @test bu.U[real] == dfr.U[lookupof(bu)[real]]
     end
 
     @testset "errors" begin
-        @test_throws "sort the data by `Ti`" ComradeBase._blockdomain(axisdims(IntensityMap(zeros(n, 2), vis)[Node(n:-1:1)]), (ti,), (2,))
         @test_throws "no `Ti` coordinate" ComradeBase._blockdomain(StructuredDomain((; U = u, V = u)), (ti,), (2,))
         dnf = StructuredDomain((Node(n), fr); U = randn(n, 2), V = randn(n, 2), Ti = repeat(t, 1, 2))
         @test_throws "coordinate must span only `Node`, got (:Node, :Fr)" ComradeBase._blockdomain(dnf, (ti,), (2,))
@@ -274,7 +288,9 @@ end
         @test parent(baseimage(yc[Node(DD.Where(!=(0)))])) == parent(baseimage(c))
         @test y[Node(DD.At(5))] == x[Node(5)]
 
-        @test_throws "Node` lookup must equal" ComradeBase._blockvalues(x[Node(1:5)], b, 0.0im)
+        @test y[Node(DD.At(lookupof(vis)))] == y[Node(DD.Where(!=(0)))]
+        @test_throws "must hold each of the domain's `Node` values" ComradeBase._blockvalues(x[Node(1:5)], b, 0.0im)
+        @test_throws "must hold each of the domain's `Node` values" ComradeBase._blockvalues(x[Node([1:9; 9])], b, 0.0im)
         @test_throws DimensionMismatch ComradeBase._blockvalues(IntensityMap(randn(n), StructuredDomain((; U = u, V = u))), b, 0.0)
     end
 end
