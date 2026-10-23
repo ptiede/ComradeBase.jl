@@ -192,9 +192,7 @@ Base.@propagate_inbounds function ComradeBase.rgetindex(I::AbstractArray, i::TIn
     return @allowscalar I[i...]
 end
 
-# A range at a traced index steps from its start instead of calling `getindex`: Reactant's
-# own range indexing lowers a `LinRange` lookup to `Base.lerpi`, which accepts only plain
-# integers.
+# Reactant cannot index a `LinRange` at a traced index (EnzymeAD/Reactant.jl#3536).
 Base.@propagate_inbounds function ComradeBase.rgetindex(I::AbstractRange, i::TInt)
     return first(I) + (i - one(i)) * step(I)
 end
@@ -338,9 +336,8 @@ end
 end
 
 
-# `f` is passed in a `Ref` broadcast argument: broadcasting a callable that holds traced
-# values (a model with traced parameters) fails with
-# `AssertionError: input shapes are Tuple{Vararg{Int64}}[(), (8, 6), (8, 6)]`.
+# `f` goes in a `Ref`: broadcasting a callable that holds traced values lowers to a
+# per-element `while` loop (EnzymeAD/Reactant.jl#3392).
 function ComradeBase.pointbroadcasted(f::F, d::RectiGrid{<:Any, <:ReactantEx}) where {F}
     dms = map(Reactant.materialize_traced_array ∘ basedim, named_dims(d))
     itp = ApplyIT{keys(dms)}(f, rotmat(d))

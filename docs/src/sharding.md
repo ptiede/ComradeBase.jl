@@ -215,7 +215,6 @@ sds = shard((; eht = d1, ngeht = d2), ShardLayout(mesh; Fr = :f))
   `StructuredDomain` returned by one `@jit` call into a second one currently fails with
   Reactant's `TODO(#2234)` error, because the returned coordinates lose their replicated
   sharding ([EnzymeAD/Reactant.jl#3399](https://github.com/EnzymeAD/Reactant.jl/issues/3399)).
-- XLA's partitioner replicates FFTs, even when only batch dims are sharded.
 - A gather of a window of pixels around each point all-reduces the whole window instead of
   the interpolated value
   ([EnzymeAD/Reactant.jl#3396](https://github.com/EnzymeAD/Reactant.jl/issues/3396)).

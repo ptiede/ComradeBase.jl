@@ -496,9 +496,8 @@ function Base.show(io::IO, mime::MIME"text/plain", d::StructuredDomain)
     return print(io, ")")
 end
 
-# `f` is passed in a `Ref` broadcast argument: under Reactant, broadcasting a callable that
-# holds traced values (a model with traced parameters) fails with
-# `AssertionError: input shapes are Tuple{Vararg{Int64}}[(), (6, 2), (6, 2), (6, 2)]`.
+# `f` goes in a `Ref`: under Reactant, broadcasting a callable that holds traced values
+# lowers to a per-element `while` loop (EnzymeAD/Reactant.jl#3392).
 function pointbroadcasted(f::F, d::StructuredDomain) where {F}
     sc = shapedcoords(d)
     return Broadcast.broadcasted(_applynamed, Ref(NamedPointFn{keys(sc)}(f)), values(sc)...)
