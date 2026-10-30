@@ -316,6 +316,46 @@ Base.@nospecializeinfer function Reactant.make_tracer(
     return StructuredDomain(dims(prev), tcs, ComradeBase.coordspans(prev), tex, ComradeBase.header(prev))
 end
 
+# A RectiGrid traces only its executor; its dims, header and position angle stay on the host
+# and are compile-time constants of a traced function.
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+        @nospecialize(T::Type{<:RectiGrid}),
+        seen,
+        mode::Reactant.TraceMode,
+        @nospecialize(track_numbers::Type),
+        @nospecialize(ndevices),
+        @nospecialize(runtime)
+    )
+    D, E, H, P = T.parameters
+    E2 = Reactant.traced_type_inner(E, seen, mode, track_numbers, ndevices, runtime)
+    return RectiGrid{D, E2, H, P}
+end
+
+Base.@nospecializeinfer function Reactant.make_tracer(
+        seen,
+        @nospecialize(prev::RectiGrid),
+        @nospecialize(path),
+        mode;
+        @nospecialize(sharding = Reactant.Sharding.NoSharding()),
+        kwargs...
+    )
+    ex = ComradeBase.executor(prev)
+    ei = Base.fieldindex(RectiGrid, :executor)
+    if mode == Reactant.TracedToTypes
+        push!(path, Core.Typeof(prev))
+        push!(path, dims(prev))
+        push!(path, ComradeBase.header(prev))
+        push!(path, getfield(prev, :posang))
+        Reactant.make_tracer(seen, ex, path, mode; sharding = Base.getproperty(sharding, ei), kwargs...)
+        return nothing
+    end
+    tex = Reactant.make_tracer(
+        seen, ex, Reactant.append_path(path, ei), mode;
+        sharding = Base.getproperty(sharding, ei), kwargs...
+    )
+    return RectiGrid(dims(prev); executor = tex, header = ComradeBase.header(prev), posang = getfield(prev, :posang))
+end
+
 function ComradeBase.domainpoints(d::RectiGrid{D, <:ComradeBase.ReactantEx}) where {D}
     g = map(Reactant.materialize_traced_array ∘ basedim, named_dims(d))
     rot = rotmat(d)

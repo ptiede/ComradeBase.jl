@@ -32,6 +32,17 @@ end
     go = @jit(identity(g))
     @test executor(go) isa ComradeBase.ReactantEx
 
+    @testset "a traced RectiGrid keeps its dims on the host" begin
+        gtf = gridproduct(spatialgrid(10.0, 10.0, 8, 8; posang = 0.3), frames(Ti, [0.0, 1.0], [1.0, 2.0]), Fr([230.0e9, 345.0e9]))
+        r = Reactant.to_rarray(gtf)
+        @test executor(r) === ComradeBase.ReactantEx()
+        @test dims(r) == dims(gtf)
+        @test ComradeBase.posang(r) === ComradeBase.posang(gtf)
+        img = Reactant.to_rarray(IntensityMap(rand(size(gtf)...), gtf))
+        @test baseimage(img) isa Reactant.ConcreteRArray
+        @test dims(axisdims(img)) == dims(gtf)
+    end
+
     m1 = BlobTest(4.0)
     m2 = @jit BlobTest(ConcreteRNumber(m1.size))
 
