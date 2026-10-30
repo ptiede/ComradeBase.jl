@@ -102,7 +102,8 @@ end
 function _place(d::AbstractDualDomain, layout::ShardLayout)
     vis, vislayout = _blockvisibilities(imgdomain(d), visdomain(d), layout)
     d = @set d.imgdomain = _place(imgdomain(d), layout)
-    return @set d.visdomain = _place(vis, vislayout)
+    d = @set d.visdomain = _place(vis, vislayout)
+    return ComradeBase._placederived(d, vis, layout)
 end
 
 # Image plane dims split over devices that the visibility domain matches through a per-point
@@ -111,7 +112,7 @@ function _blockvisibilities(img, vis::StructuredDomain, layout::ShardLayout)
     pdims = filter(DD.otherdims(dims(img), (DD.X, DD.Y))) do pd
         return _nshards(layout, DD.name(pd)) > 1 && !(DD.name(pd) in keys(vis))
     end
-    isempty(pdims) && return vis, layout
+    isempty(pdims) && return _onhost(vis), layout
     haskey(layout.axes, :Node) && throw(
         ArgumentError("the layout splits the image's $(map(DD.name, pdims)) planes, which places the visibility points on the devices of their planes; it cannot also split `Node`")
     )

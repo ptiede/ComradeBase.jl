@@ -84,7 +84,8 @@ a dual domain); for a collection, of every element.
   `ReactantEx(layout)`.
 - `RectiGrid`: returned unchanged.
 - `AbstractDualDomain`: both domains, rebuilt with `Accessors.@set` on the fields
-  `imgdomain` and `visdomain`. Dual domains that hold more device data add a method.
+  `imgdomain` and `visdomain`. Dual domains that hold more device data add a method to
+  `ComradeBase._placederived`.
 
 When the layout splits an image plane dim, such as `Ti`, that the visibility domain matches
 through a per-point coordinate rather than a dim, the visibility domain is blocked: the
@@ -108,6 +109,16 @@ Requires Reactant to be loaded with its IFRT runtime (the Reactant preference
 `xla_runtime = "IFRT"`) and a mesh of at least two devices.
 """
 function shard end
+
+"""
+    _placederived(d::AbstractDualDomain, hostvis, layout::ShardLayout)
+
+Returns the dual domain `d`, whose domains `shard(d, layout)` has placed, with the data it
+derives from its visibility points placed too. `hostvis` is the placed visibility domain
+with its coordinates on the host, so the data can be built there and placed directly. The
+default returns `d`.
+"""
+_placederived(d::AbstractDualDomain, hostvis, layout) = d
 
 
 @static if VERSION ≥ v"1.11"
