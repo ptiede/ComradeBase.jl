@@ -8,7 +8,7 @@ Uses serial execution when computing the intensitymap or visibilitymap
 struct Serial end
 
 """
-    ThreadsEx(;scheduler::Symbol = :dynamic)
+    ThreadsEx(scheduler::Symbol = :dynamic)
 
 Uses Julia's Threads @threads macro when computing the intensitymap or visibilitymap.
 You can choose from Julia's various schedulers by passing the scheduler as a parameter.

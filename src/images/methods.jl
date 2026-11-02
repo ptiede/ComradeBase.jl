@@ -84,7 +84,7 @@ _pixellookup(r::AbstractRange, psize) = DD.Lookups.Sampled(
 
 """
     fieldofview(img::IntensityMap)
-    fieldofview(img::IntensityMap)
+    fieldofview(grid::AbstractRectiGrid)
 
 Returns a named tuple with the field of view of the image.
 """

@@ -39,13 +39,11 @@ function intensitymap_analytic(s::AbstractModel, dims::AbstractDomain)
 end
 
 """
-    intensitymap!(img::AbstractIntensityMap, mode;, executor = SequentialEx())
+    intensitymap!(img::IntensityMap, model::AbstractModel)
 
-Computes the intensity map or _image_ of the `model`. This updates the `IntensityMap`
-object `img`.
+Computes the intensity map or _image_ of `model` in place, overwriting `img`.
 
-Optionally the user can specify the `executor` that uses `FLoops.jl` to specify how the loop is
-done. By default we use the `SequentialEx` which uses a single-core to construct the image.
+The executor of the domain of `img` determines how the loop runs.
 """
 @inline function intensitymap!(img, s::M) where {M}
     return intensitymap!(imanalytic(M), img, s)

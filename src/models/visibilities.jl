@@ -17,10 +17,10 @@ end
 @inline _visibilitymap(::NotAnalytic, m::AbstractModel, p) = visibilitymap_numeric(m, p)
 
 """
-    visibilitymap!(vis, m, p)
+    visibilitymap!(vis, m)
 
-Computes the visibilities `vis` in place of the model `m` using the coordinates `p`. The coordinates `p`
-are expected to have the properties `U`, `V`, and sometimes `T` and `F`.
+Computes the visibilities of the model `m` in place, overwriting `vis`, at the locations given
+by the domain of `vis`, which has the properties `U`, `V`, and sometimes `Ti` and `Fr`.
 """
 @inline function visibilitymap!(vis, m::M) where {M <: AbstractModel}
     return _visibilitymap!(visanalytic(M), vis, m)
@@ -104,7 +104,7 @@ consider using the `bispectrummap` function.
 end
 
 """
-    closure_phase(model, p1, p2, p3, p4)
+    closure_phase(model, p1, p2, p3)
 
 Computes the closure phase of model `m` at the uv-triangle
 u1,v1 -> u2,v2 -> u3,v3
