@@ -46,7 +46,7 @@ end
     m1 = BlobTest(4.0)
     m2 = @jit BlobTest(ConcreteRNumber(m1.size))
 
-    guv = UnstructuredDomain((; U = 0.2 * randn(64), V = 0.2 * randn(64)))
+    guv = StructuredDomain((; U = 0.2 * randn(64), V = 0.2 * randn(64)))
     guvr = Reactant.to_rarray(guv)
 
     @test baseimage(@jit(intensitymap(m2, go))) ≈ baseimage(intensitymap(m1, g))
@@ -125,7 +125,7 @@ end
         @test size(filled) == size(d)
         @test all(==(1), Array(filled))
         function polsize(m, d)
-            vis = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, d)
+            vis = ComradeBase._allocate_vismap(ComradeBase.IsPolarized(), m, d)
             return size(baseimage(stokes(vis, :Q)))
         end
         @test @jit(polsize(m1, dr)) == (npt, 3, 2)
@@ -148,11 +148,11 @@ end
                 test_clean_hlo(repr(@code_hlo visibilitymap(m2, dr)))
                 test_clean_hlo(repr(@code_hlo visibilitymap(mpr, dr)))
             end
-            dpt = UnstructuredDomain((; U = 0.2 .* randn(npt), V = 0.2 .* randn(npt)))
+            dpt = StructuredDomain((; U = 0.2 .* randn(npt), V = 0.2 .* randn(npt)))
             vpt = @jit(visibilitymap(mpr, Reactant.to_rarray(dpt)))
             @test Array(parent(baseimage(vpt))) ≈ parent(baseimage(visibilitymap(mp, dpt)))
             test_clean_hlo(repr(@code_hlo visibilitymap(mpr, Reactant.to_rarray(dpt))))
-            dxy = UnstructuredDomain((X = randn(npt), Y = randn(npt)))
+            dxy = StructuredDomain((X = randn(npt), Y = randn(npt)))
             @test Array(baseimage(@jit(intensitymap(m2, Reactant.to_rarray(dxy))))) ≈ baseimage(intensitymap(m1, dxy))
             test_clean_hlo(repr(@code_hlo intensitymap(m2, Reactant.to_rarray(dxy))))
         end
@@ -184,7 +184,7 @@ end
 
     @testset "ReactantEx" begin
         @test Base.issingletontype(typeof(ReactantEx()))
-        dvis = UnstructuredDomain((; U = randn(4), V = randn(4)))
+        dvis = StructuredDomain((; U = randn(4), V = randn(4)))
         @test executor(dvis) isa Serial
         @test executor(Reactant.to_rarray(dvis)) === ReactantEx()
         @test executor(@jit(identity(spatialgrid(10.0, 10.0, 8, 8)))) === ReactantEx()
@@ -274,7 +274,7 @@ end
             nvis = 16ndev
             U = 0.2 .* randn(nvis)
             V = 0.2 .* randn(nvis)
-            dvis = UnstructuredDomain((; U, V))
+            dvis = StructuredDomain((; U, V))
             m = BlobTest(4.0)
             mr = Reactant.to_rarray(m)
             sdvis = shard(dvis, Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
@@ -317,7 +317,7 @@ end
         end
 
         @testset "StructuredDomain along Node" begin
-            dpt = UnstructuredDomain((; U = 0.2 .* randn(4ndev), V = 0.2 .* randn(4ndev)))
+            dpt = StructuredDomain((; U = 0.2 .* randn(4ndev), V = 0.2 .* randn(4ndev)))
             sd = shard(dpt, ShardLayout(mesh; Node = :d))
             @test stored_blocks(ComradeBase.coords(sd).U, 1) == split_blocks(4ndev, ndev)
             m = BlobTest(4.0)
@@ -366,7 +366,7 @@ end
             snt = shard((; a = dvf, b = dvf2), layout)
             @test keys(snt) == (:a, :b)
             @test stored_blocks(ComradeBase.coords(snt.a).u, 2) == split_blocks(nf, ndev)
-            @test_throws "dimension `Fr` is not a dimension of the StructuredDomain" shard((dvf, UnstructuredDomain((; U = randn(3), V = randn(3)))), layout)
+            @test_throws "dimension `Fr` is not a dimension of the StructuredDomain" shard((dvf, StructuredDomain((; U = randn(3), V = randn(3)))), layout)
 
             gim = RectiGrid((X(range(-10.0, 10.0; length = 6)), Y(range(-10.0, 10.0; length = 6)), Ti([0.0, 0.5, 0.8, 1.2]), frs))
             dd = DualDomain(gim, dvf)

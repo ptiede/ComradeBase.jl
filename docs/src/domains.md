@@ -77,8 +77,7 @@ vis = visibilitymap(Gaussian(2.0), d)
 size(vis)
 ```
 
-`UnstructuredDomain((; U, V))` and `StructuredDomain((; U, V))` build the same `(Node,)`
-domain from a `NamedTuple`.
+`StructuredDomain((; U, V))` builds the same `(Node,)` domain from a `NamedTuple`.
 
 Plane dims such as `Fr` follow `Node`. Each coordinate array spans a subset of the dims,
 in the order they appear in the domain, and its axes must match those dims. The span is
@@ -182,7 +181,7 @@ some baselines lack some channels, give each point its own `Fr` coordinate; imag
 are then matched to it like times:
 
 ```@example domains
-dch = UnstructuredDomain((; U = 0.1 .* randn(4), V = 0.1 .* randn(4), Fr = [230.0e9, 230.0e9, 345.0e9, 230.0e9]))
+dch = StructuredDomain((; U = 0.1 .* randn(4), V = 0.1 .* randn(4), Fr = [230.0e9, 230.0e9, 345.0e9, 230.0e9]))
 frameindex(Fr([230.0e9, 345.0e9]), dch.Fr)
 ```
 

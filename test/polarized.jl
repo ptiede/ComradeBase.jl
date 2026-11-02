@@ -168,7 +168,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
     end
 
     @testset "allocation" begin
-        dpt = UnstructuredDomain((; U = 0.1 .* randn(7), V = 0.1 .* randn(7)))
+        dpt = StructuredDomain((; U = 0.1 .* randn(7), V = 0.1 .* randn(7)))
         dfr = StructuredDomain((Node(7), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(7), v = 3.0e4 .* randn(7))
         m = PolTest(1.5)
         vr = @inferred ComradeBase.allocate_vismap(m, g)
@@ -181,13 +181,13 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
         @test vs isa StokesMap{ComplexF64, 1}
         @test size(dense(vs)) == (7, 4)
         @test @inferred(ComradeBase.allocate_vismap(m, dfr)) isa StokesMap{ComplexF64, 2}
-        @test @inferred(ComradeBase.allocate_imgmap(IsPolarized(), GaussTest(), dpt)) isa StokesMap{Float64, 1}
+        @test @inferred(ComradeBase._allocate_imgmap(IsPolarized(), GaussTest(), dpt)) isa StokesMap{Float64, 1}
         @test @inferred(ComradeBase.allocate_map(Array{Float32}, g)) isa IntensityMap{Float32, 2}
         @test @inferred(ComradeBase.allocate_map(Array{StokesParams{Float32}}, g)) isa StokesMap{Float32, 2}
     end
 
     @testset "point maps are type stable" begin
-        dpt = UnstructuredDomain((; U = 0.1 .* randn(7), V = 0.1 .* randn(7)))
+        dpt = StructuredDomain((; U = 0.1 .* randn(7), V = 0.1 .* randn(7)))
         m = PolTest(1.5)
         f = Base.Fix1(ComradeBase.visibility_point, m)
         dest = ComradeBase.allocate_vismap(m, dpt)
@@ -211,7 +211,7 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
 
     @testset "analytic polarized maps on every executor" begin
         m = PolTest(1.5)
-        dpt = UnstructuredDomain((; U = 0.1 .* randn(9), V = 0.1 .* randn(9)))
+        dpt = StructuredDomain((; U = 0.1 .* randn(9), V = 0.1 .* randn(9)))
         dfr = StructuredDomain((Node(9), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(9), v = 3.0e4 .* randn(9))
         for d in (dpt, dfr)
             test_pointmaps(visibilitymap, visibilitymap!, ComradeBase.visibility_point, m, d)
@@ -421,7 +421,7 @@ end
         @test Array(dense(rc32)) ≈ dense(coherencymap(img32, b))
         @test !occursin("f64", repr(@code_hlo coherencymap(Reactant.to_rarray(img32), b)))
 
-        dpt = UnstructuredDomain((; U = 0.1 .* randn(9), V = 0.1 .* randn(9)))
+        dpt = StructuredDomain((; U = 0.1 .* randn(9), V = 0.1 .* randn(9)))
         vpt = visibilitymap(m, dpt)
         rpt = Reactant.to_rarray(vpt)
         @test Array(dense(@jit coherencyroundtrip(rpt, b))) ≈ dense(vpt)

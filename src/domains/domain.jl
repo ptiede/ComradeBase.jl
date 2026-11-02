@@ -71,11 +71,11 @@ Allocate the default map specialized by the grid `g`
 function allocate_vismap end
 
 function allocate_vismap(m::AbstractModel, g::AbstractSingleDomain)
-    return allocate_vismap(ispolarized(typeof(m)), m, g)
+    return _allocate_vismap(ispolarized(typeof(m)), m, g)
 end
 
 function allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
-    return allocate_imgmap(ispolarized(typeof(m)), m, g)
+    return _allocate_imgmap(ispolarized(typeof(m)), m, g)
 end
 
 """
@@ -99,8 +99,8 @@ function _allocate_map(::IsPolarized, ::Type{T}, g::AbstractSingleDomain) where 
     return IntensityMap(FieldDimArray{StokesParams}(storage), g)
 end
 
-allocate_vismap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, complex(eltype(g)), g)
-allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, eltype(g), g)
+_allocate_vismap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, complex(eltype(g)), g)
+_allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, eltype(g), g)
 
 
 """

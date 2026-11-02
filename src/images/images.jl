@@ -21,13 +21,13 @@ is a `IntensityMap` with `dims` an [`AbstractDomain`](@ref) as dimensions.
         s::M,
         dims::AbstractDomain
     ) where {M <: AbstractModel}
-    return create_imgmap(intensitymap(imanalytic(M), s, dims), dims)
+    return create_imgmap(_intensitymap(imanalytic(M), s, dims), dims)
 end
-@inline intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_analytic(
+@inline _intensitymap(::IsAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_analytic(
     m,
     dims
 )
-@inline intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_numeric(
+@inline _intensitymap(::NotAnalytic, m::AbstractModel, dims::AbstractDomain) = intensitymap_numeric(
     m,
     dims
 )
@@ -46,10 +46,10 @@ Computes the intensity map or _image_ of `model` in place, overwriting `img`.
 The executor of the domain of `img` determines how the loop runs.
 """
 @inline function intensitymap!(img, s::M) where {M}
-    return intensitymap!(imanalytic(M), img, s)
+    return _intensitymap!(imanalytic(M), img, s)
 end
-@inline intensitymap!(::IsAnalytic, img, m::AbstractModel) = intensitymap_analytic!(img, m)
-@inline intensitymap!(::NotAnalytic, img, m::AbstractModel) = intensitymap_numeric!(img, m)
+@inline _intensitymap!(::IsAnalytic, img, m::AbstractModel) = intensitymap_analytic!(img, m)
+@inline _intensitymap!(::NotAnalytic, img, m::AbstractModel) = intensitymap_numeric!(img, m)
 
 function intensitymap_analytic!(img::IntensityMap, s::AbstractModel)
     return intensitymap_analytic_executor!(img, s, executor(img))

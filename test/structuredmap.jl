@@ -174,13 +174,13 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
             @test axisdims(vm) === d
             im = allocate_imgmap(m, d)
             @test im isa IntensityMap{Float64, 3}
-            vp = allocate_vismap(IsPolarized(), m, d)
+            vp = ComradeBase._allocate_vismap(IsPolarized(), m, d)
             @test vp isa StokesMap{ComplexF64, 3}
             @test baseimage(vp) isa FieldDimArray{StokesParams{ComplexF64}, 3, Array{ComplexF64, 4}}
             @test size(vp) == size(d)
             @test size(parent(baseimage(vp))) == (size(d)..., 4)
             @test stokes(vp, :I) isa IntensityMap{ComplexF64, 3}
-            ip = allocate_imgmap(IsPolarized(), m, d)
+            ip = ComradeBase._allocate_imgmap(IsPolarized(), m, d)
             @test ip isa StokesMap{Float64, 3}
         end
         dm = StructuredDomain((Node(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))

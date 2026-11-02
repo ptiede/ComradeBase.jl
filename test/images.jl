@@ -40,7 +40,7 @@ end
     pc = phasecenter(grect)
     @test pc.X ≈ 0.0
     @test pc.Y ≈ 0.0
-    gustr = UnstructuredDomain(pustr)
+    gustr = StructuredDomain(pustr)
 
     test_grid_interface(grect)
     @test keys(grect) == propertynames(grect)
@@ -282,7 +282,7 @@ end
         Ti = sort(rand(128)),
     )
 
-    g = UnstructuredDomain(pustr)
+    g = StructuredDomain(pustr)
     img = IntensityMap(rand(128), g)
     @test typeof(img .^ 2) == typeof(img)
     @test img[[1, 4, 6]] isa IntensityMap
@@ -389,13 +389,13 @@ end
     img = IntensityMap(rand(4, 3), g; refdims = rd, name = :flux)
     @test DD.refdims(img) == rd
     @test DD.name(img) == :flux
-    d = UnstructuredDomain((; U = randn(5), V = randn(5)))
+    d = StructuredDomain((; U = randn(5), V = randn(5)))
     vis = IntensityMap(rand(5), d; refdims = rd, name = :vis)
     @test DD.refdims(vis) == rd
     @test DD.name(vis) == :vis
     @test IntensityMap(img, g) === img
     @test_throws "the domain of the IntensityMap is not the RectiGrid given" IntensityMap(img, spatialgrid(10.0, 10.0, 4, 3; posang = 0.1))
-    @test_throws "the domain of the IntensityMap is not the StructuredDomain given" IntensityMap(vis, UnstructuredDomain((; U = randn(5), V = randn(5))))
+    @test_throws "the domain of the IntensityMap is not the StructuredDomain given" IntensityMap(vis, StructuredDomain((; U = randn(5), V = randn(5))))
 end
 
 struct PointSum <: ComradeBase.AbstractModel end

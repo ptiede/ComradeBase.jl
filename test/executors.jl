@@ -53,7 +53,7 @@ const loopexecutors = (
     @testset "StructuredDomain (Node,)" begin
         pim = (; X = randn(64), Y = randn(64))
         puv = (; U = u, V = v, Ti = ti, Fr = fr)
-        gim = UnstructuredDomain(pim)
+        gim = StructuredDomain(pim)
         img = intensitymap(m, gim)
         img0 = copy(img)
         intensitymap!(img, m)
@@ -61,11 +61,11 @@ const loopexecutors = (
 
         foreach(ex -> testeximg(img, m, ex), loopexecutors)
 
-        vis = visibilitymap(m, UnstructuredDomain(puv))
+        vis = visibilitymap(m, StructuredDomain(puv))
         vis0 = copy(vis)
         visibilitymap!(vis, m)
         @test vis ≈ vis0
-        @test size(vis) == size(UnstructuredDomain(puv))
+        @test size(vis) == size(StructuredDomain(puv))
         foreach(ex -> testexvis(vis, m, ex), loopexecutors)
     end
 end
@@ -103,22 +103,22 @@ end
     @testset "StructuredDomain (Node,)" begin
         pim = (; X = randn(64), Y = randn(64))
         puv = (; U = u, V = v, Ti = ti, Fr = fr)
-        gim = UnstructuredDomain(pim)
+        gim = StructuredDomain(pim)
         img = intensitymap(m, gim)
 
-        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor = ThreadsEx()))
-        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor = ThreadsEx(:static)))
-        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor = DynamicScheduler()))
-        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor = StaticScheduler()))
-        @test img ≈ intensitymap(m, UnstructuredDomain(pim; executor = SerialScheduler()))
+        @test img ≈ intensitymap(m, StructuredDomain(pim; executor = ThreadsEx()))
+        @test img ≈ intensitymap(m, StructuredDomain(pim; executor = ThreadsEx(:static)))
+        @test img ≈ intensitymap(m, StructuredDomain(pim; executor = DynamicScheduler()))
+        @test img ≈ intensitymap(m, StructuredDomain(pim; executor = StaticScheduler()))
+        @test img ≈ intensitymap(m, StructuredDomain(pim; executor = SerialScheduler()))
 
-        vis = visibilitymap(m, UnstructuredDomain(puv))
-        @test size(vis) == size(UnstructuredDomain(puv))
-        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor = ThreadsEx()))
-        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor = ThreadsEx(:static)))
-        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor = DynamicScheduler()))
-        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor = StaticScheduler()))
-        @test vis ≈ visibilitymap(m, UnstructuredDomain(puv; executor = SerialScheduler()))
+        vis = visibilitymap(m, StructuredDomain(puv))
+        @test size(vis) == size(StructuredDomain(puv))
+        @test vis ≈ visibilitymap(m, StructuredDomain(puv; executor = ThreadsEx()))
+        @test vis ≈ visibilitymap(m, StructuredDomain(puv; executor = ThreadsEx(:static)))
+        @test vis ≈ visibilitymap(m, StructuredDomain(puv; executor = DynamicScheduler()))
+        @test vis ≈ visibilitymap(m, StructuredDomain(puv; executor = StaticScheduler()))
+        @test vis ≈ visibilitymap(m, StructuredDomain(puv; executor = SerialScheduler()))
     end
 end
 
@@ -131,7 +131,7 @@ end
 
     pim = (; X = range(-10.0, 10.0; length = 64), Y = range(-10.0, 10.0; length = 64))
     gim = RectiGrid(pim)
-    guv = UnstructuredDomain((; U = u, V = v, Ti = ti, Fr = fr))
+    guv = StructuredDomain((; U = u, V = v, Ti = ti, Fr = fr))
     guvm = RectiGrid((; U = u, V = v))
 
     img = intensitymap(m, gim)
@@ -207,7 +207,7 @@ end
 @testset "unknown executor" begin
     m = GaussTest()
     @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" intensitymap(m, spatialgrid(10.0, 10.0, 4, 4; executor = ThreadsEx(:nope)))
-    @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" visibilitymap(m, UnstructuredDomain((; U = randn(4), V = randn(4)); executor = ThreadsEx(:nope)))
+    @test_throws "the executor ThreadsEx{:nope}() cannot run a loop" visibilitymap(m, StructuredDomain((; U = randn(4), V = randn(4)); executor = ThreadsEx(:nope)))
 end
 
 @testset "image executor allocation" begin

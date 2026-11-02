@@ -25,7 +25,7 @@ function planes_match(N, planes)
         sel = map((p, i) -> DD.rebuild(p, DD.At(parent(p)[i])), planes, Tuple(I))
         for order in (sel, reverse(sel))
             sub = img[order...]
-            g = UnstructuredDomain((U = U[:, I], V = V[:, I]))
+            g = StructuredDomain((U = U[:, I], V = V[:, I]))
             C = C && (domainpoints(axisdims(sub)) == domainpoints(g))
         end
     end

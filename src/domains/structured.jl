@@ -1,4 +1,4 @@
-export StructuredDomain, UnstructuredDomain, Node
+export StructuredDomain, Node
 
 DD.@dim Node "node"
 
@@ -86,20 +86,6 @@ function StructuredDomain(nt::NamedTuple; executor = Serial(), header = NoHeader
     isempty(nt) && throw(ArgumentError("StructuredDomain needs at least one coordinate"))
     n = length(first(values(nt)))
     return StructuredDomain((Node(n),); executor, header, map(a -> a => (:Node,), nt)...)
-end
-
-"""
-    UnstructuredDomain(nt::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader())
-
-Returns the [`StructuredDomain`](@ref) with the single dim `Node(n)`, where every coordinate
-in `nt` is a length-`n` vector spanning `Node`. Equivalent to `StructuredDomain(nt; executor, header)`.
-
-```julia
-d = UnstructuredDomain((U = randn(100), V = randn(100)))
-```
-"""
-function UnstructuredDomain(nt::NamedTuple; executor = Serial(), header = NoHeader())
-    return StructuredDomain(nt; executor, header)
 end
 
 EnzymeRules.inactive_type(::Type{<:StructuredDomain}) = true

@@ -40,3 +40,15 @@ end
         end
     end
 end
+
+@testset "public functions take no trait arguments" begin
+    m = ComradeBase.AbstractModel
+    d = ComradeBase.AbstractSingleDomain
+    @test !hasmethod(intensitymap, Tuple{IsAnalytic, m, ComradeBase.AbstractDomain})
+    @test !hasmethod(intensitymap, Tuple{NotAnalytic, m, ComradeBase.AbstractDomain})
+    @test !hasmethod(intensitymap!, Tuple{IsAnalytic, Any, m})
+    @test !hasmethod(intensitymap!, Tuple{NotAnalytic, Any, m})
+    @test !hasmethod(ComradeBase.allocate_imgmap, Tuple{IsPolarized, m, d})
+    @test !hasmethod(ComradeBase.allocate_vismap, Tuple{NotPolarized, m, d})
+    @test !isdefined(ComradeBase, :UnstructuredDomain)
+end

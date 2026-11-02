@@ -108,7 +108,7 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     fr = fill(230.0e9, 60)
     m = GaussTest()
     p = (; U = u, V = v, Ti = ti, Fr = fr)
-    g = UnstructuredDomain(p)
+    g = StructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
     cp = closure_phasemap(m, g, g, g)
@@ -124,12 +124,12 @@ ComradeBase.radialextent(::GaussTestNA{T}) where {T} = 5 * one(T)
     @test size(cp2) == size(g2)
     @test dims(cp2) == dims(g2)
 
-    vmappol = ComradeBase.allocate_vismap(ComradeBase.IsPolarized(), m, g)
+    vmappol = ComradeBase._allocate_vismap(ComradeBase.IsPolarized(), m, g)
     @test vmappol isa ComradeBase.IntensityMap
     @test vmappol isa StokesMap
 
     gim = spatialgrid(10.0, 10.0, 64, 64)
-    imgpol = ComradeBase.allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
+    imgpol = ComradeBase._allocate_imgmap(ComradeBase.IsPolarized(), m, gim)
     @test imgpol isa ComradeBase.IntensityMap
     @test imgpol isa StokesMap{Float64, 2}
     @test baseimage(imgpol) isa FieldDimArray{StokesParams{Float64}, 2, Array{Float64, 3}}
@@ -151,7 +151,7 @@ end
     fr = fill(230.0e9, 60)
     m = GaussTestNA()
     p = (; U = u, V = v, Ti = ti, Fr = fr)
-    g = UnstructuredDomain(p)
+    g = StructuredDomain(p)
     @test visibilitymap(m, g) ≈ ComradeBase.visibilitymap_analytic(m, g)
     @test amplitudemap(m, g) ≈ abs.(ComradeBase.visibilitymap_analytic(m, g))
     closure_phasemap(m, g, g, g)
