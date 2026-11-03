@@ -40,6 +40,30 @@ function stokesmap(c::CoherencyMap, basis)
     return _stokespoint.(Ref(basis), c)
 end
 
+"""
+    stokesmap(I::IntensityMap, Q, U, V)
+    stokesmap(I::AbstractArray, Q, U, V, domain)
+
+Returns the [`StokesMap`](@ref) whose Stokes parameters are the maps `I`, `Q`, `U` and `V`,
+which must share one domain, or the arrays `I`, `Q`, `U` and `V` on `domain`. The components
+are copied into one dense array whose last dimension holds I, Q, U and V.
+"""
+@inline function stokesmap(I::IntensityMap, Q::IntensityMap, U::IntensityMap, V::IntensityMap)
+    axisdims(I) == axisdims(Q) == axisdims(U) == axisdims(V) ||
+        throw(ArgumentError("the Stokes I, Q, U and V maps must share one domain"))
+    data = _stokesparams(baseimage(I), baseimage(Q), baseimage(U), baseimage(V))
+    return IntensityMap(data, axisdims(I), refdims(I), DD.name(I))
+end
+
+@inline function stokesmap(
+        I::AbstractArray, Q::AbstractArray, U::AbstractArray, V::AbstractArray,
+        domain::AbstractSingleDomain
+    )
+    return IntensityMap(_stokesparams(I, Q, U, V), domain)
+end
+
+_stokesparams(I, Q, U, V) = FieldDimArray{StokesParams}(cat(I, Q, U, V; dims = Val(ndims(I) + 1)))
+
 _check_basis(::Union{CirBasis, LinBasis}) = nothing
 @noinline function _check_basis(basis)
     throw(

@@ -43,6 +43,17 @@ coherencyloss(P, g) = sum(abs2, coherency(coherencymap(stokesview(P, g), CirBasi
         @test_throws "IntensityMap data has size (6, 5, 4), but the RectiGrid has size (6, 5)" IntensityMap(rand(6, 5, 4), g)
     end
 
+    @testset "from Stokes components" begin
+        mI, mQ, mU, mV = (IntensityMap(P[:, :, k], g) for k in 1:4)
+        img = @inferred stokesmap(mI, mQ, mU, mV)
+        @test img isa StokesMap{Float64, 2}
+        @test axisdims(img) == g
+        @test parent(baseimage(img)) == P
+        @test @inferred(stokesmap(P[:, :, 1], P[:, :, 2], P[:, :, 3], P[:, :, 4], g)) == img
+        other = IntensityMap(P[:, :, 4], spatialgrid(5.0, 12.0, 6, 5))
+        @test_throws "the Stokes I, Q, U and V maps must share one domain" stokesmap(mI, mQ, mU, other)
+    end
+
     @testset "element access" begin
         Pc = copy(P)
         img = stokesview(Pc, g)
