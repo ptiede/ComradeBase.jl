@@ -208,3 +208,31 @@ end
     @test ComradeBase.paramtype(ExpParams{Matrix{Float64}}) === Float64
     @test promote_type(ComradeBase.paramtype(ExpParams{Matrix{Float64}}), Float64) === Float64
 end
+
+@testset "closure maps accept mixed domain types" begin
+    p = (; U = 0.1 * randn(20), V = 0.1 * randn(20))
+    g = StructuredDomain(p)
+    g32 = StructuredDomain(map(x -> Float32.(x), p))
+    @test typeof(g) != typeof(g32)
+    for m in (GaussTest(), GaussTestNA())
+        @test closure_phasemap(m, g, g32, g) ≈ closure_phasemap(m, g, g, g) atol = 1.0e-5
+        @test logclosure_amplitudemap(m, g, g32, g, g32) ≈ logclosure_amplitudemap(m, g, g, g, g) atol = 1.0e-5
+        @test bispectrummap(m, g, g32, g) ≈ bispectrummap(m, g, g, g) rtol = 1.0e-5
+    end
+    short = StructuredDomain(map(x -> x[1:19], p))
+    @test_throws "closure domains must have the same size" closure_phasemap(GaussTest(), g, short, g)
+    @test_throws "closure domains must have the same size" logclosure_amplitudemap(GaussTest(), g, g, g, short)
+    @test_throws "closure domains must have the same size" bispectrummap(GaussTest(), short, g, g)
+end
+
+@testset "wrappers forward keywords" begin
+    m = GaussTest()
+    gi = spatialgrid(10.0, 10.0, 32, 32)
+    for center in (true, false)
+        @test second_moment(m, gi; center) == second_moment(intensitymap(m, gi); center)
+    end
+end
+
+@testset "IntensityMap needs a domain" begin
+    @test_throws MethodError IntensityMap(rand(8, 6), 10.0, 12.0)
+end

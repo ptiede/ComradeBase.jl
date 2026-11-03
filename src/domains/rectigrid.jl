@@ -198,7 +198,7 @@ gridproduct(::AbstractRectiGrid, h::AbstractRectiGrid) =
 
 const ⊗ = gridproduct
 
-function refinespatial(g::RectiGrid, refac::NTuple{2})
+function refinespatial(g::AbstractRectiGrid, refac::NTuple{2})
     ns = size(g)[1:2]
     d = map(basedim, named_dims(g))
     d2 = @set d.X.len = ceil(Int, ns[1] * refac[1])
@@ -210,4 +210,4 @@ function refinespatial(g::RectiGrid, refac::NTuple{2})
     return rebuild(g; dims = dnew)
 end
 
-refinespatial(g::RectiGrid, refac::Number) = refinespatial(g, (refac, refac))
+refinespatial(g::AbstractRectiGrid, refac::Number) = refinespatial(g, (refac, refac))

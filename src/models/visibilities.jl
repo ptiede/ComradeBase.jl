@@ -163,19 +163,22 @@ function _amplitudemap(::NotAnalytic, m, p::AbstractSingleDomain)
 end
 
 """
-    bispectrummap(m, p1, p2, p3)
+    bispectrummap(m, p1::StructuredDomain, p2::StructuredDomain, p3::StructuredDomain)
 
-Computes the closure phases of the model `m` at the
-triangles p1, p2, p3, where `pi` are coordinates.
+Computes the bispectra of the model `m` at the triangles p1, p2, p3, where `pi` are domains
+of the same size.
 """
-function bispectrummap(
-        m,
-        p1::T,
-        p2::T,
-        p3::T
-    ) where {T <: AbstractSingleDomain}
+function bispectrummap(m, p1::StructuredDomain, p2::StructuredDomain, p3::StructuredDomain)
+    _checksamesize(p1, p2, p3)
     return _bispectrummap(m, p1, p2, p3)
 end
+
+function _checksamesize(p1, ps...)
+    all(p -> size(p) == size(p1), ps) ||
+        throw(DimensionMismatch("closure domains must have the same size, got $(map(size, (p1, ps...)))"))
+    return nothing
+end
+EnzymeRules.inactive(::typeof(_checksamesize), args...) = nothing
 
 # internal method used for trait dispatch
 function _bispectrummap(
@@ -188,12 +191,7 @@ function _bispectrummap(
 end
 
 # internal method used for trait dispatch for analytic visibilities
-function _bispectrummap(
-        ::IsAnalytic, m,
-        p1::T,
-        p2::T,
-        p3::T
-    ) where {T <: AbstractSingleDomain}
+function _bispectrummap(::IsAnalytic, m, p1, p2, p3)
     g1 = domainpoints(p1)
     g2 = domainpoints(p2)
     g3 = domainpoints(p3)
@@ -201,10 +199,7 @@ function _bispectrummap(
 end
 
 # internal method used for trait dispatch for non-analytic visibilities
-function _bispectrummap(
-        ::NotAnalytic, m,
-        p1::T, p2::T, p3::T
-    ) where {T <: AbstractSingleDomain}
+function _bispectrummap(::NotAnalytic, m, p1, p2, p3)
     vis1 = visibilitymap(m, p1)
     vis2 = visibilitymap(m, p2)
     vis3 = visibilitymap(m, p3)
@@ -219,9 +214,9 @@ triangles p1, p2, p3, where `pi` are domains of the same size. The result is a m
 the dims of `p1` whose coordinates `p1`, `p2`, `p3` hold the points of each domain.
 """
 @inline function closure_phasemap(
-        m::AbstractModel,
-        p1::T, p2::T, p3::T
-    ) where {T <: StructuredDomain}
+        m::AbstractModel, p1::StructuredDomain, p2::StructuredDomain, p3::StructuredDomain
+    )
+    _checksamesize(p1, p2, p3)
     return create_map(baseimage(_closure_phasemap(m, p1, p2, p3)), _closure_domain(p1, p2, p3))
 end
 
@@ -231,12 +226,7 @@ end
 end
 
 # internal method used for trait dispatch for analytic visibilities
-@inline function _closure_phasemap(
-        ::IsAnalytic, m,
-        p1::StructuredDomain,
-        p2::StructuredDomain,
-        p3::StructuredDomain
-    )
+@inline function _closure_phasemap(::IsAnalytic, m, p1, p2, p3)
     g1 = domainpoints(p1)
     g2 = domainpoints(p2)
     g3 = domainpoints(p3)
@@ -245,11 +235,11 @@ end
 
 # internal method used for trait dispatch for non-analytic visibilities
 function _closure_phasemap(::NotAnalytic, m, p1, p2, p3)
-    return angle.(bispectrummap(m, p1, p2, p3))
+    return angle.(_bispectrummap(m, p1, p2, p3))
 end
 
 """
-    logclosure_amplitudemap(m::AbstractModel, p1::StructuredDomain, p2, p3, p4)
+    logclosure_amplitudemap(m::AbstractModel, p1::StructuredDomain, p2::StructuredDomain, p3::StructuredDomain, p4::StructuredDomain)
 
 Computes the log closure amplitudemap of the model `m` at the
 quadrangles p1, p2, p3, p4, where `pi` are domains of the same size. The result is a map
@@ -257,11 +247,9 @@ over the dims of `p1` whose coordinates `p1`, ..., `p4` hold the points of each 
 """
 function logclosure_amplitudemap(
         m::AbstractModel,
-        p1::T,
-        p2::T,
-        p3::T,
-        p4::T
-    ) where {T <: StructuredDomain}
+        p1::StructuredDomain, p2::StructuredDomain, p3::StructuredDomain, p4::StructuredDomain
+    )
+    _checksamesize(p1, p2, p3, p4)
     glc = _closure_domain(p1, p2, p3, p4)
     return create_map(baseimage(_logclosure_amplitudemap(m, p1, p2, p3, p4)), glc)
 end

@@ -46,7 +46,7 @@ create_map(array, g::AbstractSingleDomain) = IntensityMap(array, g)
 Create a map of values specialized by the grid `g` in the visibility domain.
 The default is to call `create_map` with the same arguments.
 """
-create_vismap(array, g::AbstractDomain) = create_map(array, g)
+create_vismap(array, g::AbstractSingleDomain) = create_map(array, g)
 
 """
     create_imgmap(array, g::AbstractSingleDomain)
@@ -54,7 +54,7 @@ create_vismap(array, g::AbstractDomain) = create_map(array, g)
 Create a map of values specialized by the grid `g` in the image domain.
 The default is to call `create_map` with the same arguments.
 """
-create_imgmap(array, g::AbstractDomain) = create_map(array, g)
+create_imgmap(array, g::AbstractSingleDomain) = create_map(array, g)
 
 """
     allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
