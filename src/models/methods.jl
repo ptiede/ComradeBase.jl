@@ -10,7 +10,6 @@ function flux(m::AbstractModel, g::AbstractDomain)
     return flux(img)
 end
 
-function second_moment(m::AbstractModel, g::AbstractDomain)
-    img = intensitymap(m, g)
-    return second_moment(img)
+function second_moment(m::AbstractModel, g::AbstractDomain; center = true)
+    return second_moment(intensitymap(m, g); center)
 end

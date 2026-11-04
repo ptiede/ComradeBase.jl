@@ -218,9 +218,9 @@ Computes the complex visibilities at the locations p.
 function visibilitymap end
 
 """
-    visibilitymap!(vis::AbstractArray, model::AbstractModel, p)
+    visibilitymap!(vis::AbstractArray, model::AbstractModel)
 
-Computes the complex visibilities `vis` in place at the locations p
+Computes the complex visibilities of `model` in place, overwriting `vis`, at the locations given by the domain of `vis`.
 """
 function visibilitymap! end
 

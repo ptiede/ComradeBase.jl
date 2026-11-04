@@ -1,9 +1,23 @@
 # In this file we will define our base image class. This is entirely based on
 export domainpoints,
     named_dims, dims, header, axisdims, executor,
-    posang, update_spat, rotmat, imgdomain, visdomain
+    posang, rotmat, imgdomain, visdomain
 
+"""
+    AbstractDomain
+
+The supertype of the domains a model is evaluated on: single domains such as
+[`RectiGrid`](@ref) and [`StructuredDomain`](@ref), and [`AbstractDualDomain`](@ref)s that
+pair an image domain with a visibility domain.
+"""
 abstract type AbstractDomain end
+
+"""
+    AbstractSingleDomain{D, E}
+
+A domain that is a single set of points with dims `D` and executor type `E`, such as
+[`RectiGrid`](@ref) or [`StructuredDomain`](@ref).
+"""
 abstract type AbstractSingleDomain{D, E} <: AbstractDomain end
 
 """
@@ -24,7 +38,7 @@ visdomain(d::AbstractDualDomain) = getfield(d, :visdomain)
 
 Create a map of values specialized by the grid `g`.
 """
-function create_map end
+create_map(array, g::AbstractSingleDomain) = IntensityMap(array, g)
 
 """
     create_vismap(array, g::AbstractSingleDomain)
@@ -32,7 +46,7 @@ function create_map end
 Create a map of values specialized by the grid `g` in the visibility domain.
 The default is to call `create_map` with the same arguments.
 """
-create_vismap(array, g::AbstractDomain) = create_map(array, g)
+create_vismap(array, g::AbstractSingleDomain) = create_map(array, g)
 
 """
     create_imgmap(array, g::AbstractSingleDomain)
@@ -40,7 +54,7 @@ create_vismap(array, g::AbstractDomain) = create_map(array, g)
 Create a map of values specialized by the grid `g` in the image domain.
 The default is to call `create_map` with the same arguments.
 """
-create_imgmap(array, g::AbstractDomain) = create_map(array, g)
+create_imgmap(array, g::AbstractSingleDomain) = create_map(array, g)
 
 """
     allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
@@ -56,32 +70,37 @@ Allocate the default map specialized by the grid `g`
 """
 function allocate_vismap end
 
-function allocate_vismap(m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
-    return allocate_vismap(ispolarized(typeof(m)), m, g)
+function allocate_vismap(m::AbstractModel, g::AbstractSingleDomain)
+    return _allocate_vismap(ispolarized(typeof(m)), m, g)
 end
 
 function allocate_imgmap(m::AbstractModel, g::AbstractSingleDomain)
-    return allocate_imgmap(ispolarized(typeof(m)), m, g)
+    return _allocate_imgmap(ispolarized(typeof(m)), m, g)
 end
 
-@inline function similartype(::IsPolarized, E, T)
-    return StructArray{StokesParams{T}}
+"""
+    _storage(executor, T, sz)
+
+Allocates uninitialized map storage with element type `T` and size `sz` for `executor`.
+Executor extensions add methods for their executor type.
+"""
+_storage(executor, ::Type{T}, sz) where {T} = Array{T}(undef, sz)
+
+"""
+    allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain)
+
+Allocates an uninitialized `IntensityMap` over `g` whose data is an array of type `M`.
+"""
+allocate_map(M::Type{<:AbstractArray}, g::AbstractSingleDomain) = IntensityMap(similar(M, size(g)), g)
+
+_allocate_map(::NotPolarized, ::Type{T}, g::AbstractSingleDomain) where {T} = IntensityMap(_storage(executor(g), T, size(g)), g)
+function _allocate_map(::IsPolarized, ::Type{T}, g::AbstractSingleDomain) where {T}
+    storage = _storage(executor(g), T, (size(g)..., 4))
+    return IntensityMap(FieldDimArray{StokesParams}(storage), g)
 end
 
-@inline function similartype(::NotPolarized, E, T)
-    return Array{T}
-end
-
-function allocate_vismap(p, m::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
-    M = similartype(p, E, complex(eltype(g)))
-    return allocate_map(M, g)
-end
-
-
-function allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain{D, E}) where {D, E}
-    M = similartype(p, E, eltype(g))
-    return allocate_map(M, g)
-end
+_allocate_vismap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, complex(eltype(g)), g)
+_allocate_imgmap(p, ::AbstractModel, g::AbstractSingleDomain) = _allocate_map(p, eltype(g), g)
 
 
 """
@@ -189,7 +208,8 @@ include("lazygrid.jl")
 include("executors.jl")
 include("headers.jl")
 include("rectigrid.jl")
-include("unstructured/unstructured.jl")
+include("frames.jl")
+include("structured.jl")
 
 
 # Define some helpful names for ease typing
