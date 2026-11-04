@@ -1,4 +1,4 @@
-export Serial, ThreadsEx, ReactantEx, ShardLayout, shard
+export Serial, ThreadsEx, ReactantEx, ShardLayout, todevice
 
 """
     Serial()
@@ -27,8 +27,8 @@ Uses Reactant.jl for execution when computing the intensitymap or visibilitymap.
 this is usually unnecessary, since ComradeBase switches to this backend automatically
 when it detects that it is inside a Reactant tracing context.
 
-A domain placed on devices with [`shard`](@ref) has the second form, which records the
-layout it was placed with; `shard(map, domain)` places maps on the domain with it.
+A domain placed on devices with [`todevice`](@ref) has the second form, which records the
+layout it was placed with; `todevice(map, domain)` places maps on the domain with it.
 """
 struct ReactantEx{L}
     layout::L
@@ -41,7 +41,7 @@ ReactantEx() = ReactantEx(nothing)
 Describes how to place an object on a device `mesh`. Each keyword maps a dimension name of
 the object (`X`, `Y`, `Ti`, `Fr`, ...) to the name of a mesh axis, or to a tuple of mesh-axis
 names, along which that dimension is split. Dimensions that are not named are replicated.
-The `mesh` is not inspected here; [`shard`](@ref) requires it to be a
+The `mesh` is not inspected here; [`todevice`](@ref) requires it to be a
 `Reactant.Sharding.Mesh`.
 
 ```julia
@@ -67,9 +67,9 @@ _ismeshaxes(v::Tuple) = !isempty(v) && all(x -> x isa Symbol, v)
 _ismeshaxes(_) = false
 
 """
-    shard(x, layout::ShardLayout)
-    shard(x::IntensityMap, d::StructuredDomain; pad = zero(eltype(x)))
-    shard(x, sharding::Reactant.Sharding.AbstractSharding)
+    todevice(x, layout::ShardLayout)
+    todevice(x::IntensityMap, d::StructuredDomain; pad = zero(eltype(x)))
+    todevice(x, sharding::Reactant.Sharding.AbstractSharding)
 
 Return a copy of `x` whose arrays are placed on the device mesh, split along the dimensions
 named in `layout` and replicated along the rest. Dim lookups stay on the host.
@@ -108,12 +108,12 @@ length is not a multiple of the number of devices along its mesh axes is padded.
 Requires Reactant to be loaded with its IFRT runtime (the Reactant preference
 `xla_runtime = "IFRT"`) and a mesh of at least two devices.
 """
-function shard end
+function todevice end
 
 """
     _placederived(d::AbstractDualDomain, hostvis, layout::ShardLayout)
 
-Returns the dual domain `d`, whose domains `shard(d, layout)` has placed, with the data it
+Returns the dual domain `d`, whose domains `todevice(d, layout)` has placed, with the data it
 derives from its visibility points placed too. `hostvis` is the placed visibility domain
 with its coordinates on the host, so the data can be built there and placed directly. The
 default returns `d`.

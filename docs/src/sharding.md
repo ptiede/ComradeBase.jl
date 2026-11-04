@@ -4,7 +4,7 @@
 CurrentModule = ComradeBase
 ```
 
-With [Reactant.jl](https://github.com/EnzymeAD/Reactant.jl) loaded, [`shard`](@ref) places
+With [Reactant.jl](https://github.com/EnzymeAD/Reactant.jl) loaded, [`todevice`](@ref) places
 maps and domains on a mesh of devices, split along named dims. Code compiled with
 `Reactant.@jit` then runs as one SPMD program across the mesh. The examples on this page
 are not run when the docs are built, because they need several devices.
@@ -20,7 +20,7 @@ are not run when the docs are built, because they need several devices.
   ```
 
   The PJRT runtime cannot return wrapped arrays from a sharded `@jit` call.
-- A mesh of at least two devices; `shard` throws on a single-device mesh. On a machine
+- A mesh of at least two devices; `todevice` throws on a single-device mesh. On a machine
   without several accelerators, the CPU can be split into simulated devices for testing by
   setting `XLA_FLAGS=--xla_force_host_platform_device_count=4` before Julia starts and
   calling `Reactant.set_default_backend("cpu")`.
@@ -28,7 +28,7 @@ are not run when the docs are built, because they need several devices.
 ## Layouts
 
 A [`ShardLayout`](@ref) maps dim names of the object to mesh axes. Dims that are not
-named are replicated. Every dim named in a layout must be a dim of the object `shard` is
+named are replicated. Every dim named in a layout must be a dim of the object `todevice` is
 called on; a name that matches nothing is an error, not a no-op.
 
 ```julia
@@ -38,7 +38,7 @@ mesh = Reactant.Sharding.Mesh(reshape(Reactant.devices(), 2, 2), (:t, :f))
 layout = ShardLayout(mesh; Ti = :t, Fr = :f)
 ```
 
-What `shard` places for each object:
+What `todevice` places for each object:
 
 - `IntensityMap`: its storage. The trailing Stokes or feed dims of the storage of a
   polarized map are always replicated. A map over a `StructuredDomain` also has its domain
@@ -69,13 +69,13 @@ d = StructuredDomain(
     (Node(npt), frs);
     u = 4.0e6 .* randn(npt), v = 4.0e6 .* randn(npt), Ti = 4 .* rand(npt),
 )
-sd = shard(d, ShardLayout(mesh; Fr = :f))
+sd = todevice(d, ShardLayout(mesh; Fr = :f))
 
 nx = 16
 fov = 1.0e-9
 g = spatialgrid(fov, fov, nx, nx) ⊗ Ti([0.0, 1.0, 2.0, 3.0]) ⊗ frs
 img = IntensityMap(rand(nx, nx, 4, 2), g)
-simg = shard(img, layout)
+simg = todevice(img, layout)
 ```
 
 The domain gets its own layout because it has no `Ti` dim. Sharding a dual domain that pairs
@@ -128,7 +128,7 @@ point, so the per-device cost grows with the number of points.
 
 Replicating the points along `Node` costs every device the work for every point. A dual
 domain avoids that: when the layout splits an image plane dim, such as `Ti`, that the
-visibility domain matches through a per-point coordinate, `shard` gives each device the
+visibility domain matches through a per-point coordinate, `todevice` gives each device the
 points of its own frames. The points of each device become one contiguous range of `Node`,
 in their relative order, padded to the length of the largest range, and `Node` is split over
 the mesh axes of `Ti`. Here `dual` pairs `g` with `vis`, for example VLBISkyModels'
@@ -141,7 +141,7 @@ ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [0.9, 1.9, 2.9, 3.9])
 t = [0.1, 0.2, 0.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 3.5]
 vis = StructuredDomain((Node(10), frs); u = 4.0e6 .* randn(10), v = 4.0e6 .* randn(10), Ti = t)
 g = spatialgrid(fov, fov, nx, nx) ⊗ ti ⊗ frs
-sdual = shard(dual, ShardLayout(mesh; Ti = :t, Fr = :f))
+sdual = todevice(dual, ShardLayout(mesh; Ti = :t, Fr = :f))
 sv = visdomain(sdual)
 collect(lookup(dims(sv), Node))  # [1, 2, 3, 4, 0, 0, 5, 6, 7, 8, 9, 10]
 ```
@@ -152,15 +152,15 @@ point index and `0` for padding. The blocked domain has a `valid` coordinate spa
 (and any dims an existing `valid` spans). Padding slots have `valid = false`, zero baselines, and a time inside the device's
 first frame, so evaluating them is harmless; leave them out when comparing to data. With two split plane dims, for example `Ti` and an `Fr` matched per point,
 the devices are numbered row-major over the plane dims in the image's order. The points
-may come in any order; `shard` groups them by device.
+may come in any order; `todevice` groups them by device.
 
 Data, weights and other per-point quantities are maps on the original visibility domain.
-`shard(map, sv)` lays them out like `sv`, filling the padding with `pad` (zero by default,
+`todevice(map, sv)` lays them out like `sv`, filling the padding with `pad` (zero by default,
 so store weights rather than noise):
 
 ```julia
-data = shard(IntensityMap(vdata, vis), sv)
-w = shard(IntensityMap(1 ./ σ, vis), sv)
+data = todevice(IntensityMap(vdata, vis), sv)
+w = todevice(IntensityMap(1 ./ σ, vis), sv)
 chi2(m, dual, data, w) = sum(abs2, (baseimage(visibilitymap(m, dual)) .- baseimage(data)) .* baseimage(w))
 @jit chi2(m, sdual, data, w)
 ```
@@ -191,7 +191,7 @@ function grad!(dP, P, A, mask)
     return dP
 end
 
-dP = baseimage(shard(zero(img), layout))
+dP = baseimage(todevice(zero(img), layout))
 @jit grad!(dP, baseimage(simg), Ar, maskr)
 ```
 
@@ -200,11 +200,11 @@ The gradient stays split along `Ti` and `Fr`.
 ## Several datasets
 
 Several datasets, for example two arrays observing the same movie, are a `Tuple` or
-`NamedTuple` of domains, each with its own image grid. `shard` places each element and
+`NamedTuple` of domains, each with its own image grid. `todevice` places each element and
 checks the layout against each one:
 
 ```julia
-sds = shard((; eht = d1, ngeht = d2), ShardLayout(mesh; Fr = :f))
+sds = todevice((; eht = d1, ngeht = d2), ShardLayout(mesh; Fr = :f))
 ```
 
 ## Known limitations

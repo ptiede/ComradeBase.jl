@@ -215,7 +215,7 @@ ComradeBase.coordspans(dpad)
 
 Several arrays, bands or sources are a `Tuple` or `NamedTuple` of domains. Each is dense
 on its own and has its own image grid; the datasets of one movie share the `Ti` dim of the
-grid. [`shard`](@ref) works element by element on such a collection.
+grid. [`todevice`](@ref) works element by element on such a collection.
 
 ## Executors
 

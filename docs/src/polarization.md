@@ -89,6 +89,6 @@ coherency(c, 1, 2) == getindex.(c, 1, 2)
 
 ## Sharding
 
-[`shard`](@ref) places the dense storage of a polarized map. Its trailing Stokes or feed
+[`todevice`](@ref) places the dense storage of a polarized map. Its trailing Stokes or feed
 dims are not dims of the map and are always replicated; a [`ShardLayout`](@ref) names only
 domain dims.

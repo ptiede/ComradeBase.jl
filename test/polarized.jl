@@ -460,7 +460,7 @@ end
             g = spatialgrid(10.0, 10.0, nx, 4)
             P = rand(nx, 4, 4)
             img = stokesview(P, g)
-            simg = shard(img, ShardLayout(mesh; X = :d))
+            simg = todevice(img, ShardLayout(mesh; X = :d))
             @test simg isa StokesMap
             @test baseimage(simg) isa FieldDimArray
             @test axisdims(simg) === axisdims(img)
@@ -475,7 +475,7 @@ end
             @test Array(gsh) ≈ gun
             @test stored_blocks(gsh, 1) == split_blocks(nx, ndev)
             @test gun ≈ expected_gradient(P)
-            @test_throws "available dimensions are (:X, :Y)" shard(img, ShardLayout(mesh; Stokes = :d))
+            @test_throws "available dimensions are (:X, :Y)" todevice(img, ShardLayout(mesh; Stokes = :d))
         end
 
         @testset "along Fr of a 4-d map" begin
@@ -483,7 +483,7 @@ end
             g = spatialgrid(10.0, 10.0, 6, 5) ⊗ Ti([0.0, 1.0]) ⊗ Fr(range(86.0e9, 345.0e9; length = nf))
             P = rand(6, 5, 2, nf, 4)
             img = stokesview(P, g)
-            simg = shard(img, ShardLayout(mesh; Fr = :d))
+            simg = todevice(img, ShardLayout(mesh; Fr = :d))
             @test stored_blocks(dense(simg), 4) == split_blocks(nf, ndev)
             @test stored_blocks(dense(simg), 5) == [1:4]
             @test stored_blocks(dense(simg), 3) == [1:2]
@@ -503,11 +503,11 @@ end
                 u = 3.0e4 .* randn(6), v = 3.0e4 .* randn(6)
             )
             vis = visibilitymap(PolTest(1.5), d)
-            svis = shard(vis, ShardLayout(mesh; Fr = :d))
+            svis = todevice(vis, ShardLayout(mesh; Fr = :d))
             @test stored_blocks(dense(svis), 2) == split_blocks(nf, ndev)
             c = coherencymap(vis, CirBasis())
             test_clean_hlo(repr(@code_hlo coherencymap(svis, CirBasis())))
-            test_clean_hlo(repr(@code_hlo stokesmap(shard(c, ShardLayout(mesh; Fr = :d)), CirBasis())))
+            test_clean_hlo(repr(@code_hlo stokesmap(todevice(c, ShardLayout(mesh; Fr = :d)), CirBasis())))
             rt = @jit coherencyroundtrip(svis, CirBasis())
             @test stored_blocks(dense(rt), 2) == split_blocks(nf, ndev)
             @test stored_blocks(dense(rt), 3) == [1:4]
@@ -521,11 +521,11 @@ end
             # sharding; passing them through a second `@jit` next to sharded arrays throws
             # Reactant's `TODO(#2234)` error (Reactant.jl#3399).
             @test_broken (@jit(stokesmap(sc, CirBasis())); true)
-            shc = shard(c, ShardLayout(mesh; Fr = :d))
+            shc = todevice(c, ShardLayout(mesh; Fr = :d))
             @test shc isa CoherencyMap
             @test stored_blocks(dense(shc), 2) == split_blocks(nf, ndev)
             @test stored_blocks(dense(shc), 3) == [1:2]
-            @test_throws "available dimensions are (:Node, :Fr)" shard(c, ShardLayout(mesh; Fa = :d))
+            @test_throws "available dimensions are (:Node, :Fr)" todevice(c, ShardLayout(mesh; Fa = :d))
         end
     end
 end

@@ -9,5 +9,5 @@
 ComradeBase defines the interface shared by the [Comrade](https://github.com/ptiede/Comrade.jl)
 ecosystem: abstract model types and their traits, image grids (`RectiGrid`) and point
 domains (`StructuredDomain`) that models are evaluated on, and the `IntensityMap` array
-type for images, visibilities and their polarized forms. With Reactant.jl loaded, `shard`
+type for images, visibilities and their polarized forms. With Reactant.jl loaded, `todevice`
 places maps and domains on several devices.

@@ -100,6 +100,16 @@ function _nodevalid(d::StructuredDomain)
     return rebuild(d; coords = merge(cs, (; valid)), spans = merge(coordspans(d), (; valid = span)))
 end
 
+# The linear index in values laid out on the points of `d` of each value over the dims `points`
+# of the domain `d` was placed from.
+function _slots(points::Tuple, d::StructuredDomain)
+    blocked = parent(DD.lookup(first(dims(d))))
+    at = Dict(v => s for (s, v) in pairs(blocked) if !iszero(v))
+    nodes = parent(DD.lookup(first(points)))
+    L = LinearIndices(size(d))
+    return map(I -> L[at[nodes[I[1]]], Base.tail(Tuple(I))...], CartesianIndices(map(length, points)))
+end
+
 # The values of `x` laid out on the points of `d`, with `pad` in the padding slots.
 function _blockvalues(x::StructuredMap, d::StructuredDomain, pad)
     xd = axisdims(x)

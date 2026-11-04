@@ -11,18 +11,18 @@ import Reactant: AnyTracedRArray, TracedRArray, unwrapped_eltype
 
 const Shardable = Union{IntensityMap, AbstractRectiGrid, StructuredDomain, AbstractDualDomain}
 
-function ComradeBase.shard(x::Shardable, layout::ShardLayout)
+function ComradeBase.todevice(x::Shardable, layout::ShardLayout)
     _check_layout(x, layout)
     return _place(x, layout)
 end
 
-ComradeBase.shard(xs::Union{Tuple, NamedTuple}, layout::ShardLayout) = map(x -> shard(x, layout), xs)
+ComradeBase.todevice(xs::Union{Tuple, NamedTuple}, layout::ShardLayout) = map(x -> todevice(x, layout), xs)
 
-function ComradeBase.shard(x, sh::Reactant.Sharding.AbstractSharding)
+function ComradeBase.todevice(x, sh::Reactant.Sharding.AbstractSharding)
     _check_sharding_supported(sh)
     return Reactant.to_rarray(x; sharding = sh)
 end
-function ComradeBase.shard(img::IntensityMap, sh::Reactant.Sharding.AbstractSharding)
+function ComradeBase.todevice(img::IntensityMap, sh::Reactant.Sharding.AbstractSharding)
     _check_sharding_supported(sh)
     return ComradeBase._rewrap(img, Reactant.to_rarray(baseimage(img); sharding = sh))
 end
@@ -138,11 +138,11 @@ function _nshards(layout::ShardLayout, name)
     return prod(a -> mesh.axis_sizes[findfirst(==(a), mesh.axis_names)], _meshaxes(layout.axes[name]))
 end
 
-function ComradeBase.shard(x::ComradeBase.StructuredMap, d::StructuredDomain; pad = zero(eltype(x)))
+function ComradeBase.todevice(x::ComradeBase.StructuredMap, d::StructuredDomain; pad = zero(eltype(x)))
     _check_runtime()
     ex = ComradeBase.executor(d)
     ex isa ReactantEx && ex.layout isa ShardLayout || throw(
-        ArgumentError("the domain is not sharded; place it with `shard(domain, layout)` first")
+        ArgumentError("the domain is not sharded; place it with `todevice(domain, layout)` first")
     )
     vals = Reactant.to_rarray(ComradeBase._blockvalues(x, d, pad); sharding = _sharding(keys(d), ex.layout))
     return IntensityMap(vals, d, DD.refdims(x), DD.name(x))

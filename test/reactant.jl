@@ -196,9 +196,9 @@ end
     ndev = length(Reactant.devices())
     img0 = IntensityMap(rand(2ndev, 4), spatialgrid(10.0, 10.0, 2ndev, 4))
     mesh1 = Reactant.Sharding.Mesh(reshape(Reactant.devices()[1:1], 1), (:d,))
-    @test_throws "single-device meshes are not supported by Reactant" shard(img0, ShardLayout(mesh1; X = :d))
-    @test_throws "single-device meshes are not supported by Reactant" shard(img0, Reactant.Sharding.DimsSharding(mesh1, (1,), (:d,)))
-    @test_throws "must be a `Reactant.Sharding.Mesh`" shard(img0, ShardLayout(:notamesh; X = :d))
+    @test_throws "single-device meshes are not supported by Reactant" todevice(img0, ShardLayout(mesh1; X = :d))
+    @test_throws "single-device meshes are not supported by Reactant" todevice(img0, Reactant.Sharding.DimsSharding(mesh1, (1,), (:d,)))
+    @test_throws "must be a `Reactant.Sharding.Mesh`" todevice(img0, ShardLayout(:notamesh; X = :d))
 
     if ndev == 1
         @warn "Multi-device sharding tests skipped: start Julia with XLA_FLAGS=--xla_force_host_platform_device_count=4"
@@ -207,9 +207,9 @@ end
         mesh2 = Reactant.Sharding.Mesh(reshape(Reactant.devices(), ndev, 1), (:a, :b))
 
         @testset "Validation" begin
-            @test_throws "dimension `Fr` is not a dimension of the IntensityMap; available dimensions are (:X, :Y)" shard(img0, ShardLayout(mesh; Fr = :d))
-            @test_throws "mesh axis `q` (for dimension `X`) is not in the mesh; available mesh axes are (:d,)" shard(img0, ShardLayout(mesh; X = :q))
-            @test_throws "mesh axis `c` (for dimension `X`) is not in the mesh" shard(img0, ShardLayout(mesh2; X = (:a, :c)))
+            @test_throws "dimension `Fr` is not a dimension of the IntensityMap; available dimensions are (:X, :Y)" todevice(img0, ShardLayout(mesh; Fr = :d))
+            @test_throws "mesh axis `q` (for dimension `X`) is not in the mesh; available mesh axes are (:d,)" todevice(img0, ShardLayout(mesh; X = :q))
+            @test_throws "mesh axis `c` (for dimension `X`) is not in the mesh" todevice(img0, ShardLayout(mesh2; X = (:a, :c)))
         end
 
         @testset "Partition evidence" begin
@@ -224,7 +224,7 @@ end
         @testset "IntensityMap along X" begin
             nx = 2ndev
             img = IntensityMap(rand(nx, 6), spatialgrid(10.0, 10.0, nx, 6))
-            simg = shard(img, ShardLayout(mesh; X = :d))
+            simg = todevice(img, ShardLayout(mesh; X = :d))
             @test axisdims(simg) === axisdims(img)
             f(a) = baseimage(a) .* 2 .+ sum(baseimage(a))
             @test Array(@jit(f(simg))) ≈ f(img)
@@ -238,7 +238,7 @@ end
         @testset "Non-divisible dimension is padded" begin
             nx = ndev + 1
             img = IntensityMap(rand(nx, 4), spatialgrid(10.0, 10.0, nx, 4))
-            simg = shard(img, ShardLayout(mesh; X = :d))
+            simg = todevice(img, ShardLayout(mesh; X = :d))
             @test stored_blocks(baseimage(simg), 1) == split_blocks(nx, ndev)
             @test last(last(stored_blocks(baseimage(simg), 1))) > nx
             f(a) = baseimage(a) .* 2 .+ sum(baseimage(a))
@@ -253,7 +253,7 @@ end
             img = IntensityMap(rand(6, 6, 3, nf), g)
             f(a) = sum(baseimage(a); dims = (1, 2))
             for layout in (ShardLayout(mesh; Fr = :d), ShardLayout(mesh2; Fr = :a, Ti = :b), ShardLayout(mesh2; Fr = (:a, :b)))
-                simg = shard(img, layout)
+                simg = todevice(img, layout)
                 @test Array(@jit(f(simg))) ≈ f(img)
                 @test stored_blocks(baseimage(simg), 4) == split_blocks(nf, ndev)
                 @test stored_blocks(baseimage(simg), 3) == [1:3]
@@ -263,7 +263,7 @@ end
         @testset "Polarized IntensityMap along X" begin
             nx = 2ndev
             img = IntensityMap(FieldDimArray{StokesParams}(rand(nx, 4, 4)), spatialgrid(10.0, 10.0, nx, 4))
-            simg = shard(img, ShardLayout(mesh; X = :d))
+            simg = todevice(img, ShardLayout(mesh; X = :d))
             f(a) = sum(abs2, baseimage(stokes(a, :Q))) + sum(baseimage(stokes(a, :V)))
             @test Float64(@jit(f(simg))) ≈ f(img)
             @test stored_blocks(parent(baseimage(simg)), 1) == split_blocks(nx, ndev)
@@ -277,7 +277,7 @@ end
             dvis = StructuredDomain((; U, V))
             m = BlobTest(4.0)
             mr = Reactant.to_rarray(m)
-            sdvis = shard(dvis, Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
+            sdvis = todevice(dvis, Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
             @test executor(sdvis) === ReactantEx()
             vis = @jit(visibilitymap(mr, sdvis))
             @test Array(baseimage(vis)) ≈ baseimage(visibilitymap(m, dvis))
@@ -299,10 +299,10 @@ end
         dvf = StructuredDomain((Node(npt), frs); u = 1.0e5 .* randn(npt, nf), v = 1.0e5 .* randn(npt, nf), Ti = rand(npt))
 
         @testset "StructuredDomain along Fr" begin
-            sd = shard(dvf, ShardLayout(mesh; Fr = :d))
+            sd = todevice(dvf, ShardLayout(mesh; Fr = :d))
             @test dims(sd) === dims(dvf)
             @test executor(sd) === ReactantEx(ShardLayout(mesh; Fr = :d))
-            sdata = shard(IntensityMap(randn(npt, nf), dvf), @jit(identity(sd)))
+            sdata = todevice(IntensityMap(randn(npt, nf), dvf), @jit(identity(sd)))
             @test stored_blocks(baseimage(sdata), 2) == split_blocks(nf, ndev)
             cs = ComradeBase.coords(sd)
             @test Array(cs.u) == ComradeBase.coords(dvf).u
@@ -313,12 +313,12 @@ end
             vis = @jit(visibilitymap(m, sd))
             @test Array(baseimage(vis)) ≈ baseimage(visibilitymap(m, dvf))
             @test stored_blocks(baseimage(vis), 2) == split_blocks(nf, ndev)
-            @test_throws "dimension `Ti` is not a dimension of the StructuredDomain; available dimensions are (:Node, :Fr)" shard(dvf, ShardLayout(mesh; Ti = :d))
+            @test_throws "dimension `Ti` is not a dimension of the StructuredDomain; available dimensions are (:Node, :Fr)" todevice(dvf, ShardLayout(mesh; Ti = :d))
         end
 
         @testset "StructuredDomain along Node" begin
             dpt = StructuredDomain((; U = 0.2 .* randn(4ndev), V = 0.2 .* randn(4ndev)))
-            sd = shard(dpt, ShardLayout(mesh; Node = :d))
+            sd = todevice(dpt, ShardLayout(mesh; Node = :d))
             @test stored_blocks(ComradeBase.coords(sd).U, 1) == split_blocks(4ndev, ndev)
             m = BlobTest(4.0)
             @test Array(baseimage(@jit(visibilitymap(m, sd)))) ≈ baseimage(visibilitymap(m, dpt))
@@ -326,13 +326,13 @@ end
 
         @testset "IntensityMap over a StructuredDomain" begin
             vis = visibilitymap(BlobTest(4.0), dvf)
-            svis = shard(vis, ShardLayout(mesh; Fr = :d))
+            svis = todevice(vis, ShardLayout(mesh; Fr = :d))
             @test stored_blocks(baseimage(svis), 2) == split_blocks(nf, ndev)
             @test stored_blocks(ComradeBase.coords(axisdims(svis)).v, 2) == split_blocks(nf, ndev)
             @test Array(baseimage(svis)) == baseimage(vis)
 
             c = IntensityMap(FieldDimArray{SMatrix{2, 2}}(rand(ComplexF64, npt, nf, 2, 2)), dvf)
-            sc = shard(c, ShardLayout(mesh; Fr = :d))
+            sc = todevice(c, ShardLayout(mesh; Fr = :d))
             @test sc isa CoherencyMap
             @test stored_blocks(parent(baseimage(sc)), 2) == split_blocks(nf, ndev)
             @test stored_blocks(parent(baseimage(sc)), 3) == [1:2]
@@ -347,7 +347,7 @@ end
                 mesh22 = Reactant.Sharding.Mesh(reshape(Reactant.devices(), 2, 2), (:t, :f))
                 g = RectiGrid((X(range(-10.0, 10.0; length = 6)), Y(range(-10.0, 10.0; length = 6)), Ti([0.0, 0.5, 0.8, 1.2]), Fr([86.0e9, 230.0e9])))
                 img = IntensityMap(rand(6, 6, 4, 2), g)
-                simg = shard(img, ShardLayout(mesh22; Ti = :t, Fr = :f))
+                simg = todevice(img, ShardLayout(mesh22; Ti = :t, Fr = :f))
                 @test axisdims(simg) === g
                 @test stored_blocks(baseimage(simg), 3) == split_blocks(4, 2)
                 @test stored_blocks(baseimage(simg), 4) == split_blocks(2, 2)
@@ -360,26 +360,26 @@ end
         @testset "Collections and dual domains" begin
             dvf2 = StructuredDomain((Node(npt + 3), frs); U = randn(npt + 3, nf), V = randn(npt + 3, nf))
             layout = ShardLayout(mesh; Fr = :d)
-            st = shard((dvf, dvf2), layout)
+            st = todevice((dvf, dvf2), layout)
             @test st isa Tuple{<:StructuredDomain, <:StructuredDomain}
             @test stored_blocks(ComradeBase.coords(st[2]).U, 2) == split_blocks(nf, ndev)
-            snt = shard((; a = dvf, b = dvf2), layout)
+            snt = todevice((; a = dvf, b = dvf2), layout)
             @test keys(snt) == (:a, :b)
             @test stored_blocks(ComradeBase.coords(snt.a).u, 2) == split_blocks(nf, ndev)
-            @test_throws "dimension `Fr` is not a dimension of the StructuredDomain" shard((dvf, StructuredDomain((; U = randn(3), V = randn(3)))), layout)
+            @test_throws "dimension `Fr` is not a dimension of the StructuredDomain" todevice((dvf, StructuredDomain((; U = randn(3), V = randn(3)))), layout)
 
             gim = RectiGrid((X(range(-10.0, 10.0; length = 6)), Y(range(-10.0, 10.0; length = 6)), Ti([0.0, 0.5, 0.8, 1.2]), frs))
             dd = DualDomain(gim, dvf)
-            sdd = shard(dd, ShardLayout(mesh; Fr = :d))
+            sdd = todevice(dd, ShardLayout(mesh; Fr = :d))
             @test sdd isa DualDomain
             @test imgdomain(sdd) === gim
             @test dims(visdomain(sdd)) === dims(dvf)
             @test stored_blocks(ComradeBase.coords(visdomain(sdd)).u, 2) == split_blocks(nf, ndev)
             @test !haskey(ComradeBase.coords(visdomain(sdd)), :valid)
-            sdata = shard(IntensityMap(randn(npt, nf), dvf), visdomain(sdd))
+            sdata = todevice(IntensityMap(randn(npt, nf), dvf), visdomain(sdd))
             @test stored_blocks(baseimage(sdata), 2) == split_blocks(nf, ndev)
             @test stored_blocks(baseimage(sdata), 1) == [1:npt]
-            @test_throws "dimension `Pol` is not a dimension of the DualDomain" shard(dd, ShardLayout(mesh; Pol = :d))
+            @test_throws "dimension `Pol` is not a dimension of the DualDomain" todevice(dd, ShardLayout(mesh; Pol = :d))
         end
 
         @testset "Dual domain blocked along Ti" begin
@@ -390,7 +390,7 @@ end
             n = length(t)
             vis = StructuredDomain((; U = 0.2 .* randn(n), V = 0.2 .* randn(n), Ti = t))
             g = spatialgrid(10.0, 10.0, 6, 6) ⊗ ti
-            sdd = shard(DualDomain(g, vis), ShardLayout(mesh; Ti = :d))
+            sdd = todevice(DualDomain(g, vis), ShardLayout(mesh; Ti = :d))
             sv = visdomain(sdd)
             Mb = 4
             slots = parent(DD.lookup(first(dims(sv))))
@@ -402,12 +402,12 @@ end
             @test Array(ComradeBase.coords(sv).valid) == (slots .!= 0)
 
             data = IntensityMap(randn(ComplexF64, n), vis)
-            sdata = shard(data, sv)
+            sdata = todevice(data, sv)
             @test axisdims(sdata) === sv
             @test stored_blocks(baseimage(sdata), 1) == split_blocks(Mb * ndev, ndev)
             real = findall(!=(0), slots)
             @test Array(baseimage(sdata))[real] == baseimage(data)
-            w = shard(IntensityMap(ones(n), vis), sv; pad = 0.0)
+            w = todevice(IntensityMap(ones(n), vis), sv; pad = 0.0)
             @test Array(baseimage(w)) == (slots .!= 0)
 
             m = BlobTest(4.0)
@@ -420,19 +420,19 @@ end
             end
 
             rv = StructuredDomain((; U = randn(n), V = randn(n), Ti = reverse(t)))
-            srv = visdomain(shard(DualDomain(g, rv), ShardLayout(mesh; Ti = :d)))
+            srv = visdomain(todevice(DualDomain(g, rv), ShardLayout(mesh; Ti = :d)))
             rslots = parent(DD.lookup(first(dims(srv))))
             @test Array(ComradeBase.coords(srv).Ti)[rslots .!= 0] == reverse(t)[filter(!=(0), rslots)]
-            @test Array(baseimage(shard(IntensityMap(reverse(t), rv), srv)))[rslots .!= 0] == reverse(t)[filter(!=(0), rslots)]
-            @test_throws "cannot also split `Node`" shard(DualDomain(g, vis), ShardLayout(mesh2; Ti = :a, Node = :b))
-            @test_throws "the domain is not sharded" shard(data, vis)
-            @test_throws "the domain is not sharded" shard(data, Reactant.to_rarray(vis))
+            @test Array(baseimage(todevice(IntensityMap(reverse(t), rv), srv)))[rslots .!= 0] == reverse(t)[filter(!=(0), rslots)]
+            @test_throws "cannot also split `Node`" todevice(DualDomain(g, vis), ShardLayout(mesh2; Ti = :a, Node = :b))
+            @test_throws "the domain is not sharded" todevice(data, vis)
+            @test_throws "the domain is not sharded" todevice(data, Reactant.to_rarray(vis))
 
-            sdr = visdomain(shard(DualDomain(g, Reactant.to_rarray(vis)), ShardLayout(mesh; Ti = :d)))
+            sdr = visdomain(todevice(DualDomain(g, Reactant.to_rarray(vis)), ShardLayout(mesh; Ti = :d)))
             @test parent(DD.lookup(first(dims(sdr)))) == slots
             @test Array(ComradeBase.coords(sdr).U) == Array(ComradeBase.coords(sv).U)
-            @test_throws "`Node` lookup contains 0" shard(DualDomain(g, sv), ShardLayout(mesh; Ti = :d))
-            @test_throws "use a mesh axis twice" shard(IntensityMap(rand(8, 8), spatialgrid(10.0, 10.0, 8, 8)), ShardLayout(mesh; X = :d, Y = :d))
+            @test_throws "`Node` lookup contains 0" todevice(DualDomain(g, sv), ShardLayout(mesh; Ti = :d))
+            @test_throws "use a mesh axis twice" todevice(IntensityMap(rand(8, 8), spatialgrid(10.0, 10.0, 8, 8)), ShardLayout(mesh; X = :d, Y = :d))
         end
 
         if ndev == 4
@@ -447,10 +447,10 @@ end
                 vis = StructuredDomain((Node(n), fr); u = 1.0e5 .* randn(n), v = 1.0e5 .* randn(n), Ti = t)
                 g = spatialgrid(10.0, 10.0, 6, 6) ⊗ ti ⊗ fr
                 layout = ShardLayout(mesh22; Ti = :t, Fr = :f)
-                sv = visdomain(shard(DualDomain(g, vis), layout))
+                sv = visdomain(todevice(DualDomain(g, vis), layout))
                 @test size(sv) == (6, 2)
-                data = shard(IntensityMap(randn(n, 2), vis), sv)
-                img = shard(IntensityMap(rand(6, 6, 4, 2), g), layout)
+                data = todevice(IntensityMap(randn(n, 2), vis), sv)
+                img = todevice(IntensityMap(rand(6, 6, 4, 2), g), layout)
                 for (ib, db) in zip(devblocks(baseimage(img)), devblocks(baseimage(data)))
                     @test cld(last(ib[3]), 2) == cld(last(db[1]), 3)
                     @test ib[4] == db[2]
@@ -458,16 +458,16 @@ end
                 m = BlobTest(4.0)
                 real = findall(!=(0), DD.lookup(dims(sv), Node))
                 @test Array(baseimage(@jit(visibilitymap(m, sv))))[real, :] ≈ baseimage(visibilitymap(m, vis))
-                @test_throws "use a mesh axis twice" shard(DualDomain(spatialgrid(10.0, 10.0, 6, 6) ⊗ ti, vis), ShardLayout(mesh22; Ti = :t, Fr = :t))
-                dfr = shard(IntensityMap(randn(n, 2), vis), shard(vis, ShardLayout(mesh22; Fr = :f)))
+                @test_throws "use a mesh axis twice" todevice(DualDomain(spatialgrid(10.0, 10.0, 6, 6) ⊗ ti, vis), ShardLayout(mesh22; Ti = :t, Fr = :t))
+                dfr = todevice(IntensityMap(randn(n, 2), vis), todevice(vis, ShardLayout(mesh22; Fr = :f)))
                 @test stored_blocks(baseimage(dfr), 2) == [1:1, 2:2]
                 @test stored_blocks(baseimage(dfr), 1) == [1:n]
 
                 f = [86.0e9, 230.0e9, 230.0e9, 86.0e9, 86.0e9, 230.0e9]
                 vf = StructuredDomain((; U = randn(n), V = randn(n), Ti = t, Fr = f))
-                svf = visdomain(shard(DualDomain(g, vf), layout))
+                svf = visdomain(todevice(DualDomain(g, vf), layout))
                 @test parent(DD.lookup(first(dims(svf)))) == [1, 0, 2, 3, 4, 5, 6, 0]
-                dataf = shard(IntensityMap(randn(n), vf), svf)
+                dataf = todevice(IntensityMap(randn(n), vf), svf)
                 for (ib, db) in zip(devblocks(baseimage(img)), devblocks(baseimage(dataf)))
                     @test 2 * (cld(last(ib[3]), 2) - 1) + last(ib[4]) == cld(last(db[1]), 2)
                 end
@@ -504,7 +504,7 @@ end
         end
 
         @testset "Raw sharding of an IntensityMap keeps the grid on the host" begin
-            simg = shard(img0, Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
+            simg = todevice(img0, Reactant.Sharding.DimsSharding(mesh, (1,), (:d,)))
             @test axisdims(simg) === axisdims(img0)
             @test Array(baseimage(simg)) == baseimage(img0)
             @test stored_blocks(baseimage(simg), 1) == split_blocks(2ndev, ndev)
