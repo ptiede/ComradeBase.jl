@@ -54,12 +54,12 @@ end
     fr = [230.0e9, 345.0e9]
     U = 0.1 .* randn(npt)
     V = 0.1 .* randn(npt)
-    u = 3.0e4 .* randn(npt)
-    v = 3.0e4 .* randn(npt)
+    U2 = 0.1 .* randn(npt)
+    V2 = 0.1 .* randn(npt, 2)
     U3 = 0.1 .* randn(npt, 3, 2)
     V3 = 0.1 .* randn(npt, 3, 2)
     d1 = StructuredDomain((; U, V))
-    d2 = StructuredDomain((Node(npt), Fr(fr)); u, v)
+    d2 = StructuredDomain((Node(npt), Fr(fr)); U = U2, V = V2)
     d3 = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); U = U3, V = V3)
     dxy = StructuredDomain((X = randn(npt), Y = randn(npt)))
 
@@ -67,10 +67,9 @@ end
         test_pointmaps(visibilitymap, visibilitymap!, ComradeBase.visibility_point, m, d)
     end
 
-    @testset "(Node, Fr) converts meters to wavelengths" begin
+    @testset "(Node, Fr) with coordinates of different spans" begin
         vis = visibilitymap(BlobTest(2.0), d2)
-        c = ComradeBase.speed_of_light
-        @test vis[2, 2] ≈ ComradeBase.visibility_point(BlobTest(2.0), (U = u[2] * fr[2] / c, V = v[2] * fr[2] / c))
+        @test vis[2, 2] ≈ ComradeBase.visibility_point(BlobTest(2.0), (U = U2[2], V = V2[2, 2]))
     end
 
     @testset "intensitymap $(nameof(typeof(m))) on (Node,)" for m in (GaussTest(), BlobTest(2.0), PolTest(1.5))
@@ -87,11 +86,11 @@ end
     @testset "view coordinates" begin
         Ub = randn(2npt)
         Vb = randn(2npt)
-        uv3 = 3.0e4 .* randn(2npt, 4)
+        uv3 = 0.1 .* randn(2npt, 4)
         dv1 = StructuredDomain((U = view(Ub, 1:2:(2npt)), V = view(Vb, 2:2:(2npt))))
         dc1 = StructuredDomain((U = Ub[1:2:(2npt)], V = Vb[2:2:(2npt)]))
-        dv2 = StructuredDomain((Node(npt), Fr(fr)); u = view(uv3, 1:npt, 2), v = view(uv3, (npt + 1):(2npt), 3))
-        dc2 = StructuredDomain((Node(npt), Fr(fr)); u = uv3[1:npt, 2], v = uv3[(npt + 1):(2npt), 3])
+        dv2 = StructuredDomain((Node(npt), Fr(fr)); U = view(uv3, 1:npt, 2), V = view(uv3, (npt + 1):(2npt), 3))
+        dc2 = StructuredDomain((Node(npt), Fr(fr)); U = uv3[1:npt, 2], V = uv3[(npt + 1):(2npt), 3])
         for (dv, dc) in ((dv1, dc1), (dv2, dc2)), ex in structured_executors()
             m = BlobTest(2.0)
             @test baseimage(visibilitymap(m, DD.rebuild(dv; executor = ex))) == baseimage(visibilitymap(m, dc))
@@ -103,8 +102,8 @@ end
 
     @testset "Adapt converts coordinates and keeps dims" begin
         da = Adapt.adapt(DoubleFloats(), d2)
-        @test ComradeBase.coords(da).u == 2 .* u
-        @test ComradeBase.coords(da).v == 2 .* v
+        @test ComradeBase.coords(da).U == 2 .* U2
+        @test ComradeBase.coords(da).V == 2 .* V2
         @test dims(da) === dims(d2)
     end
 

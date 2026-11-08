@@ -67,7 +67,7 @@ npt = 200
 frs = Fr([86.0e9, 230.0e9])
 d = StructuredDomain(
     (Node(npt), frs);
-    u = 4.0e6 .* randn(npt), v = 4.0e6 .* randn(npt), Ti = 4 .* rand(npt),
+    U = 1.0e9 .* randn(npt), V = 1.0e9 .* randn(npt), Ti = 4 .* rand(npt),
 )
 sd = todevice(d, ShardLayout(mesh; Fr = :f))
 
@@ -139,7 +139,7 @@ using DimensionalData: lookup
 
 ti = frames(Ti, [0.0, 1.0, 2.0, 3.0], [0.9, 1.9, 2.9, 3.9])
 t = [0.1, 0.2, 0.3, 1.5, 2.1, 2.2, 2.3, 2.4, 2.5, 3.5]
-vis = StructuredDomain((Node(10), frs); u = 4.0e6 .* randn(10), v = 4.0e6 .* randn(10), Ti = t)
+vis = StructuredDomain((Node(10), frs); U = 1.0e9 .* randn(10), V = 1.0e9 .* randn(10), Ti = t)
 g = spatialgrid(fov, fov, nx, nx) ⊗ ti ⊗ frs
 sdual = todevice(dual, ShardLayout(mesh; Ti = :t, Fr = :f))
 sv = visdomain(sdual)

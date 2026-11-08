@@ -84,24 +84,20 @@ in the order they appear in the domain, and its axes must match those dims. The 
 inferred from the array's size when only one ordered subset of the dims matches it;
 otherwise it is given as `array => (:Node, :Fr)`.
 
-Here each row has a measurement at every frequency. Baselines are given in meters as `u`,
-`v`, so they vary with `Node` only and are converted to wavelengths with the `Fr` lookup
-(in Hz). A per-point observation time `Ti` spans `Node`:
+Here each row has a measurement at every frequency. The baselines in wavelengths change with
+frequency, so `U` and `V` span `(Node, Fr)`, while a per-point observation time `Ti` spans
+`Node`:
 
 ```@example domains
 npt = 50
 dfr = StructuredDomain(
     (Node(npt), Fr([230.0e9, 345.0e9]));
-    u = 4.0e6 .* randn(npt), v = 4.0e6 .* randn(npt), Ti = sort(rand(npt)),
+    U = 1.0e9 .* randn(npt, 2), V = 1.0e9 .* randn(npt, 2), Ti = sort(rand(npt)),
 )
 ComradeBase.coordspans(dfr)
 ```
 
-```@example domains
-size(dfr.U)
-```
-
-The coordinates `U`, `V`, `W` (wavelengths), `u`, `v`, `w` (meters), `Ti`, `Fr` and `valid`
+The coordinates `U`, `V`, `W` (baselines in wavelengths), `Ti`, `Fr` and `valid`
 (a `Bool` mask) have a fixed meaning. Any other coordinate, for example antenna indices or feed
 rotation angles, is passed through to the point `NamedTuple` unchanged.
 
@@ -152,7 +148,7 @@ t = reduce(vcat, fill.([0.1, 1.7, 4.2], nbl))
 n = length(t)
 dscans = StructuredDomain(
     (Node(n), Fr([227.1e9, 229.1e9]));
-    u = 4.0e6 .* randn(n), v = 4.0e6 .* randn(n), Ti = t,
+    U = 1.0e9 .* randn(n), V = 1.0e9 .* randn(n), Ti = t,
 )
 frameindex(scans, dscans.Ti)
 ```
@@ -186,12 +182,11 @@ frameindex(Fr([230.0e9, 345.0e9]), dch.Fr)
 ```
 
 Doppler-tracked channels have a different frequency on every row. Make `Fr` a channel index
-and give the frequencies as an `Fr` coordinate spanning `(:Node, :Fr)`; baselines in meters
-are converted with it. Match image planes to these frequencies with bins built by `frames`:
+and give the frequencies as an `Fr` coordinate spanning `(:Node, :Fr)`. Match image planes to these frequencies with bins built by `frames`:
 
 ```@example domains
 fobs = [230.0e9, 230.5e9]' .+ 1.0e6 .* (1:4)
-ddop = StructuredDomain((Node(4), Fr(1:2)); u = 4.0e6 .* randn(4), v = 4.0e6 .* randn(4), Fr = fobs)
+ddop = StructuredDomain((Node(4), Fr(1:2)); U = 1.0e9 .* randn(4, 2), V = 1.0e9 .* randn(4, 2), Fr = fobs)
 frameindex(frames(Fr, [229.9e9, 230.25e9, 230.75e9]), ddop.Fr)
 ```
 

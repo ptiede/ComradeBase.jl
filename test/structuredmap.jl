@@ -60,10 +60,10 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
     end
 
     @testset "(Node, Ti, Fr)" begin
-        u = 1.0e6 .* randn(npt, nti)
-        v = 1.0e6 .* randn(npt, nti)
+        U = randn(npt, nti, nfr)
+        V = randn(npt, nti)
         t = rand(npt, nti)
-        d = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); u, v, Ti = t => (:Node, :Ti))
+        d = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); U, V, Ti = t => (:Node, :Ti))
         data = randn(npt, nti, nfr)
         img = IntensityMap(data, d)
         @test img isa IntensityMap{Float64, 3}
@@ -83,7 +83,7 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
         @test baseimage(x) == data[:, :, 2]
         @test coordspans(axisdims(x)) == (U = (:Node, :Ti), V = (:Node, :Ti), Ti = (:Node, :Ti))
         @test axisdims(x).U ≈ d.U[:, :, 2]
-        @test axisdims(x).V ≈ d.V[:, :, 2]
+        @test axisdims(x).V == d.V
         @test only(DD.refdims(x)) == Fr([345.0e9])
 
         y = img[Ti = 1:2]
@@ -95,7 +95,7 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
 
         z = img[Ti = DD.At(1.0)]
         @test size(z) == (npt, nfr)
-        @test coordspans(axisdims(z)) == (u = (:Node,), v = (:Node,), Ti = (:Node,))
+        @test coordspans(axisdims(z)) == (U = (:Node, :Fr), V = (:Node,), Ti = (:Node,))
         @test axisdims(z).U ≈ d.U[:, 2, :]
         @test domainpoints(z)[3, 2].Ti == t[3, 2]
 
@@ -119,18 +119,14 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
         @test sum(DD.DimArray(img); dims = :Ti) isa DD.DimArray
     end
 
-    @testset "slicing u, v, w in meters" begin
+    @testset "slicing other coordinates" begin
         u = 1.0e6 .* randn(npt)
         fobs = fr' .+ 1.0e6 .* (1:npt)
-        d = StructuredDomain((Node(npt), Fr(1:nfr)); u, v = u, Fr = fobs)
+        d = StructuredDomain((Node(npt), Fr(1:nfr)); U = randn(npt, nfr), V = randn(npt, nfr), u, Fr = fobs)
         x = IntensityMap(randn(npt, nfr), d)[Fr = 2]
-        @test coordspans(axisdims(x)) == (u = (:Node,), v = (:Node,), Fr = (:Node,))
-        @test axisdims(x).U ≈ d.U[:, 2]
-
-        dw = StructuredDomain((Node(npt), Fr(fr)); u, v = u, w = u)
-        xw = IntensityMap(randn(npt, nfr), dw)[Fr = 1]
-        @test coordspans(axisdims(xw)) == (U = (:Node,), V = (:Node,), W = (:Node,))
-        @test axisdims(xw).W ≈ dw.W[:, 1]
+        @test coordspans(axisdims(x)) == (U = (:Node,), V = (:Node,), u = (:Node,), Fr = (:Node,))
+        @test axisdims(x).u == u
+        @test axisdims(x).U == d.U[:, 2]
     end
 
     @testset "rectilinear-only methods" begin
@@ -148,12 +144,9 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
         @test @inferred(eltype(d32)) === Float32
         dmix = StructuredDomain((U = randn(Float32, npt), V = randn(npt)))
         @test @inferred(eltype(dmix)) === Float64
-        dm = StructuredDomain((Node(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))
-        @test @inferred(eltype(dm)) === Float64
-        dfc = StructuredDomain((; u = randn(Float32, npt), v = randn(Float32, npt), Fr = rand(fr, npt)))
-        @test @inferred(eltype(dfc)) === Float64
         dn = StructuredDomain((Node(npt),); W = randn(npt))
-        @test_throws "neither `U` nor `u`" eltype(dn)
+        @test_throws "has no `U`" eltype(dn)
+        @test_throws "has no `U`" eltype(StructuredDomain((Node(npt), Fr(fr)); u = randn(npt), v = randn(npt)))
         dxy = StructuredDomain((X = randn(Float32, npt), Y = randn(Float32, npt)))
         @test @inferred(eltype(dxy)) === Float32
         @test_throws "needs both `X` and `Y`, but `Y` is missing" eltype(StructuredDomain((X = randn(npt),)))
@@ -183,7 +176,7 @@ using ComradeBase: StructuredDomain, Node, coordspans, allocate_vismap, allocate
             ip = ComradeBase._allocate_imgmap(IsPolarized(), m, d)
             @test ip isa StokesMap{Float64, 3}
         end
-        dm = StructuredDomain((Node(npt), Fr(fr)); u = randn(Float32, npt), v = randn(Float32, npt))
+        dm = StructuredDomain((Node(npt), Fr(fr)); U = randn(npt), V = randn(npt))
         @test allocate_vismap(BlobTest(2.0), dm) isa IntensityMap{ComplexF64, 2}
         d32 = StructuredDomain((U = randn(Float32, npt), V = randn(Float32, npt)))
         @test allocate_vismap(GaussTest(), d32) isa IntensityMap{ComplexF32, 1}
@@ -196,7 +189,7 @@ end
     n = length(t)
     fr = Fr([230.0e9, 345.0e9])
     u = 1.0e6 .* randn(n)
-    vis = StructuredDomain((Node(n), fr); u, v = 1.0e6 .* randn(n), Ti = t, ant = collect(1:n))
+    vis = StructuredDomain((Node(n), fr); U = u, V = 1.0e6 .* randn(n), Ti = t, ant = collect(1:n))
     lookupof(d) = parent(DD.lookup(first(dims(d))))
 
     @testset "uneven blocks" begin
@@ -204,22 +197,21 @@ end
         @test lookupof(b) == [1, 2, 3, 4, 0, 0, 5, 6, 7, 8, 9, 10]
         @test b.valid == (lookupof(b) .!= 0)
         @test coordspans(b).valid == (:Node,)
-        @test ComradeBase.coords(b).u == [u[1:4]; 0.0; 0.0; u[5:10]]
-        @test all(iszero, b.U[5:6, :])
+        @test b.U == [u[1:4]; 0.0; 0.0; u[5:10]]
         @test b.Ti[5:6] == [0.45, 0.45]
         @test frameindex(ti, b.Ti) == [1, 1, 1, 2, 1, 1, 3, 3, 3, 3, 3, 4]
         @test b.ant == [1, 2, 3, 4, 4, 4, 5, 6, 7, 8, 9, 10]
         @test dims(b)[2] == fr
-        @test b.U[lookupof(b) .!= 0, :] == vis.U
+        @test b.U[lookupof(b) .!= 0] == vis.U
     end
 
     @testset "an empty block and an existing valid mask" begin
-        late = StructuredDomain((Node(n), fr); u, v = u, Ti = t .+ 2.0 .* (t .< 2), valid = (1:n) .!= 3)
+        late = StructuredDomain((Node(n), fr); U = u, V = u, Ti = t .+ 2.0 .* (t .< 2), valid = (1:n) .!= 3)
         b = ComradeBase._blockdomain(late, (frames(Ti, 0:6.0),), (3,))
         @test lookupof(b) == [zeros(Int, 10); 1:10; zeros(Int, 10)]
         @test b.valid == [falses(10); (1:n) .!= 3; falses(10)]
         @test b.Ti[[1:10; 21:30]] == [fill(0.5, 10); fill(4.5, 10)]
-        perfr = StructuredDomain((Node(n), fr); u, v = u, Ti = t, valid = [true, false] => (:Fr,))
+        perfr = StructuredDomain((Node(n), fr); U = u, V = u, Ti = t, valid = [true, false] => (:Fr,))
         bf = ComradeBase._blockdomain(perfr, (ti,), (2,))
         @test coordspans(bf).valid == (:Node, :Fr)
         @test bf.valid == (lookupof(bf) .!= 0) .& [true false]
@@ -276,7 +268,7 @@ end
         @test baseimage(y)[5:6, :] == zeros(2, 2)
         back = y[Node(DD.Where(!=(0)))]
         @test baseimage(back) == baseimage(x)
-        @test ComradeBase.coords(axisdims(back)).u == u
+        @test axisdims(back).U == u
         @test axisdims(back).Ti == t
         @test all(axisdims(back).valid)
 

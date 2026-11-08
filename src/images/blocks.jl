@@ -63,7 +63,7 @@ function _blockdomain(vis::StructuredDomain, pdims::Tuple, nblocks::Tuple)
         p = findfirst(==(:Node), span)
         p === nothing && return c
         a = c[ntuple(i -> i == p ? src : Colon(), ndims(c))...]
-        if k in (:U, :V, :W, :u, :v, :w)
+        if k in (:U, :V, :W)
             fill!(selectdim(a, p, pads), zero(eltype(a)))
         elseif k === :valid
             fill!(selectdim(a, p, pads), false)

@@ -221,7 +221,7 @@ end
 end
 
 @testset "broadcast executor allocation" begin
-    d = StructuredDomain((Node(9), Fr([230.0e9, 345.0e9])); u = 3.0e4 .* randn(9), v = 3.0e4 .* randn(9), executor = CPU())
+    d = StructuredDomain((Node(9), Fr([230.0e9, 345.0e9])); U = 0.1 .* randn(9), V = 0.1 .* randn(9, 2), executor = CPU())
     ComradeBase.shapedcoords(d)
     shaped = @allocated ComradeBase.shapedcoords(d)
     for (m, ncomp) in ((GaussTest(), 1), (PolTest(1.5), 4))

@@ -106,7 +106,7 @@ end
         @test Array(ComradeBase.coords(dout).V) ≈ V
 
         dm = ComradeBase.StructuredDomain(
-            (ComradeBase.Node(npt), Fr(fr)); u = 1.0e6 .* randn(npt), v = 1.0e6 .* randn(npt)
+            (ComradeBase.Node(npt), Fr(fr)); U = 0.1 .* randn(npt), V = 0.1 .* randn(npt)
         )
         sumU(d) = sum(d.U)
         @test @jit(sumU(Reactant.to_rarray(dm))) ≈ sum(dm.U)
@@ -134,7 +134,7 @@ end
             mp = PolTest(1.5)
             mpr = @jit PolTest(ConcreteRNumber(mp.size))
             d2 = ComradeBase.StructuredDomain(
-                (ComradeBase.Node(npt), Fr(fr)); u = 3.0e4 .* randn(npt), v = 3.0e4 .* randn(npt)
+                (ComradeBase.Node(npt), Fr(fr)); U = 0.1 .* randn(npt), V = 0.1 .* randn(npt)
             )
             d3 = ComradeBase.StructuredDomain(
                 (ComradeBase.Node(npt), Ti(ti), Fr(fr)); U = 0.1 .* randn(npt, 3, 2), V = 0.1 .* randn(npt, 3, 2)
@@ -296,7 +296,7 @@ end
         npt = 10
         nf = 2ndev
         frs = Fr(range(200.0e9, 300.0e9; length = nf))
-        dvf = StructuredDomain((Node(npt), frs); u = 1.0e5 .* randn(npt, nf), v = 1.0e5 .* randn(npt, nf), Ti = rand(npt))
+        dvf = StructuredDomain((Node(npt), frs); U = 0.1 .* randn(npt, nf), V = 0.1 .* randn(npt, nf), Ti = rand(npt))
 
         @testset "StructuredDomain along Fr" begin
             sd = todevice(dvf, ShardLayout(mesh; Fr = :d))
@@ -305,9 +305,9 @@ end
             sdata = todevice(IntensityMap(randn(npt, nf), dvf), @jit(identity(sd)))
             @test stored_blocks(baseimage(sdata), 2) == split_blocks(nf, ndev)
             cs = ComradeBase.coords(sd)
-            @test Array(cs.u) == ComradeBase.coords(dvf).u
-            @test stored_blocks(cs.u, 2) == split_blocks(nf, ndev)
-            @test stored_blocks(cs.u, 1) == [1:npt]
+            @test Array(cs.U) == ComradeBase.coords(dvf).U
+            @test stored_blocks(cs.U, 2) == split_blocks(nf, ndev)
+            @test stored_blocks(cs.U, 1) == [1:npt]
             @test stored_blocks(cs.Ti, 1) == [1:npt]
             m = BlobTest(4.0)
             vis = @jit(visibilitymap(m, sd))
@@ -328,7 +328,7 @@ end
             vis = visibilitymap(BlobTest(4.0), dvf)
             svis = todevice(vis, ShardLayout(mesh; Fr = :d))
             @test stored_blocks(baseimage(svis), 2) == split_blocks(nf, ndev)
-            @test stored_blocks(ComradeBase.coords(axisdims(svis)).v, 2) == split_blocks(nf, ndev)
+            @test stored_blocks(ComradeBase.coords(axisdims(svis)).V, 2) == split_blocks(nf, ndev)
             @test Array(baseimage(svis)) == baseimage(vis)
 
             c = IntensityMap(FieldDimArray{SMatrix{2, 2}}(rand(ComplexF64, npt, nf, 2, 2)), dvf)
@@ -337,7 +337,7 @@ end
             @test stored_blocks(parent(baseimage(sc)), 2) == split_blocks(nf, ndev)
             @test stored_blocks(parent(baseimage(sc)), 3) == [1:2]
             @test stored_blocks(parent(baseimage(sc)), 4) == [1:2]
-            @test stored_blocks(ComradeBase.coords(axisdims(sc)).u, 2) == split_blocks(nf, ndev)
+            @test stored_blocks(ComradeBase.coords(axisdims(sc)).U, 2) == split_blocks(nf, ndev)
             f(c) = sum(abs2, baseimage(coherency(c, 1, 2)))
             @test Float64(@jit(f(sc))) ≈ f(c)
         end
@@ -365,7 +365,7 @@ end
             @test stored_blocks(ComradeBase.coords(st[2]).U, 2) == split_blocks(nf, ndev)
             snt = todevice((; a = dvf, b = dvf2), layout)
             @test keys(snt) == (:a, :b)
-            @test stored_blocks(ComradeBase.coords(snt.a).u, 2) == split_blocks(nf, ndev)
+            @test stored_blocks(ComradeBase.coords(snt.a).U, 2) == split_blocks(nf, ndev)
             @test_throws "dimension `Fr` is not a dimension of the StructuredDomain" todevice((dvf, StructuredDomain((; U = randn(3), V = randn(3)))), layout)
 
             gim = RectiGrid((X(range(-10.0, 10.0; length = 6)), Y(range(-10.0, 10.0; length = 6)), Ti([0.0, 0.5, 0.8, 1.2]), frs))
@@ -374,7 +374,7 @@ end
             @test sdd isa DualDomain
             @test imgdomain(sdd) === gim
             @test dims(visdomain(sdd)) === dims(dvf)
-            @test stored_blocks(ComradeBase.coords(visdomain(sdd)).u, 2) == split_blocks(nf, ndev)
+            @test stored_blocks(ComradeBase.coords(visdomain(sdd)).U, 2) == split_blocks(nf, ndev)
             @test !haskey(ComradeBase.coords(visdomain(sdd)), :valid)
             sdata = todevice(IntensityMap(randn(npt, nf), dvf), visdomain(sdd))
             @test stored_blocks(baseimage(sdata), 2) == split_blocks(nf, ndev)
@@ -444,7 +444,7 @@ end
                 fr = Fr([86.0e9, 230.0e9])
                 devblocks(a) = a.sharding.device_to_array_slices
 
-                vis = StructuredDomain((Node(n), fr); u = 1.0e5 .* randn(n), v = 1.0e5 .* randn(n), Ti = t)
+                vis = StructuredDomain((Node(n), fr); U = 0.1 .* randn(n), V = 0.1 .* randn(n), Ti = t)
                 g = spatialgrid(10.0, 10.0, 6, 6) ⊗ ti ⊗ fr
                 layout = ShardLayout(mesh22; Ti = :t, Fr = :f)
                 sv = visdomain(todevice(DualDomain(g, vis), layout))

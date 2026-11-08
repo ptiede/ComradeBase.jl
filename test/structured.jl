@@ -1,4 +1,4 @@
-using ComradeBase: StructuredDomain, Node, shapedcoords, coordspans, speed_of_light
+using ComradeBase: StructuredDomain, Node, shapedcoords, coordspans
 
 broadcast_points(sc) = broadcast((x...) -> NamedTuple{keys(sc)}(x), values(sc)...)
 function points_approx(a, b)
@@ -54,72 +54,68 @@ end
         @test occursin("StructuredDomain with dims (:Node,)", summary(d))
     end
 
-    @testset "(Node, Fr) with u, v in meters" begin
+    @testset "(Node, Fr) with coordinates spanning Node" begin
+        U = randn(npt)
+        V = randn(npt)
         u = 1.0e6 .* randn(npt)
-        v = 1.0e6 .* randn(npt)
-        d = StructuredDomain((Node(npt), Fr(fr)); u, v)
+        d = StructuredDomain((Node(npt), Fr(fr)); U, V, u)
         @test size(d) == (npt, nfr)
         @test keys(d) == (:Node, :Fr)
-        @test coordspans(d) == (u = (:Node,), v = (:Node,))
-        @test propertynames(d) == (:U, :V, :Fr)
-        @test d.U ≈ u .* fr' ./ speed_of_light
+        @test coordspans(d) == (U = (:Node,), V = (:Node,), u = (:Node,))
+        @test propertynames(d) == (:U, :V, :u, :Fr)
+        @test d.U === U
+        @test d.u === u
         @test d.Fr == fr
         p = domainpoints(d)
         for I in ((1, 1), (3, 2), (npt, 1))
-            @test p[I...].U ≈ u[I[1]] * fr[I[2]] / speed_of_light
-            @test p[I...].V ≈ v[I[1]] * fr[I[2]] / speed_of_light
+            @test p[I...].U == U[I[1]]
+            @test p[I...].u == u[I[1]]
             @test p[I...].Fr == fr[I[2]]
         end
-        @test keys(p[1]) == (:U, :V, :Fr)
+        @test keys(p[1]) == (:U, :V, :u, :Fr)
         sc = shapedcoords(d)
-        @test size(sc.U) == (npt, nfr)
+        @test size(sc.U) == (npt, 1)
         @test size(sc.Fr) == (1, nfr)
-        @test points_approx(broadcast_points(sc), collect(p))
+        @test broadcast_points(sc) == collect(p)
         @test sprint(show, MIME"text/plain"(), d) isa String
     end
 
-    @testset "u, v, w in meters with an Fr coordinate" begin
-        u = 1.0e6 .* randn(npt)
-        v = 1.0e6 .* randn(npt)
-        w = 1.0e5 .* randn(npt)
+    @testset "U, V, W with an Fr coordinate" begin
         fobs = fr' .+ 1.0e6 .* (1:npt)
-        d = StructuredDomain((Node(npt), Fr(1:nfr)); u, v, w, Fr = fobs)
-        @test d.U ≈ u .* fobs ./ speed_of_light
-        @test d.W ≈ w .* fobs ./ speed_of_light
+        U, V, W = randn(npt, nfr), randn(npt, nfr), randn(npt, nfr)
+        d = StructuredDomain((Node(npt), Fr(1:nfr)); U, V, W, Fr = fobs)
+        @test coordspans(d) == (U = (:Node, :Fr), V = (:Node, :Fr), W = (:Node, :Fr), Fr = (:Node, :Fr))
         @test eltype(d) === Float64
-        c = speed_of_light
-        dl = StructuredDomain((Node(npt), Fr(1:nfr)); U = u .* fobs ./ c, V = v .* fobs ./ c, W = w .* fobs ./ c, Fr = fobs)
-        @test points_approx(collect(domainpoints(d)), collect(domainpoints(dl)))
-        @test points_approx(broadcast_points(shapedcoords(d)), collect(domainpoints(d)))
+        @test domainpoints(d)[3, 2] == (U = U[3, 2], V = V[3, 2], W = W[3, 2], Fr = fobs[3, 2])
+        @test broadcast_points(shapedcoords(d)) == collect(domainpoints(d))
 
         f1 = rand(fr, npt)
-        dp = StructuredDomain((; u, v, Fr = f1))
-        @test dp.U ≈ u .* f1 ./ speed_of_light
-        @test domainpoints(dp)[3].V ≈ v[3] * f1[3] / speed_of_light
+        dp = StructuredDomain((; U = U[:, 1], V = V[:, 1], Fr = f1))
+        @test domainpoints(dp)[3].Fr == f1[3]
     end
 
     @testset "(Node, Ti, Fr)" begin
-        u = 1.0e6 .* randn(npt, nti)
-        v = 1.0e6 .* randn(npt, nti)
+        u = randn(npt, nti)
+        v = randn(npt, nti)
         tobs = ti' .+ 0.01 .* rand(npt, nti)
         a1 = rand(1:5, npt)
-        d = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); u, v, Ti = tobs, antenna1 = a1)
+        d = StructuredDomain((Node(npt), Ti(ti), Fr(fr)); U = u, V = v, Ti = tobs, antenna1 = a1)
         @test size(d) == (npt, nti, nfr)
         @test keys(d) == (:Node, :Ti, :Fr)
         @test keys(named_dims(d)) == (:Node, :Ti, :Fr)
         @test coordspans(d) ==
-            (u = (:Node, :Ti), v = (:Node, :Ti), Ti = (:Node, :Ti), antenna1 = (:Node,))
+            (U = (:Node, :Ti), V = (:Node, :Ti), Ti = (:Node, :Ti), antenna1 = (:Node,))
         @test d.Ti === tobs
         @test d.antenna1 === a1
-        @test size(d.U) == (npt, nti, nfr)
+        @test d.U === u
         p = domainpoints(d)
         @test size(p) == size(d)
         @test (@inferred p[2, 3, 2]) isa NamedTuple
         @test keys(p[1]) == (:U, :V, :Ti, :antenna1, :Fr)
         for I in ((1, 1, 1), (2, 3, 2), (npt, 2, 1))
             i, t, f = I
-            @test p[I...].U ≈ u[i, t] * fr[f] / speed_of_light
-            @test p[I...].V ≈ v[i, t] * fr[f] / speed_of_light
+            @test p[I...].U == u[i, t]
+            @test p[I...].V == v[i, t]
             @test p[I...].Ti == tobs[i, t]
             @test p[I...].Fr == fr[f]
             @test p[I...].antenna1 == a1[i]
@@ -161,12 +157,6 @@ end
         @test_throws "the dims (:Node, :Ti) it spans have axes" StructuredDomain((Node(npt), Ti(ti)); U = randn(npt, 2) => (:Node, :Ti))
         @test_throws "must be a dim name or a tuple of dim names" StructuredDomain((Node(npt),); U = u => 1)
         @test_throws "must be an array or `array => (dim names...)`" StructuredDomain((Node(npt),); U = 1.0)
-        @test_throws "give either `U` in wavelengths or `u` in meters" StructuredDomain((Node(npt), Fr(fr)); U = u, u = u)
-        @test_throws "give either `V` in wavelengths or `v` in meters" StructuredDomain((Node(npt), Fr(fr)); V = u, v = u)
-        @test_throws "give either `W` in wavelengths or `w` in meters" StructuredDomain((Node(npt), Fr(fr)); W = u, w = u)
-        @test_throws "in meters need a frequency" StructuredDomain((Node(npt),); u, v = u)
-        @test_throws "in meters need a frequency" StructuredDomain((; u, v = u))
-        @test_throws "add an `Fr` dim or an `Fr` coordinate" StructuredDomain((; U = u, V = u, w = u))
         @test_throws "`valid` must have a Bool element type" StructuredDomain((Node(npt),); U = u, valid = ones(npt))
         @test_throws "needs at least one coordinate" StructuredDomain(NamedTuple())
         d = StructuredDomain((Node(npt), Ti(ti)); U = randn(npt, nti))
@@ -179,8 +169,8 @@ end
         uv = view(ubig, 2:(npt + 1), 1:nti)
         vv = view(vbig, 2:(npt + 1), 1:nti)
         dims = (Node(npt), Ti(ti), Fr(fr))
-        dview = StructuredDomain(dims; u = uv, v = vv)
-        dcopy = StructuredDomain(dims; u = copy(uv), v = copy(vv))
+        dview = StructuredDomain(dims; U = uv, V = vv)
+        dcopy = StructuredDomain(dims; U = copy(uv), V = copy(vv))
         @test collect(domainpoints(dview)) == collect(domainpoints(dcopy))
         @test dview.U == dcopy.U
         scv = shapedcoords(dview)

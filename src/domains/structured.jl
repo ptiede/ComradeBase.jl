@@ -3,15 +3,6 @@ export StructuredDomain, Node
 DD.@dim Node "node"
 
 """
-    speed_of_light
-
-The speed of light in vacuum in m/s. [`StructuredDomain`](@ref) uses it to convert
-baseline coordinates `u`, `v`, `w` in meters at frequencies `Fr` in Hz to `U`, `V`, `W`
-in wavelengths.
-"""
-const speed_of_light = 299_792_458.0
-
-"""
     StructuredDomain(dims::Tuple; executor=Serial(), header=ComradeBase.NoHeader(), coords...)
     StructuredDomain(coords::NamedTuple; executor=Serial(), header=ComradeBase.NoHeader())
 
@@ -28,18 +19,14 @@ given explicitly as `array => (:Node, :Ti)`, listing dim names in the order they
 `dims`. A coordinate's `axes` must equal the axes of the dims it spans, in that order.
 
 The coordinates `U`, `V`, `W` (baselines in wavelengths), `Ti`, `Fr`, `valid` (a `Bool`
-mask) have a fixed meaning; `u`, `v`, `w` are baselines in meters, converted to
-`U = u * Fr / c` and likewise for `v`, `w`. The conversion uses the `Fr` coordinate when
-one is given, for example per-point or Doppler-tracked frequencies spanning
-`(:Node, :Fr)`, and the `Fr` dim (in Hz) otherwise. Any other coordinate is passed through
-to [`domainpoints`](@ref) unchanged.
+mask) have a fixed meaning. Any other coordinate is passed through to
+[`domainpoints`](@ref) unchanged.
 
 The `NamedTuple` form builds the domain `(Node(n),)` with every coordinate a length-`n`
 vector spanning `Node`.
 
-Properties: `d.U`, `d.V`, `d.W` (derived from `u`, `v`, `w` when needed, spanning the
-coordinate's dims and those of the frequencies), every coordinate by name, and `d.Ti`,
-`d.Fr` as the dim lookups when no coordinate of that name is given.
+Properties: every coordinate by name, and `d.Ti`, `d.Fr` as the dim lookups when no
+coordinate of that name is given.
 
 # Examples
 
@@ -47,7 +34,7 @@ coordinate's dims and those of the frequencies), every coordinate by name, and `
 d = StructuredDomain((Node(100),); U = randn(100), V = randn(100))
 d = StructuredDomain(
     (Node(100), Ti([0.0, 1.0, 2.0]), Fr([230e9, 345e9]));
-    u = randn(100, 3), v = randn(100, 3), Ti = rand(100, 3)
+    U = randn(100, 3, 2), V = randn(100, 3, 2), Ti = rand(100, 3)
 )
 ```
 """
@@ -185,18 +172,6 @@ function _check_structured(d::StructuredDomain)
     for k in keys(coords)
         _check_coord(k, coords[k], spans[k], ds, names)
     end
-    for (a, b) in ((:U, :u), (:V, :v), (:W, :w))
-        haskey(coords, a) && haskey(coords, b) && throw(
-            ArgumentError("give either `$a` in wavelengths or `$b` in meters, not both")
-        )
-    end
-    if any(k -> haskey(coords, k), (:u, :v, :w)) && !(:Fr in names || haskey(coords, :Fr))
-        throw(
-            ArgumentError(
-                "u, v and w in meters need a frequency to be converted to wavelengths; add an `Fr` dim or an `Fr` coordinate (in Hz), or give `U`, `V` and `W` in wavelengths. Dims are $names"
-            )
-        )
-    end
     if haskey(coords, :valid)
         _isbool(eltype(coords.valid)) || throw(
             ArgumentError("coordinate `valid` must have a Bool element type, got $(eltype(coords.valid))")
@@ -269,44 +244,29 @@ struct CoordColumn{A, P}
     pos::P
 end
 
-struct WavelengthColumn{A, P, F, Q}
-    data::A
-    pos::P
-    freq::F
-    fpos::Q
-end
-
 Base.@propagate_inbounds _value(c::CoordColumn, I) = c.data[map(p -> I[p], c.pos)...]
-Base.@propagate_inbounds function _value(c::WavelengthColumn, I)
-    return c.data[map(p -> I[p], c.pos)...] * c.freq[map(p -> I[p], c.fpos)...] / speed_of_light
-end
 
 _coleltype(c::CoordColumn) = eltype(c.data)
-_coleltype(c::WavelengthColumn) = _wavelength_eltype(eltype(c.data), eltype(c.freq))
-_wavelength_eltype(X, F) = Base.promote_op((x, f) -> x * f / speed_of_light, X, F)
 
 """
     eltype(d::StructuredDomain)
 
-Returns the promoted element type of the baseline coordinates `U` and `V`, using the type of
-`u * Fr / c` when they are given in meters as `u`, `v`. A domain without baselines but with
-image coordinates `X` and `Y` returns their promoted element type.
+Returns the promoted element type of the baseline coordinates `U` and `V`. A domain without
+baselines but with image coordinates `X` and `Y` returns their promoted element type.
 """
 function Base.eltype(d::StructuredDomain)
     cs = coords(d)
-    if any(k -> haskey(cs, k), (:U, :u, :V, :v)) || !(haskey(cs, :X) || haskey(cs, :Y))
-        return promote_type(_baseline_eltype(d, :U, :u), _baseline_eltype(d, :V, :v))
+    if haskey(cs, :U) || haskey(cs, :V) || !(haskey(cs, :X) || haskey(cs, :Y))
+        return promote_type(_baseline_eltype(cs, :U), _baseline_eltype(cs, :V))
     end
     return promote_type(_image_eltype(cs, :X), _image_eltype(cs, :Y))
 end
 
-function _baseline_eltype(d::StructuredDomain, W::Symbol, M::Symbol)
-    cs = coords(d)
-    haskey(cs, W) && return eltype(cs[W])
-    haskey(cs, M) && return _wavelength_eltype(eltype(cs[M]), eltype(first(_frequencies(d))))
+function _baseline_eltype(cs::NamedTuple, K::Symbol)
+    haskey(cs, K) && return eltype(cs[K])
     throw(
         ArgumentError(
-            "the element type of a StructuredDomain is that of its baselines `U`, `V` (or `u`, `v`) or of its image coordinates `X`, `Y`, but it has neither `$W` nor `$M`; coordinates are $(keys(cs))"
+            "the element type of a StructuredDomain is that of its baselines `U`, `V` or of its image coordinates `X`, `Y`, but it has no `$K`; coordinates are $(keys(cs))"
         )
     )
 end
@@ -320,42 +280,18 @@ function _image_eltype(cs::NamedTuple, K::Symbol)
     )
 end
 
-_colpositions(c::CoordColumn) = c.pos
-_colpositions(c::WavelengthColumn) = Tuple(sort!(unique!([c.pos..., c.fpos...])))
-
-_point_name(k::Symbol) = k === :u ? :U : k === :v ? :V : k === :w ? :W : k
-
 function _columns(d::StructuredDomain)
     names = keys(d)
     ds = dims(d)
     cs = coords(d)
     pos = map(span -> map(s -> _dimposition(s, names), span), values(coordspans(d)))
     return merge(
-        _given_columns(cs, pos, _frequencies(d)),
+        NamedTuple{keys(cs)}(map(CoordColumn, values(cs), pos)),
         _lookup_column(Val(:Ti), cs, ds), _lookup_column(Val(:Fr), cs, ds)
     )
 end
 
 _dimposition(s::Symbol, names) = something(findfirst(==(s), names))
-
-# The names come from the type parameter so that each column's type is known at compile time.
-function _given_columns(cs::NamedTuple{K}, pos::Tuple, freq) where {K}
-    cols = map((k, c, p) -> _coord_column(k, c, p, freq), map(Val, K), values(cs), pos)
-    return NamedTuple{map(_point_name, K)}(cols)
-end
-
-_coord_column(::Val, c, pos, freq) = CoordColumn(c, pos)
-_coord_column(::Union{Val{:u}, Val{:v}, Val{:w}}, c, pos, freq) = WavelengthColumn(c, pos, freq...)
-
-# The frequencies that convert meters to wavelengths and the dim positions they span, or
-# `nothing` for a domain without frequencies.
-function _frequencies(d::StructuredDomain)
-    cs = coords(d)
-    haskey(cs, :Fr) && return cs.Fr, map(s -> _dimposition(s, keys(d)), coordspans(d).Fr)
-    DD.hasdim(dims(d), Fr) || return nothing
-    p = DD.dimnum(dims(d), Fr)
-    return basedim(dims(d)[p]), (p,)
-end
 
 function _lookup_column(::Val{K}, cs::NamedTuple, ds) where {K}
     (haskey(cs, K) || !DD.hasdim(ds, DD.name2dim(K))) && return (;)
@@ -366,15 +302,6 @@ end
 function _shaped(c::CoordColumn, target, sz)
     return reshape(c.data, map(t -> t in c.pos ? sz[t] : 1, target))
 end
-
-function _shaped(c::WavelengthColumn, target, sz)
-    data = reshape(c.data, map(t -> t in c.pos ? sz[t] : 1, target))
-    freq = reshape(c.freq, map(t -> t in c.fpos ? sz[t] : 1, target))
-    return Broadcast.broadcasted(/, Broadcast.broadcasted(*, data, freq), speed_of_light)
-end
-
-_materialize(c::CoordColumn, sz) = c.data
-_materialize(c::WavelengthColumn, sz) = Broadcast.materialize(_shaped(c, _colpositions(c), sz))
 
 _as_array(x::AbstractArray) = x
 _as_array(x) = fill(x)
@@ -388,22 +315,11 @@ function _slice_domain(f, d::StructuredDomain, I::Tuple, newdims::Tuple)
     position(s) = something(findfirst(==(s), names))
     cs = coords(d)
     sp = coordspans(d)
-    towavelengths = !(:Fr in kept) && !haskey(cs, :Fr)
-    sliced = map(keys(cs)) do k
-        k2, data, span = if towavelengths && k in (:u, :v, :w)
-            col = WavelengthColumn(cs[k], map(position, sp[k]), _frequencies(d)...)
-            pos = _colpositions(col)
-            _point_name(k), _materialize(col, size(d)), map(q -> names[q], pos)
-        else
-            k, cs[k], sp[k]
-        end
-        a = _as_array(f(data, map(s -> I[position(s)], span)...))
-        return (k2, a, filter(in(kept), span))
+    sliced = map(cs, sp) do data, span
+        return _as_array(f(data, map(s -> I[position(s)], span)...))
     end
-    ks = map(first, sliced)
-    newcoords = NamedTuple{ks}(map(x -> x[2], sliced))
-    newspans = NamedTuple{ks}(map(last, sliced))
-    return StructuredDomain(newdims, newcoords, newspans, executor(d), header(d))
+    newspans = map(span -> filter(in(kept), span), sp)
+    return StructuredDomain(newdims, sliced, newspans, executor(d), header(d))
 end
 
 Base.propertynames(d::StructuredDomain) = keys(_columns(d))
@@ -412,7 +328,7 @@ Base.@constprop :aggressive function Base.getproperty(d::StructuredDomain, p::Sy
     haskey(cols, p) || throw(
         ArgumentError("StructuredDomain has no property `$p`; properties are $(keys(cols))")
     )
-    return _materialize(cols[p], size(d))
+    return cols[p].data
 end
 
 """
@@ -444,9 +360,7 @@ end
     domainpoints(d::StructuredDomain)
 
 Returns a lazy array with `size(d)` whose element `I` is a `NamedTuple` of the point's
-`U`, `V`, `W` (derived from `u`, `v`, `w` and the frequencies when given in meters), `Ti`
-and `Fr` (each the coordinate when given, otherwise the lookup value) and every other
-coordinate.
+coordinates, with `Ti` and `Fr` the lookup values when no coordinate of that name is given.
 """
 domainpoints(d::StructuredDomain) = StructuredPoints(_columns(d), size(d))
 
@@ -455,8 +369,7 @@ domainpoints(d::StructuredDomain) = StructuredPoints(_columns(d), size(d))
 
 Returns a `NamedTuple` with the same names as the elements of `domainpoints(d)`, holding
 each coordinate reshaped to `ndims(d)` dims with singleton dims where the coordinate does
-not vary. `U`, `V`, `W` derived from `u`, `v`, `w` in meters are lazy `Broadcasted` objects.
-Broadcasting over its values gives the full grid of points.
+not vary. Broadcasting over its values gives the full grid of points.
 """
 function shapedcoords(d::StructuredDomain)
     target = ntuple(identity, ndims(d))
