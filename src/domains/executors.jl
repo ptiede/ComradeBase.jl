@@ -1,4 +1,4 @@
-export Serial, ThreadsEx, ReactantEx, ShardLayout, todevice
+export Serial, ThreadsEx, ReactantEx, ShardLayout, todevice, tohost
 
 """
     Serial()
@@ -109,6 +109,15 @@ Requires Reactant to be loaded with its IFRT runtime (the Reactant preference
 `xla_runtime = "IFRT"`) and a mesh of at least two devices.
 """
 function todevice end
+
+"""
+    tohost(x, placed)
+
+Return `x`, a value laid out on the devices like `placed`, as host arrays in the layout it
+had before `todevice` placed it. Packages whose `todevice(x, placed)` gives values a device
+layout of their own add methods.
+"""
+function tohost end
 
 """
     _placederived(d::AbstractDualDomain, hostvis, layout::ShardLayout)
