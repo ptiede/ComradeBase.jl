@@ -53,6 +53,27 @@ end
     @test header(g) === head
 end
 
+@testset "refinespatial keeps the field of view" begin
+    g = imagepixels(10.0, 20.0, 4, 5, 1.0, -2.0; posang = 0.3)
+    for (refac, n) in ((2, (8, 10)), ((3, 2), (12, 10)), (1.5, (6, 8)))
+        gr = refinespatial(g, refac)
+        @test size(gr) == n
+        @test all(values(fieldofview(gr)) .≈ values(fieldofview(g)))
+        @test all(values(phasecenter(gr)) .≈ values(phasecenter(g)))
+        @test [step(gr.X), step(gr.Y)] ≈ [10.0 / n[1], 20.0 / n[2]]
+        @test posang(gr) == posang(g)
+        @test ComradeBase.executor(gr) == ComradeBase.executor(g)
+    end
+    # Each pixel splits into `refac` pixels about its center.
+    gr = refinespatial(g, 2)
+    @test (collect(gr.X)[1:2:end] .+ collect(gr.X)[2:2:end]) ./ 2 ≈ collect(g.X)
+    @test (collect(gr.Y)[1:2:end] .+ collect(gr.Y)[2:2:end]) ./ 2 ≈ collect(g.Y)
+    fr = Fr([230.0e9, 345.0e9])
+    gfr = refinespatial(imagepixels(10.0, 20.0, 4, 5; mdims = (fr,)), 2)
+    @test size(gfr) == (8, 10, 2)
+    @test collect(gfr.Fr) == [230.0e9, 345.0e9]
+end
+
 @testset "multidomain imagepixels" begin
     fr = Fr([230.0e9, 345.0e9])
     ti = Ti([1.0, 2.0, 3.0])

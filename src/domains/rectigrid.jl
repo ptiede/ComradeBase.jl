@@ -167,16 +167,29 @@ function DD.rebuild(
     return rebuild(grid, dims, executor, header, posang)
 end
 
+"""
+    refinespatial(g::RectiGrid, refac)
+
+Returns the grid `g` with its spatial pixels refined by the factor `refac`, a number or a tuple
+of one factor per spatial axis. An axis of `n` pixels becomes `ceil(Int, n * refac)` pixels
+that span the same field of view: the outer edges of the first and last pixels stay where they
+are, so for an integer `refac` every pixel of `g` splits into `refac` pixels along that axis.
+The other dimensions, the executor, the header and the position angle of `g` are kept.
+"""
 function refinespatial(g::RectiGrid, refac::NTuple{2})
     ns = size(g)[1:2]
     d = map(basedim, named_dims(g))
-    d2 = @set d.X.len = ceil(Int, ns[1] * refac[1])
-    d3 = @set d2.Y.len = ceil(Int, ns[2] * refac[2])
+    x = _refine_axis(d.X, ceil(Int, ns[1] * refac[1]))
+    y = _refine_axis(d.Y, ceil(Int, ns[2] * refac[2]))
     dn = dims(g)
-    dnn = @set dn[1] = X(d3.X)
-    dnn2 = @set dnn[2] = Y(d3.Y)
-    dnew = (dnn2[1:2]..., dn[3:end]...)
-    return rebuild(g; dims = dnew)
+    return rebuild(g; dims = (X(x), Y(y), dn[3:end]...))
+end
+
+# The centers of `n` equal pixels spanning the outer edges of the pixels centered at `x`.
+function _refine_axis(x, n)
+    Δ = step(x)
+    δ = length(x) * Δ / n
+    return range(first(x) - Δ / 2 + δ / 2, last(x) + Δ / 2 - δ / 2; length = n)
 end
 
 refinespatial(g::RectiGrid, refac::Number) = refinespatial(g, (refac, refac))
